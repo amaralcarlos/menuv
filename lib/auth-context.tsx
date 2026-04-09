@@ -1,0 +1,53 @@
+'use client'
+import { createContext, useContext, useEffect, useState, useCallback } from 'react'
+import { supabaseBrowser } from '@/lib/supabase-browser'
+import type { Session, User } from '@supabase/supabase-js'
+
+export interface AppMeta {
+  app_role: 'admin' | 'restaurante' | 'rest_usuario' | 'colaborador' | 'suspenso'
+  restaurante_id?: string
+  empresa_id?: string
+  colaborador_id?: string
+  is_gestor?: boolean
+  perfil?: 'admin' | 'colaborador'
+}
+
+interface AuthCtx {
+  session: Session | null
+  user: User | null
+  meta: AppMeta | null
+  loading: boolean
+  signOut: () => Promise<void>
+}
+
+const Ctx = createContext<AuthCtx>({ session: null, user: null, meta: null, loading: true, signOut: async () => {} })
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [session, setSession] = useState<Session | null>(null)
+  const [loading, setLoading]  = useState(true)
+  const sb = supabaseBrowser()
+
+  useEffect(() => {
+    sb.auth.getSession().then(({ data }) => {
+      setSession(data.session)
+      setLoading(false)
+    })
+    const { data: { subscription } } = sb.auth.onAuthStateChange((_ev, s) => setSession(s))
+    return () => subscription.unsubscribe()
+  }, [])
+
+  const signOut = useCallback(async () => {
+    await sb.auth.signOut()
+    window.location.href = '/login'
+  }, [])
+
+  const meta = (session?.user?.app_metadata ?? null) as AppMeta | null
+
+  return (
+    <Ctx.Provider value={{ session, user: session?.user ?? null, meta, loading, signOut }}>
+      {children}
+    </Ctx.Provider>
+  )
+}
+
+export const useAuth = () => useContext(Ctx)
