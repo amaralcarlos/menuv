@@ -1,6 +1,6 @@
 import { createBrowserClient } from '@supabase/ssr'
 
-// Esta é a função moderna
+// Função principal
 export function createClient() {
   return createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -8,5 +8,5 @@ export function createClient() {
   )
 }
 
-// Este é o "apelido" para os arquivos que ainda estão procurando pelo nome antigo
-export const supabaseBrowser = createClient()
+// O apelido agora é uma função, exatamente como o login/page.tsx deseja
+export const supabaseBrowser = () => createClient()
