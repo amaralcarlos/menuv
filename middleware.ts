@@ -1,46 +1,48 @@
-// middleware.ts
 import { createServerClient } from '@supabase/ssr'
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse, type NextRequest } from 'next/server'
 
-const PUBLIC_PATHS = ['/', '/login', '/cadastro']
+export async function middleware(request: NextRequest) {
+  let response = NextResponse.next({
+    request: {
+      headers: request.headers,
+    },
+  })
 
-export async function middleware(req: NextRequest) {
-  const { pathname } = req.nextUrl
-  const isPublic = PUBLIC_PATHS.some(p => pathname === p || pathname.startsWith(p + '?'))
-
-  let res = NextResponse.next({ request: req })
-
-  const sb = createServerClient(
+  const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        getAll: () => req.cookies.getAll(),
-        setAll: (list: { name: string; value: string; options?: object }[]) =>
-          list.forEach(({ name, value, options }) =>
-            res.cookies.set(name, value, options as any)
-          ),
+        getAll() {
+          return request.cookies.getAll()
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value))
+          response = NextResponse.next({
+            request: {
+              headers: request.headers,
+            },
+          })
+          cookiesToSet.forEach(({ name, value, options }) =>
+            response.cookies.set(name, value, options)
+          )
+        },
       },
     }
   )
 
-  const { data: { session } } = await sb.auth.getSession()
+  const { data: { user } } = await supabase.auth.getUser()
 
-  if (!session && !isPublic) {
-    return NextResponse.redirect(new URL('/', req.url))
+  // Se o usuário estiver tentando acessar o dashboard sem estar logado, manda para o login
+  if (!user && request.nextUrl.pathname.startsWith('/(app)')) {
+    return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  if (session && (pathname === '/login' || pathname === '/cadastro' || pathname === '/')) {
-    const role = session.user.app_metadata?.app_role
-    const dest = role === 'admin' ? '/admin'
-               : role === 'colaborador' ? '/pedidos'
-               : '/dashboard'
-    return NextResponse.redirect(new URL(dest, req.url))
-  }
-
-  return res
+  return response
 }
 
 export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|favicon).*)'],
+  matcher: [
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+  ],
 }
