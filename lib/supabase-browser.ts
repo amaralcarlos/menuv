@@ -1,27 +1,14 @@
-import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
+// lib/supabase-browser.ts
+'use client'
+import { createBrowserClient } from '@supabase/ssr'
 
-export async function createClient() {
-  const cookieStore = await cookies()
+let _client: ReturnType<typeof createBrowserClient> | null = null
 
-  return createServerClient(
+export function supabaseBrowser() {
+  if (_client) return _client
+  _client = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll()
-        },
-        setAll(cookiesToSet) {
-          try {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            )
-          } catch {
-            // O servidor lida com isso automaticamente em Server Components
-          }
-        },
-      },
-    }
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
+  return _client
 }
