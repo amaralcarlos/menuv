@@ -3,9 +3,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({
-    request: {
-      headers: request.headers,
-    },
+    request: { headers: request.headers },
   })
 
   const supabase = createServerClient(
@@ -16,15 +14,13 @@ export async function middleware(request: NextRequest) {
         getAll() {
           return request.cookies.getAll()
         },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value))
+        setAll(cookiesToSet: { name: string; value: string; options?: object }[]) {
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
           response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
+            request: { headers: request.headers },
           })
           cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options)
+            response.cookies.set(name, value, options as any)
           )
         },
       },
@@ -33,9 +29,20 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  // Se o usuário estiver tentando acessar o dashboard sem estar logado, manda para o login
-  if (!user && request.nextUrl.pathname.startsWith('/(app)')) {
-    return NextResponse.redirect(new URL('/login', request.url))
+  const { pathname } = request.nextUrl
+  const PUBLIC_PATHS = ['/', '/login', '/cadastro']
+  const isPublic = PUBLIC_PATHS.some(p => pathname === p || pathname.startsWith(p + '?'))
+
+  if (!user && !isPublic) {
+    return NextResponse.redirect(new URL('/', request.url))
+  }
+
+  if (user && (pathname === '/' || pathname === '/login' || pathname === '/cadastro')) {
+    const role = user.app_metadata?.app_role
+    const dest = role === 'admin' ? '/admin'
+               : role === 'colaborador' ? '/pedidos'
+               : '/dashboard'
+    return NextResponse.redirect(new URL(dest, request.url))
   }
 
   return response
