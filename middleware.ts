@@ -1,3 +1,4 @@
+// middleware.ts
 import { createServerClient } from '@supabase/ssr'
 import { NextRequest, NextResponse } from 'next/server'
 
@@ -15,19 +16,20 @@ export async function middleware(req: NextRequest) {
     {
       cookies: {
         getAll: () => req.cookies.getAll(),
-        setAll: (list) => list.forEach(({ name, value, options }) => res.cookies.set(name, value, options)),
+        setAll: (list: { name: string; value: string; options?: object }[]) =>
+          list.forEach(({ name, value, options }) =>
+            res.cookies.set(name, value, options as any)
+          ),
       },
     }
   )
 
   const { data: { session } } = await sb.auth.getSession()
 
-  // Não autenticado → redireciona para /
   if (!session && !isPublic) {
     return NextResponse.redirect(new URL('/', req.url))
   }
 
-  // Autenticado tentando acessar login → redireciona para app
   if (session && (pathname === '/login' || pathname === '/cadastro' || pathname === '/')) {
     const role = session.user.app_metadata?.app_role
     const dest = role === 'admin' ? '/admin'
