@@ -1,8 +1,6 @@
-import type { NextConfig } from 'next'
-
-const nextConfig: NextConfig = {
+/** @type {import('next').NextConfig} */
+const nextConfig = {
   experimental: {
-    // Necessário para usar cookies no App Router SSR
     serverActions: { allowedOrigins: ['localhost:3000'] },
   },
   images: {
@@ -11,5 +9,3 @@ const nextConfig: NextConfig = {
     ],
   },
 }
-
-export default nextConfig
