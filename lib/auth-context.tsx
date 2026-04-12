@@ -28,7 +28,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const sb = supabaseBrowser()
 
   useEffect(() => {
-    sb.auth.getSession().then(({ data }) => {
+sb.auth.getSession().then(({ data }: { data: any }) => {
       setSession(data.session)
       setLoading(false)
     })
