@@ -34,7 +34,7 @@ export default function LoginForm() {
 
   useEffect(() => {
     const sb = supabaseBrowser()
-    sb.auth.getSession().then(({ data }) => {
+    sb.auth.getSession().then(({ data }: { data: any }) => {
       if (data.session) redirectAfterLogin(data.session.user.app_metadata?.app_role, router)
     })
   }, [])
