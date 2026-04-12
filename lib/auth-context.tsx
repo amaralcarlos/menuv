@@ -32,7 +32,7 @@ sb.auth.getSession().then(({ data }: { data: any }) => {
       setSession(data.session)
       setLoading(false)
     })
-    const { data: { subscription } } = sb.auth.onAuthStateChange((_ev, s) => setSession(s))
+    const { data: { subscription } } = sb.auth.onAuthStateChange((_ev: any, s: any) => setSession(s))
     return () => subscription.unsubscribe()
   }, [])
 
