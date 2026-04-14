@@ -6,19 +6,14 @@ import { Btn, Input } from '@/components/ui'
 import { MenuvLogo } from '@/components/ui/MenuvLogo'
 
 const ROLE_META = {
-  restaurante: { icon: '🏪', title: 'Acesso do restaurante', isAdmin: false, showRegister: true,  registerPath: '/cadastro?tipo=restaurante' },
+  restaurante: { icon: '🍽', title: 'Acesso do restaurante', isAdmin: false, showRegister: true,  registerPath: '/cadastro?tipo=restaurante' },
   gestor:      { icon: '🏢', title: 'Acesso do gestor',      isAdmin: false, showRegister: false, registerPath: '' },
   colaborador: { icon: '👤', title: 'Acesso do colaborador', isAdmin: false, showRegister: true,  registerPath: '/cadastro?tipo=colaborador' },
   admin:       { icon: '🔐', title: 'Acesso restrito',       isAdmin: true,  showRegister: false, registerPath: '' },
 }
 
-function redirectAfterLogin(appRole: string | undefined, router: ReturnType<typeof useRouter>) {
-  switch (appRole) {
-    case 'admin':        router.push('/admin');     break
-    case 'restaurante':
-    case 'rest_usuario': router.push('/dashboard'); break
-    default:             router.push('/pedidos');   break
-  }
+function parseJwt(token: string) {
+  try { return JSON.parse(atob(token.split('.')[1])) } catch { return null }
 }
 
 export default function LoginForm() {
@@ -35,49 +30,61 @@ export default function LoginForm() {
   useEffect(() => {
     const sb = supabaseBrowser()
     sb.auth.getSession().then(({ data }: { data: any }) => {
-      if (data.session) redirectAfterLogin(data.session.user.app_metadata?.app_role, router)
+      if (data.session) {
+        const jwt = parseJwt(data.session.access_token)
+        const appRole = jwt?.app_metadata?.app_role
+        router.push(
+          appRole === 'admin' ? '/admin' :
+          appRole === 'colaborador' ? '/pedidos' :
+          '/dashboard'
+        )
+      }
     })
   }, [])
 
   async function handleLogin(e: React.FormEvent) {
-  e.preventDefault()
-  setError('')
-  if (!email || !senha) { setError('Preencha e-mail e senha.'); return }
+    e.preventDefault()
+    setError('')
+    if (!email || !senha) { setError('Preencha e-mail e senha.'); return }
 
-  setLoading(true)
-  const sb = supabaseBrowser()
-  
-  const { data, error: sbError } = await sb.auth.signInWithPassword({
-    email: email.trim().toLowerCase(),
-    password: senha,
-  })
+    setLoading(true)
+    const sb = supabaseBrowser()
 
-  if (sbError || !data.session) {
+    const { data, error: sbError } = await sb.auth.signInWithPassword({
+      email: email.trim().toLowerCase(),
+      password: senha,
+    })
+
+    if (sbError || !data.session) {
+      setLoading(false)
+      setError(sbError?.message === 'Invalid login credentials'
+        ? 'E-mail ou senha incorretos.'
+        : (sbError?.message ?? 'Erro ao entrar.'))
+      return
+    }
+
+    // Aguarda o Hook processar e faz refresh
+    await new Promise(resolve => setTimeout(resolve, 500))
+    const { data: refreshed } = await sb.auth.refreshSession()
     setLoading(false)
-    setError(sbError?.message === 'Invalid login credentials'
-      ? 'E-mail ou senha incorretos.'
-      : (sbError?.message ?? 'Erro ao entrar.'))
-    return
+
+    // Lê do JWT diretamente
+    const jwt = parseJwt(refreshed.session?.access_token ?? '')
+    const appRole = jwt?.app_metadata?.app_role
+
+    if (appRole === 'suspenso') {
+      await sb.auth.signOut()
+      setError('Conta suspensa. Entre em contato com o suporte Menuv.')
+      return
+    }
+
+    router.push(
+      appRole === 'admin' ? '/admin' :
+      appRole === 'colaborador' ? '/pedidos' :
+      '/dashboard'
+    )
   }
 
-  // Força refresh para obter os claims do Hook
-  const { data: refreshed } = await sb.auth.refreshSession()
-  setLoading(false)
-
-  const appRole = refreshed.session?.user?.app_metadata?.app_role
-
-  if (appRole === 'suspenso') {
-    await sb.auth.signOut()
-    setError('Conta suspensa. Entre em contato com o suporte Menuv.')
-    return
-  }
-
-  router.push(
-    appRole === 'admin' ? '/admin' :
-    appRole === 'colaborador' ? '/pedidos' :
-    '/dashboard'
-  )
-}
   const borderColor = meta.isAdmin ? 'rgba(255,77,106,.3)' : 'rgba(0,232,122,.3)'
 
   return (
