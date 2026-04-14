@@ -14,10 +14,20 @@ export const PUT = withAuth(['restaurante', 'admin'])(
 
     const sb = await supabaseServer()
     if (meta.app_role !== 'admin') {
-      const { data: c } = await sb
-        .from('colaboradores').select('empresas(restaurante_id)').eq('id', id).single()
-      const restId = (c?.empresas as any)?.restaurante_id
-      if (restId !== meta.restaurante_id) return E.forbidden()
+const { data: c } = await sb
+  .from('colaboradores')
+  .select('empresa_id')
+  .eq('id', id).single()
+
+if (!c) return E.notFound()
+
+const { data: emp } = await sb
+  .from('empresas')
+  .select('restaurante_id')
+  .eq('id', c.empresa_id).single()
+
+const restId = emp?.restaurante_id
+if (restId !== meta.restaurante_id) return E.forbidden()
     }
 
     const { error } = await sb.from('colaboradores')
