@@ -157,7 +157,7 @@ export default function CadastroForm() {
         {/* Steps indicator (só para gestor) */}
         {isGestor && (
           <div className="flex gap-2 mb-6 mt-2">
-            {['conta', 'empresa'].map((s, i) => (
+            {(['conta', 'empresa'] as Step[]).map((s, i) => (
               <div key={s} className="flex items-center gap-2">
                 <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold font-[var(--mono)]
                   ${step === s || (step === 'sucesso' && i === 1)
