@@ -20,34 +20,42 @@ interface AuthCtx {
   signOut: () => Promise<void>
 }
 
+function parseJwt(token: string): any {
+  try {
+    return JSON.parse(atob(token.split('.')[1]))
+  } catch {
+    return null
+  }
+}
+
+function getMetaFromSession(session: Session | null): AppMeta | null {
+  if (!session?.access_token) return null
+  const jwt = parseJwt(session.access_token)
+  return (jwt?.app_metadata ?? session.user?.app_metadata ?? null) as AppMeta | null
+}
+
 const Ctx = createContext<AuthCtx>({ session: null, user: null, meta: null, loading: true, signOut: async () => {} })
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
-  const [loading, setLoading]  = useState(true)
+  const [loading, setLoading] = useState(true)
   const sb = supabaseBrowser()
 
-useEffect(() => {
-  sb.auth.getSession().then(async ({ data }) => {
-    if (data.session) {
-      // Força refresh para obter o token com os novos claims do Hook
-      const { data: refreshed } = await sb.auth.refreshSession()
-      setSession(refreshed.session)
-    } else {
-      setSession(null)
-    }
-    setLoading(false)
-  })
-  const { data: { subscription } } = sb.auth.onAuthStateChange((_ev: any, s: any) => setSession(s))
-  return () => subscription.unsubscribe()
-}, [])
+  useEffect(() => {
+    sb.auth.getSession().then(({ data }: { data: any }) => {
+      setSession(data.session)
+      setLoading(false)
+    })
+    const { data: { subscription } } = sb.auth.onAuthStateChange((_ev: any, s: any) => setSession(s))
+    return () => subscription.unsubscribe()
+  }, [])
 
   const signOut = useCallback(async () => {
     await sb.auth.signOut()
-    window.location.href = '/login'
+    window.location.href = '/'
   }, [])
 
-  const meta = (session?.user?.app_metadata ?? null) as AppMeta | null
+  const meta = getMetaFromSession(session)
 
   return (
     <Ctx.Provider value={{ session, user: session?.user ?? null, meta, loading, signOut }}>
