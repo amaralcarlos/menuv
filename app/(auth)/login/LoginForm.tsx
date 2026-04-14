@@ -40,35 +40,44 @@ export default function LoginForm() {
   }, [])
 
   async function handleLogin(e: React.FormEvent) {
-    e.preventDefault()
-    setError('')
-    if (!email || !senha) { setError('Preencha e-mail e senha.'); return }
+  e.preventDefault()
+  setError('')
+  if (!email || !senha) { setError('Preencha e-mail e senha.'); return }
 
-    setLoading(true)
-    const sb = supabaseBrowser()
-    const { data, error: sbError } = await sb.auth.signInWithPassword({
-      email: email.trim().toLowerCase(),
-      password: senha,
-    })
+  setLoading(true)
+  const sb = supabaseBrowser()
+  
+  const { data, error: sbError } = await sb.auth.signInWithPassword({
+    email: email.trim().toLowerCase(),
+    password: senha,
+  })
+
+  if (sbError || !data.session) {
     setLoading(false)
-
-    if (sbError || !data.session) {
-      setError(sbError?.message === 'Invalid login credentials'
-        ? 'E-mail ou senha incorretos.'
-        : (sbError?.message ?? 'Erro ao entrar.'))
-      return
-    }
-
-    const appRole = data.session.user.app_metadata?.app_role
-    if (appRole === 'suspenso') {
-      await sb.auth.signOut()
-      setError('Conta suspensa. Entre em contato com o suporte Menuv.')
-      return
-    }
-
-    redirectAfterLogin(appRole, router)
+    setError(sbError?.message === 'Invalid login credentials'
+      ? 'E-mail ou senha incorretos.'
+      : (sbError?.message ?? 'Erro ao entrar.'))
+    return
   }
 
+  // Força refresh para obter os claims do Hook
+  const { data: refreshed } = await sb.auth.refreshSession()
+  setLoading(false)
+
+  const appRole = refreshed.session?.user?.app_metadata?.app_role
+
+  if (appRole === 'suspenso') {
+    await sb.auth.signOut()
+    setError('Conta suspensa. Entre em contato com o suporte Menuv.')
+    return
+  }
+
+  router.push(
+    appRole === 'admin' ? '/admin' :
+    appRole === 'colaborador' ? '/pedidos' :
+    '/dashboard'
+  )
+}
   const borderColor = meta.isAdmin ? 'rgba(255,77,106,.3)' : 'rgba(0,232,122,.3)'
 
   return (
