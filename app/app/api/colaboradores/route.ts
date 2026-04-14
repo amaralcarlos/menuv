@@ -8,7 +8,7 @@ export const GET = withAuth(['restaurante', 'rest_usuario', 'admin'])(
 
     if (meta.app_role !== 'admin') {
       const sb = await supabaseServer()
-      const { data: emp } = await sb.from('empresas').select('restaurante_id').eq('id', empresaId).single()
+     const { data: emp } = await sb.from('empresas').select('restaurante_id').eq('id', empresaId).single() as any
       if (!emp || emp.restaurante_id !== meta.restaurante_id) return E.forbidden()
     }
 
