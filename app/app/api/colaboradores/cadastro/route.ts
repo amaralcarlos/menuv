@@ -30,7 +30,7 @@ const { data: rest } = await admin
   if (!isGestor) {
     if (!empresaId) return E.badRequest('Código da empresa é obrigatório.')
     const { data: emp } = await admin
-      .from('empresas').select('id, ativa').eq('id', empresaId).maybeSingle()
+      .from('empresas').select('id, ativa').eq('id', empresaId).maybeSingle() as any
     if (!emp || !emp.ativa) return E.notFound('Empresa não encontrada ou inativa.')
 
     // Verifica duplicidade
