@@ -41,7 +41,7 @@ export const POST = withAuth(['restaurante', 'admin'])(
     const admin = supabaseAdmin()
 
     if (meta.app_role !== 'admin') {
-      const { data: emp } = await admin.from('empresas').select('restaurante_id').eq('id', empresaId).single()
+      const { data: emp } = await admin.from('empresas').select('restaurante_id').eq('id', empresaId).single() as any
       if (!emp || emp.restaurante_id !== meta.restaurante_id) return E.forbidden()
     }
 
