@@ -27,14 +27,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading]  = useState(true)
   const sb = supabaseBrowser()
 
-  useEffect(() => {
-sb.auth.getSession().then(({ data }: { data: any }) => {
-      setSession(data.session)
-      setLoading(false)
-    })
-    const { data: { subscription } } = sb.auth.onAuthStateChange((_ev: any, s: any) => setSession(s))
-    return () => subscription.unsubscribe()
-  }, [])
+useEffect(() => {
+  sb.auth.getSession().then(async ({ data }) => {
+    if (data.session) {
+      // Força refresh para obter o token com os novos claims do Hook
+      const { data: refreshed } = await sb.auth.refreshSession()
+      setSession(refreshed.session)
+    } else {
+      setSession(null)
+    }
+    setLoading(false)
+  })
+  const { data: { subscription } } = sb.auth.onAuthStateChange((_ev: any, s: any) => setSession(s))
+  return () => subscription.unsubscribe()
+}, [])
 
   const signOut = useCallback(async () => {
     await sb.auth.signOut()
