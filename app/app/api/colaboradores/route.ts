@@ -54,10 +54,10 @@ export const POST = withAuth(['restaurante', 'admin'])(
     })
     if (authErr || !authData.user) return E.internal(authErr?.message ?? 'Erro ao criar usuário.')
 
-    const { data: colab, error: dbErr } = await admin
-      .from('colaboradores')
-      .insert({ nome, email, empresa_id: empresaId, is_gestor: isGestor, ativo: true, auth_user_id: authData.user.id })
-      .select('id').single()
+const { data: colab, error: dbErr } = await admin
+  .from('colaboradores')
+  .insert({ nome, email, empresa_id: empresaId, is_gestor: isGestor, ativo: true, auth_user_id: authData.user.id })
+  .select('id').single() as any
 
     if (dbErr) {
       await admin.auth.admin.deleteUser(authData.user.id)
