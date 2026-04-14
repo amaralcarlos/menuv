@@ -21,8 +21,8 @@ export async function POST(req: NextRequest) {
   // Gestor precisa de restauranteRef
   if (isGestor) {
     if (!restauranteRef) return E.badRequest('Link de convite inválido.')
-    const { data: rest } = await admin
-      .from('restaurantes').select('id, ativo').eq('id', restauranteRef).maybeSingle()
+const { data: rest } = await admin
+  .from('restaurantes').select('id, ativo').eq('id', restauranteRef).maybeSingle() as any
     if (!rest || !rest.ativo) return E.notFound('Link de convite inválido ou restaurante inativo.')
   }
 
