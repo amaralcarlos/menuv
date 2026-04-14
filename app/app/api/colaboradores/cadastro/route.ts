@@ -46,16 +46,16 @@ const { data: rest } = await admin
   if (authErr || !authData.user) return E.internal(authErr?.message ?? 'Erro ao criar conta.')
 
   // Gestor é criado sem empresa (vincula no step 2)
-  const { data: colab, error: dbErr } = await admin
-    .from('colaboradores')
-    .insert({
-      nome, email,
-      empresa_id:   isGestor ? null : empresaId,
-      is_gestor:    isGestor,
-      ativo:        true,
-      auth_user_id: authData.user.id,
-    })
-    .select('id').single()
+const { data: colab, error: dbErr } = await admin
+  .from('colaboradores')
+  .insert({
+    nome, email,
+    empresa_id:   isGestor ? null : empresaId,
+    is_gestor:    isGestor,
+    ativo:        true,
+    auth_user_id: authData.user.id,
+  })
+  .select('id').single() as any
 
   if (dbErr) {
     await admin.auth.admin.deleteUser(authData.user.id)
