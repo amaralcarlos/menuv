@@ -160,7 +160,7 @@ export default function CadastroForm() {
             {(['conta', 'empresa'] as Step[]).map((s, i) => (
               <div key={s} className="flex items-center gap-2">
                 <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold font-[var(--mono)]
-                  ${step === s || (step === 'sucesso' && i === 1)
+                  ${step === s || ((step as string) === 'sucesso' && i === 1)
                     ? 'bg-[#00e87a] text-[#003320]'
                     : step === 'empresa' && s === 'conta'
                       ? 'bg-[rgba(0,232,122,.2)] text-[#00e87a]'
