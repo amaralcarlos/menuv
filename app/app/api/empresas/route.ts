@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
   // Usa admin para verificar o restaurante (rota pública no cadastro do gestor)
   const admin = supabaseAdmin()
   const { data: rest } = await admin
-    .from('restaurantes').select('id, ativo').eq('id', restauranteRef).maybeSingle()
+  .from('restaurantes').select('id, ativo').eq('id', restauranteRef).maybeSingle() as any
   if (!rest || !rest.ativo) return E.notFound('Restaurante não encontrado.')
 
   const { data: emp, error } = await admin
