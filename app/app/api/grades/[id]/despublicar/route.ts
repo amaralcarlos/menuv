@@ -6,7 +6,7 @@ export const PATCH = withAuth(['restaurante', 'rest_usuario', 'admin'])(
     if (!id) return E.badRequest()
     const sb = await supabaseServer()
     if (meta.app_role !== 'admin') {
-      const { data: g } = await sb.from('grades').select('restaurante_id').eq('id', id).single()
+      const { data: g } = await sb.from('grades').select('restaurante_id').eq('id', id).single() as any
       if (!g || g.restaurante_id !== meta.restaurante_id) return E.forbidden()
     }
     const { error } = await sb.from('grades')
