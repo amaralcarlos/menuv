@@ -35,7 +35,7 @@ export const DELETE = withAuth(['restaurante', 'admin'])(
 
     const sb = await supabaseServer()
     if (meta.app_role !== 'admin') {
-      const { data: emp } = await sb.from('empresas').select('restaurante_id').eq('id', id).single()
+     const { data: emp } = await sb.from('empresas').select('restaurante_id').eq('id', id).single() as any
       if (!emp || emp.restaurante_id !== meta.restaurante_id) return E.forbidden()
     }
 
