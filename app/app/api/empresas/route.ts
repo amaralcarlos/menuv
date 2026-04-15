@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
   const { data: emp, error } = await admin
     .from('empresas')
     .insert({ nome, restaurante_id: rest.id, horario_limite: hl, preco_por_refeicao: preco })
-    .select('id').single()
+    .select('id').single() as any
   if (error) return E.internal(error.message)
 
   // Se vier colabId, vincula o gestor à empresa criada
