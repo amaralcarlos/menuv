@@ -33,11 +33,12 @@ export default function LoginForm() {
       if (data.session) {
         const jwt = parseJwt(data.session.access_token)
         const appRole = jwt?.app_metadata?.app_role
-        router.push(
-          appRole === 'admin' ? '/admin' :
-          appRole === 'colaborador' ? '/pedidos' :
-          '/dashboard'
-        )
+       router.push(
+  appRole === 'admin' ? '/admin' :
+  appRole === 'restaurante' ? '/dashboard' :
+  appRole === 'colaborador' && jwt?.app_metadata?.is_gestor ? '/gestor' :
+  '/pedidos'
+) 
       }
     })
   }, [])
