@@ -79,11 +79,12 @@ export default function LoginForm() {
       return
     }
 
-    router.push(
-      appRole === 'admin' ? '/admin' :
-      appRole === 'colaborador' ? '/pedidos' :
-      '/dashboard'
-    )
+router.push(
+  appRole === 'admin' ? '/admin' :
+  appRole === 'restaurante' ? '/dashboard' :
+  appRole === 'colaborador' && jwt?.app_metadata?.is_gestor ? '/gestor' :
+  '/pedidos'
+)
   }
 
   const borderColor = meta.isAdmin ? 'rgba(255,77,106,.3)' : 'rgba(0,232,122,.3)'
