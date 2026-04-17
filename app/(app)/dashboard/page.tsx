@@ -10,7 +10,6 @@ import GradesPane from '@/components/grade/GradesPane'
 import EmpresasPane from '../empresas/EmpresasPane'
 import RelatorioPane from '../relatorio/RelatorioPane'
 
-/* ── Today's menu card ───────────────────────────────────── */
 function CardapioHoje({ cardapio }: { cardapio: any }) {
   if (!cardapio) return (
     <Card>
@@ -53,7 +52,6 @@ function CardapioHoje({ cardapio }: { cardapio: any }) {
   )
 }
 
-/* ── Stats row ───────────────────────────────────────────── */
 function StatsRow({ empresas, pedidosHoje }: { empresas: any[]; pedidosHoje: number }) {
   const stats = [
     { label: 'Empresas',     value: empresas.length, color: 'text-[#00e87a]' },
@@ -71,47 +69,6 @@ function StatsRow({ empresas, pedidosHoje }: { empresas: any[]; pedidosHoje: num
   )
 }
 
-/* ── Link de convite ─────────────────────────────────────── */
-function LinkConvite({ restId }: { restId: string }) {
-  const toast = useToast()
-  const [copied, setCopied] = useState(false)
-
-  const link = typeof window !== 'undefined'
-    ? `${window.location.origin}/cadastro?tipo=gestor&ref=${restId}`
-    : ''
-
-  function copiar() {
-    navigator.clipboard.writeText(link)
-    setCopied(true)
-    toast('Link copiado!')
-    setTimeout(() => setCopied(false), 2000)
-  }
-
-  return (
-    <Card>
-      <SectionLabel>Link de convite para gestores</SectionLabel>
-      <p className="font-[var(--mono)] text-[10px] text-[#3d5875] mb-3">
-        Partilhe este link com os gestores das empresas para que criem a conta e cadastrem a empresa deles.
-      </p>
-      <div className="flex gap-2 items-center">
-        <div className="flex-1 bg-[#080c14] border border-[#1c2e48] rounded-[7px] px-2.5 py-2 font-[var(--mono)] text-xs text-[#7a96b8] truncate">
-          {link}
-        </div>
-        <button
-          onClick={copiar}
-          className={`flex-shrink-0 rounded-[7px] px-3 py-2 font-[var(--mono)] text-xs cursor-pointer transition-all border
-            ${copied
-              ? 'bg-[rgba(0,232,122,.15)] border-[rgba(0,232,122,.4)] text-[#00e87a]'
-              : 'bg-[rgba(0,232,122,.08)] border-[rgba(0,232,122,.2)] text-[#00e87a] hover:bg-[rgba(0,232,122,.15)]'
-            }`}>
-          {copied ? '✓ Copiado' : 'Copiar'}
-        </button>
-      </div>
-    </Card>
-  )
-}
-
-/* ── Home pane ───────────────────────────────────────────── */
 function HomePane({ restId }: { restId: string }) {
   const { call } = useApi()
   const [dados, setDados] = useState<any>(null)
@@ -119,6 +76,7 @@ function HomePane({ restId }: { restId: string }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    if (!restId) return
     async function load() {
       const [dadosRes, pedRes] = await Promise.all([
         call<any>(`/api/dados-iniciais?restauranteId=${restId}`),
@@ -142,10 +100,15 @@ function HomePane({ restId }: { restId: string }) {
   )
 }
 
-/* ── Main ────────────────────────────────────────────────── */
 export default function DashboardPage() {
-  const { meta } = useAuth()
+  const { meta, loading } = useAuth()
   const restId = meta?.restaurante_id ?? ''
+
+  if (loading || !restId) return (
+    <div className="min-h-screen bg-[#080c14] flex items-center justify-center">
+      <Spinner />
+    </div>
+  )
 
   const tabs = [
     { id: 'home',      label: 'Início',    icon: 'home'      as const, component: <HomePane restId={restId} /> },
