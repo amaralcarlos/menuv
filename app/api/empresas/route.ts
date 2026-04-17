@@ -17,9 +17,9 @@ export const GET = withAuth(['restaurante', 'rest_usuario', 'colaborador', 'admi
       return ok(data ?? [])
     }
 
-    if (meta.app_role !== 'admin' && meta.restaurante_id?.trim() !== restId) {
-      return E.forbidden()
-    }
+if (meta.app_role !== 'admin' && meta.restaurante_id?.trim() !== restId) {
+  return E.internal(`forbidden: meta=${meta.restaurante_id} restId=${restId}`)
+}
 
     const sb = await supabaseServer()
     const { data, error } = await sb
