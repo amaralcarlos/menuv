@@ -2,10 +2,31 @@ import { NextRequest } from 'next/server'
 import { supabaseServer, supabaseAdmin, ok, E, withAuth, sanitize, log } from '@/lib/api-helpers'
 
 export async function GET(req: NextRequest) {
-  const restId = (req.nextUrl.searchParams.get('restauranteId') ?? '').trim()
+  const sb = await supabaseServer()
+  const { data: { user } } = await sb.auth.getUser()
+  
+  if (!user) return E.unauthorized()
+
+  const meta = user.app_metadata as any
+  const restId = (req.nextUrl.searchParams.get('restauranteId') ?? meta?.restaurante_id ?? '').trim()
+  
   if (!restId) return E.badRequest('restauranteId é obrigatório.')
 
-  const sb = await supabaseServer()
+  // Colaborador usa empresa_id
+  if (meta?.app_role === 'colaborador') {
+    const { data, error } = await sb
+      .from('empresas')
+      .select('id, nome, horario_limite, preco_por_refeicao, ativa')
+      .eq('id', meta?.empresa_id).eq('ativa', true)
+    if (error) return E.internal(error.message)
+    return ok(data ?? [])
+  }
+
+  // Restaurante só pode ver as suas empresas
+  if (meta?.app_role !== 'admin' && meta?.restaurante_id !== restId) {
+    return E.forbidden()
+  }
+
   const { data, error } = await sb
     .from('empresas')
     .select('id, nome, horario_limite, preco_por_refeicao, ativa')
