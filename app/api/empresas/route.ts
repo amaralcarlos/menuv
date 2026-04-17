@@ -19,9 +19,9 @@ export async function GET(req: NextRequest) {
     return ok(data ?? [])
   }
 
-  if (meta?.app_role !== 'admin' && meta?.restaurante_id !== restId) {
-    return E.forbidden()
-  }
+if (meta?.app_role !== 'admin' && meta?.restaurante_id !== restId) {
+  return E.internal(`role=${meta?.app_role} meta_rest=${meta?.restaurante_id} param_rest=${restId}`)
+}
 
   const { data, error } = await sb
     .from('empresas')
