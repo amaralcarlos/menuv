@@ -3,10 +3,16 @@ import { supabaseServer, supabaseAdmin, ok, E, sanitize, log } from '@/lib/api-h
 
 export async function GET(req: NextRequest) {
   const sb = await supabaseServer()
-  const { data: { user } } = await sb.auth.getUser()
-  if (!user) return E.unauthorized()
+  
+const { data: { session } } = await sb.auth.getSession()
+if (!session) return E.unauthorized()
 
-  const meta = user.app_metadata as any
+function parseJwt(token: string) {
+  try { return JSON.parse(atob(token.split('.')[1])) } catch { return null }
+}
+const jwt = parseJwt(session.access_token)
+const meta = jwt?.app_metadata as any
+  
   const restId = (req.nextUrl.searchParams.get('restauranteId') ?? meta?.restaurante_id ?? '').trim()
   if (!restId) return E.badRequest('restauranteId é obrigatório.')
 
