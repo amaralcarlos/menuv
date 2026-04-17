@@ -56,8 +56,8 @@ function CardapioHoje({ cardapio }: { cardapio: any }) {
 /* ── Stats row ───────────────────────────────────────────── */
 function StatsRow({ empresas, pedidosHoje }: { empresas: any[]; pedidosHoje: number }) {
   const stats = [
-    { label: 'Empresas', value: empresas.length, color: 'text-[#00e87a]' },
-    { label: 'Pedidos hoje', value: pedidosHoje,  color: 'text-[#4da6ff]' },
+    { label: 'Empresas',     value: empresas.length, color: 'text-[#00e87a]' },
+    { label: 'Pedidos hoje', value: pedidosHoje,      color: 'text-[#4da6ff]' },
   ]
   return (
     <div className="grid grid-cols-2 gap-2.5 mb-3">
@@ -71,52 +71,22 @@ function StatsRow({ empresas, pedidosHoje }: { empresas: any[]; pedidosHoje: num
   )
 }
 
-/* ── Home pane ───────────────────────────────────────────── */
-function HomePane({ restId }: { restId: string }) {
-  const { call } = useApi()
-  const [dados, setDados] = useState<any>(null)
-  const [pedidosHoje, setPedidosHoje] = useState(0)
-  const [loading, setLoading] = useState(true)
+/* ── Link de convite ─────────────────────────────────────── */
+function LinkConvite({ restId }: { restId: string }) {
+  const toast = useToast()
+  const [copied, setCopied] = useState(false)
 
-  useEffect(() => {
-    async function load() {
-      const [dadosRes, pedRes] = await Promise.all([
-        call<any>(`/api/dados-iniciais?restauranteId=${restId}`),
-        call<any[]>(`/api/pedidos?restauranteId=${restId}`),
-      ])
-      if (dadosRes.success) setDados(dadosRes.data)
-      if (pedRes.success) setPedidosHoje(Array.isArray(pedRes.data) ? pedRes.data.length : 0)
-      setLoading(false)
-    }
-    load()
-  }, [restId])
+  const link = typeof window !== 'undefined'
+    ? `${window.location.origin}/cadastro?tipo=gestor&ref=${restId}`
+    : ''
 
-  if (loading) return <Spinner />
+  function copiar() {
+    navigator.clipboard.writeText(link)
+    setCopied(true)
+    toast('Link copiado!')
+    setTimeout(() => setCopied(false), 2000)
+  }
 
   return (
-    <div className="px-4 pt-4 pb-24">
-      <StatsRow empresas={dados?.empresas ?? []} pedidosHoje={pedidosHoje} />
-      <SectionLabel>Cardápio de hoje</SectionLabel>
-      <CardapioHoje cardapio={dados?.cardapioHoje} />
-    </div>
-  )
-}
-
-/* ── Main ────────────────────────────────────────────────── */
-export default function DashboardPage() {
-  const { meta } = useAuth()
-  const restId = meta?.restaurante_id ?? ''
-
-  const tabs = [
-    { id: 'home',      label: 'Início',    icon: 'home'      as const, component: <HomePane restId={restId} /> },
-    { id: 'grades',    label: 'Grades',    icon: 'grade'     as const, component: <GradesPane restId={restId} /> },
-    { id: 'empresas',  label: 'Empresas',  icon: 'empresas'  as const, component: <EmpresasPane restId={restId} /> },
-    { id: 'relatorio', label: 'Relatório', icon: 'relatorio' as const, component: <RelatorioPane restId={restId} /> },
-  ]
-
-  const badge = meta?.app_role === 'rest_usuario'
-    ? (meta.perfil === 'admin' ? 'admin' : 'equipe')
-    : 'restaurante'
-
-  return <AppShell tabs={tabs} nome="Menuv" badge={badge} role="Restaurante" />
-}
+    <Card>
+      <SectionLabel>Link d
