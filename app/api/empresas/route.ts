@@ -3,9 +3,23 @@ import { supabaseServer, supabaseAdmin, ok, E, withAuth, sanitize, log } from '@
 
 export const GET = withAuth(['restaurante', 'rest_usuario', 'colaborador', 'admin'])(
   async (req, meta) => {
-    const restId = req.nextUrl.searchParams.get('restauranteId') ?? meta.restaurante_id
+    const restId = (req.nextUrl.searchParams.get('restauranteId') ?? meta.restaurante_id ?? '').trim()
     if (!restId) return E.badRequest('restauranteId é obrigatório.')
-    if (meta.app_role !== 'admin' && meta.restaurante_id !== restId) return E.forbidden()
+    
+    // Colaborador usa a empresa_id do JWT, não restauranteId
+    if (meta.app_role === 'colaborador') {
+      const sb = await supabaseServer()
+      const { data, error } = await sb
+        .from('empresas')
+        .select('id, nome, horario_limite, preco_por_refeicao, ativa')
+        .eq('id', meta.empresa_id).eq('ativa', true)
+      if (error) return E.internal(error.message)
+      return ok(data ?? [])
+    }
+
+    if (meta.app_role !== 'admin' && meta.restaurante_id?.trim() !== restId) {
+      return E.forbidden()
+    }
 
     const sb = await supabaseServer()
     const { data, error } = await sb
