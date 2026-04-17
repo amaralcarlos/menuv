@@ -96,8 +96,10 @@ export default function CadastroForm() {
         horarioLimite:  empHl,
         preco:          parseFloat(empPreco) || 15,
         restauranteRef: ref,
+        colabId:        colabId,
       }),
     })
+    
     const data = await res.json()
     setLoading(false)
     if (!data.success) { setError(data.error ?? 'Erro ao cadastrar empresa.'); return }
