@@ -36,8 +36,14 @@ export function supabaseAdmin() {
 
 export async function getAppMeta() {
   const sb = await supabaseServer()
-  const { data: { user } } = await sb.auth.getUser()
-  return user?.app_metadata ?? null
+  const { data: { session } } = await sb.auth.getSession()
+  if (!session?.access_token) return null
+  try {
+    const payload = JSON.parse(atob(session.access_token.split('.')[1]))
+    return payload?.app_metadata ?? null
+  } catch {
+    return null
+  }
 }
 
 // ── Respostas padronizadas ────────────────────────────────────
