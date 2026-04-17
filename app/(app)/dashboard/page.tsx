@@ -89,4 +89,77 @@ function LinkConvite({ restId }: { restId: string }) {
 
   return (
     <Card>
-      <SectionLabel>Link d
+      <SectionLabel>Link de convite para gestores</SectionLabel>
+      <p className="font-[var(--mono)] text-[10px] text-[#3d5875] mb-3">
+        Partilhe este link com os gestores das empresas para que criem a conta e cadastrem a empresa deles.
+      </p>
+      <div className="flex gap-2 items-center">
+        <div className="flex-1 bg-[#080c14] border border-[#1c2e48] rounded-[7px] px-2.5 py-2 font-[var(--mono)] text-xs text-[#7a96b8] truncate">
+          {link}
+        </div>
+        <button
+          onClick={copiar}
+          className={`flex-shrink-0 rounded-[7px] px-3 py-2 font-[var(--mono)] text-xs cursor-pointer transition-all border
+            ${copied
+              ? 'bg-[rgba(0,232,122,.15)] border-[rgba(0,232,122,.4)] text-[#00e87a]'
+              : 'bg-[rgba(0,232,122,.08)] border-[rgba(0,232,122,.2)] text-[#00e87a] hover:bg-[rgba(0,232,122,.15)]'
+            }`}>
+          {copied ? '✓ Copiado' : 'Copiar'}
+        </button>
+      </div>
+    </Card>
+  )
+}
+
+/* ── Home pane ───────────────────────────────────────────── */
+function HomePane({ restId }: { restId: string }) {
+  const { call } = useApi()
+  const [dados, setDados] = useState<any>(null)
+  const [pedidosHoje, setPedidosHoje] = useState(0)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function load() {
+      const [dadosRes, pedRes] = await Promise.all([
+        call<any>(`/api/dados-iniciais?restauranteId=${restId}`),
+        call<any[]>(`/api/pedidos?restauranteId=${restId}`),
+      ])
+      if (dadosRes.success) setDados(dadosRes.data)
+      if (pedRes.success) setPedidosHoje(Array.isArray(pedRes.data) ? pedRes.data.length : 0)
+      setLoading(false)
+    }
+    load()
+  }, [restId])
+
+  if (loading) return <Spinner />
+
+  return (
+    <div className="px-4 pt-4 pb-24">
+      <StatsRow empresas={dados?.empresas ?? []} pedidosHoje={pedidosHoje} />
+      <SectionLabel>Cardápio de hoje</SectionLabel>
+      <CardapioHoje cardapio={dados?.cardapioHoje} />
+      <div className="mt-4">
+        <LinkConvite restId={restId} />
+      </div>
+    </div>
+  )
+}
+
+/* ── Main ────────────────────────────────────────────────── */
+export default function DashboardPage() {
+  const { meta } = useAuth()
+  const restId = meta?.restaurante_id ?? ''
+
+  const tabs = [
+    { id: 'home',      label: 'Início',    icon: 'home'      as const, component: <HomePane restId={restId} /> },
+    { id: 'grades',    label: 'Grades',    icon: 'grade'     as const, component: <GradesPane restId={restId} /> },
+    { id: 'empresas',  label: 'Empresas',  icon: 'empresas'  as const, component: <EmpresasPane restId={restId} /> },
+    { id: 'relatorio', label: 'Relatório', icon: 'relatorio' as const, component: <RelatorioPane restId={restId} /> },
+  ]
+
+  const badge = meta?.app_role === 'rest_usuario'
+    ? (meta.perfil === 'admin' ? 'admin' : 'equipe')
+    : 'restaurante'
+
+  return <AppShell tabs={tabs} nome="Menuv" badge={badge} role="Restaurante" />
+}
