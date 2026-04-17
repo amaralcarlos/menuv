@@ -1,18 +1,15 @@
 import { NextRequest } from 'next/server'
-import { supabaseServer, supabaseAdmin, ok, E, withAuth, sanitize, log } from '@/lib/api-helpers'
+import { supabaseServer, supabaseAdmin, ok, E, sanitize, log } from '@/lib/api-helpers'
 
 export async function GET(req: NextRequest) {
   const sb = await supabaseServer()
   const { data: { user } } = await sb.auth.getUser()
-  
   if (!user) return E.unauthorized()
 
   const meta = user.app_metadata as any
   const restId = (req.nextUrl.searchParams.get('restauranteId') ?? meta?.restaurante_id ?? '').trim()
-  
   if (!restId) return E.badRequest('restauranteId é obrigatório.')
 
-  // Colaborador usa empresa_id
   if (meta?.app_role === 'colaborador') {
     const { data, error } = await sb
       .from('empresas')
@@ -22,7 +19,6 @@ export async function GET(req: NextRequest) {
     return ok(data ?? [])
   }
 
-  // Restaurante só pode ver as suas empresas
   if (meta?.app_role !== 'admin' && meta?.restaurante_id !== restId) {
     return E.forbidden()
   }
@@ -48,7 +44,6 @@ export async function POST(req: NextRequest) {
   if (!nome)           return E.badRequest('Nome da empresa é obrigatório.')
   if (!restauranteRef) return E.badRequest('Referência do restaurante é obrigatória.')
 
-  // Usa admin para verificar o restaurante (rota pública no cadastro do gestor)
   const admin = supabaseAdmin()
   const { data: rest } = await admin
     .from('restaurantes').select('id, ativo').eq('id', restauranteRef).maybeSingle() as any
@@ -60,7 +55,6 @@ export async function POST(req: NextRequest) {
     .select('id').single() as any
   if (error) return E.internal(error.message)
 
-  // Se vier colabId, vincula o gestor à empresa criada
   if (colabId) {
     await admin.from('colaboradores')
       .update({ empresa_id: emp.id })
