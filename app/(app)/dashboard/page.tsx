@@ -138,9 +138,6 @@ function HomePane({ restId }: { restId: string }) {
       <StatsRow empresas={dados?.empresas ?? []} pedidosHoje={pedidosHoje} />
       <SectionLabel>Cardápio de hoje</SectionLabel>
       <CardapioHoje cardapio={dados?.cardapioHoje} />
-      <div className="mt-4">
-        <LinkConvite restId={restId} />
-      </div>
     </div>
   )
 }
