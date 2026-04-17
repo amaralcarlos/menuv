@@ -6,14 +6,57 @@ import { Card, SectionLabel, Badge, Btn, Modal, Input, Spinner } from '@/compone
 
 interface Empresa { id: string; nome: string; horario_limite: string; preco_por_refeicao: number; ativa: boolean }
 
+/* ── Link de convite ─────────────────────────────────────── */
+function LinkConvite({ restId }: { restId: string }) {
+  const toast = useToast()
+  const [copied, setCopied] = useState(false)
+
+  const link = typeof window !== 'undefined'
+    ? `${window.location.origin}/cadastro?tipo=gestor&ref=${restId}`
+    : ''
+
+  function copiar() {
+    navigator.clipboard.writeText(link)
+    setCopied(true)
+    toast('Link copiado!')
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <Card>
+      <p className="font-[var(--mono)] text-[10px] text-[#3d5875] uppercase tracking-[1px] mb-1">
+        Link de convite para gestores
+      </p>
+      <p className="font-[var(--mono)] text-[10px] text-[#3d5875] mb-3">
+        Partilhe com gestores para que criem conta e cadastrem a empresa.
+      </p>
+      <div className="flex gap-2 items-center">
+        <div className="flex-1 bg-[#080c14] border border-[#1c2e48] rounded-[7px] px-2.5 py-2 font-[var(--mono)] text-xs text-[#7a96b8] truncate">
+          {link}
+        </div>
+        <button
+          onClick={copiar}
+          className={`flex-shrink-0 rounded-[7px] px-3 py-2 font-[var(--mono)] text-xs cursor-pointer transition-all border
+            ${copied
+              ? 'bg-[rgba(0,232,122,.15)] border-[rgba(0,232,122,.4)] text-[#00e87a]'
+              : 'bg-[rgba(0,232,122,.08)] border-[rgba(0,232,122,.2)] text-[#00e87a] hover:bg-[rgba(0,232,122,.15)]'
+            }`}>
+          {copied ? '✓ Copiado' : 'Copiar'}
+        </button>
+      </div>
+    </Card>
+  )
+}
+
+/* ── Empresa Form ────────────────────────────────────────── */
 function EmpresaForm({ empresa, restId, onSave, onCancel }: {
   empresa?: Empresa | null; restId: string; onSave: () => void; onCancel: () => void
 }) {
   const { call } = useApi()
   const toast = useToast()
-  const [nome,  setNome]  = useState(empresa?.nome ?? '')
-  const [hl,    setHl]    = useState(empresa?.horario_limite ?? '09:30')
-  const [preco, setPreco] = useState(String(empresa?.preco_por_refeicao ?? '15.00'))
+  const [nome,   setNome]   = useState(empresa?.nome ?? '')
+  const [hl,     setHl]     = useState(empresa?.horario_limite ?? '09:30')
+  const [preco,  setPreco]  = useState(String(empresa?.preco_por_refeicao ?? '15.00'))
   const [saving, setSaving] = useState(false)
 
   async function save() {
@@ -32,7 +75,7 @@ function EmpresaForm({ empresa, restId, onSave, onCancel }: {
   return (
     <div className="flex flex-col gap-4">
       <Input label="Nome da empresa" value={nome} onChange={e => setNome(e.target.value)} placeholder="Empresa Ltda." />
-      <Input label="Horário limite (HH:MM)" value={hl}    onChange={e => setHl(e.target.value)}    placeholder="09:30" />
+      <Input label="Horário limite (HH:MM)" value={hl} onChange={e => setHl(e.target.value)} placeholder="09:30" />
       <Input label="Preço por refeição (R$)" value={preco} onChange={e => setPreco(e.target.value)} placeholder="15.00" type="number" step="0.01" />
       <div className="flex gap-2">
         <Btn variant="secondary" onClick={onCancel}>Cancelar</Btn>
@@ -42,12 +85,13 @@ function EmpresaForm({ empresa, restId, onSave, onCancel }: {
   )
 }
 
+/* ── Main ────────────────────────────────────────────────── */
 export default function EmpresasPane({ restId }: { restId: string }) {
   const { call } = useApi()
   const toast = useToast()
   const [empresas, setEmpresas] = useState<Empresa[]>([])
-  const [loading, setLoading] = useState(true)
-  const [modal, setModal] = useState<Empresa | 'new' | null>(null)
+  const [loading, setLoading]   = useState(true)
+  const [modal, setModal]       = useState<Empresa | null>(null)
 
   async function load() {
     const res = await call<Empresa[]>(`/api/empresas?restauranteId=${restId}`)
@@ -68,13 +112,17 @@ export default function EmpresasPane({ restId }: { restId: string }) {
 
   return (
     <div className="px-4 pt-4 pb-24">
-      <div className="flex items-center justify-between mb-4">
-        <SectionLabel>Empresas</SectionLabel>
-        <Btn size="sm" className="w-auto" onClick={() => setModal('new')}>+ Nova</Btn>
-      </div>
+      {/* Link de convite no topo */}
+      <LinkConvite restId={restId} />
+
+      <SectionLabel>Empresas cadastradas</SectionLabel>
 
       {empresas.length === 0 && (
-        <Card><p className="text-center font-[var(--mono)] text-xs text-[#3d5875] py-4">Nenhuma empresa cadastrada.</p></Card>
+        <Card>
+          <p className="text-center font-[var(--mono)] text-xs text-[#3d5875] py-4">
+            Nenhuma empresa cadastrada. Partilhe o link acima com os gestores.
+          </p>
+        </Card>
       )}
 
       {empresas.map(e => (
@@ -85,13 +133,12 @@ export default function EmpresasPane({ restId }: { restId: string }) {
               <p className="font-[var(--mono)] text-[10px] text-[#3d5875] mt-0.5">
                 Limite: {e.horario_limite} · R$ {Number(e.preco_por_refeicao).toFixed(2)}/refeição
               </p>
-              <p className="font-[var(--mono)] text-[9px] text-[#1c2e48] mt-0.5 break-all">ID: {e.id}</p>
             </div>
             <Badge color="green">Ativa</Badge>
           </div>
           <div className="flex gap-2">
             <Btn size="sm" variant="secondary" className="w-auto" onClick={() => setModal(e)}>Editar</Btn>
-            <Btn size="sm" variant="danger" className="w-auto" onClick={() => desativar(e.id)}>Remover</Btn>
+            <Btn size="sm" variant="danger"    className="w-auto" onClick={() => desativar(e.id)}>Desativar</Btn>
           </div>
         </Card>
       ))}
@@ -99,10 +146,10 @@ export default function EmpresasPane({ restId }: { restId: string }) {
       <Modal
         open={!!modal}
         onClose={() => setModal(null)}
-        title={modal === 'new' ? 'Nova empresa' : `Editar: ${(modal as Empresa)?.nome}`}
+        title={`Editar: ${modal?.nome}`}
       >
         <EmpresaForm
-          empresa={modal === 'new' ? null : modal as Empresa}
+          empresa={modal}
           restId={restId}
           onSave={() => { setModal(null); load() }}
           onCancel={() => setModal(null)}
