@@ -8,7 +8,7 @@ import { AppShell } from '@/components/layout/AppShell'
 import { Card, SectionLabel, Badge, Btn, Modal, Input, Spinner } from '@/components/ui'
 
 /* ── Início ──────────────────────────────────────────────── */
-function InicioPane({ empresaId, restId }: { empresaId: string; restId: string }) {
+function InicioPane({ empresaId }: { empresaId: string }) {
   const { call } = useApi()
   const [stats, setStats] = useState({ colabs: 0, pedidosHoje: 0 })
   const [loading, setLoading] = useState(true)
@@ -43,26 +43,6 @@ function InicioPane({ empresaId, restId }: { empresaId: string; restId: string }
           </div>
         ))}
       </div>
-
-      {/* Link de convite */}
-      <SectionLabel>Link de convite para colaboradores</SectionLabel>
-      <Card>
-        <p className="font-[var(--mono)] text-[10px] text-[#3d5875] mb-2 uppercase tracking-[1px]">
-          Partilhe este link com os seus colaboradores
-        </p>
-        <div className="flex gap-2 items-center">
-          <div className="flex-1 bg-[#080c14] border border-[#1c2e48] rounded-[7px] px-2.5 py-2 font-[var(--mono)] text-xs text-[#7a96b8] truncate">
-            {typeof window !== 'undefined' ? `${window.location.origin}/cadastro?tipo=colaborador&emp=${empresaId}` : '...'}
-          </div>
-          <button
-            onClick={() => {
-              navigator.clipboard.writeText(`${window.location.origin}/cadastro?tipo=colaborador&emp=${empresaId}`)
-            }}
-            className="bg-[rgba(0,232,122,.1)] border border-[rgba(0,232,122,.2)] rounded-[7px] px-3 py-2 font-[var(--mono)] text-xs text-[#00e87a] cursor-pointer hover:bg-[rgba(0,232,122,.15)] transition-colors whitespace-nowrap">
-            Copiar
-          </button>
-        </div>
-      </Card>
     </div>
   )
 }
@@ -76,6 +56,18 @@ function ColabsPane({ empresaId }: { empresaId: string }) {
   const [modal, setModal] = useState<any>(null)
   const [form, setForm] = useState({ nome: '', email: '', senha: '', isGestor: false })
   const [saving, setSaving] = useState(false)
+  const [copied, setCopied] = useState(false)
+
+  const link = typeof window !== 'undefined'
+    ? `${window.location.origin}/cadastro?tipo=colaborador&emp=${empresaId}`
+    : ''
+
+  function copiarLink() {
+    navigator.clipboard.writeText(link)
+    setCopied(true)
+    toast('Link copiado!')
+    setTimeout(() => setCopied(false), 2000)
+  }
 
   async function load() {
     const r = await call<any[]>(`/api/colaboradores?empresaId=${empresaId}`)
@@ -115,7 +107,32 @@ function ColabsPane({ empresaId }: { empresaId: string }) {
 
   return (
     <div className="px-4 pt-4 pb-24">
-      <div className="flex items-center justify-between mb-4">
+
+      {/* Link de convite no topo */}
+      <Card>
+        <p className="font-[var(--mono)] text-[10px] text-[#3d5875] uppercase tracking-[1px] mb-1">
+          Link de convite
+        </p>
+        <p className="font-[var(--mono)] text-[10px] text-[#3d5875] mb-3">
+          Partilhe com colaboradores para que criem a sua conta.
+        </p>
+        <div className="flex gap-2 items-center">
+          <div className="flex-1 bg-[#080c14] border border-[#1c2e48] rounded-[7px] px-2.5 py-2 font-[var(--mono)] text-xs text-[#7a96b8] truncate">
+            {link}
+          </div>
+          <button
+            onClick={copiarLink}
+            className={`flex-shrink-0 rounded-[7px] px-3 py-2 font-[var(--mono)] text-xs cursor-pointer transition-all border
+              ${copied
+                ? 'bg-[rgba(0,232,122,.15)] border-[rgba(0,232,122,.4)] text-[#00e87a]'
+                : 'bg-[rgba(0,232,122,.08)] border-[rgba(0,232,122,.2)] text-[#00e87a] hover:bg-[rgba(0,232,122,.15)]'
+              }`}>
+            {copied ? '✓ Copiado' : 'Copiar'}
+          </button>
+        </div>
+      </Card>
+
+      <div className="flex items-center justify-between mb-2 mt-4">
         <SectionLabel>Colaboradores</SectionLabel>
         <Btn size="sm" className="w-auto"
           onClick={() => { setModal({}); setForm({ nome: '', email: '', senha: '', isGestor: false }) }}>
@@ -124,7 +141,7 @@ function ColabsPane({ empresaId }: { empresaId: string }) {
       </div>
 
       {colabs.length === 0 && (
-        <Card><p className="text-center font-[var(--mono)] text-xs text-[#3d5875] py-4">Nenhum colaborador.</p></Card>
+        <Card><p className="text-center font-[var(--mono)] text-xs text-[#3d5875] py-4">Nenhum colaborador ainda.</p></Card>
       )}
 
       {colabs.map(c => (
@@ -238,22 +255,16 @@ function RelatorioPane({ empresaId }: { empresaId: string }) {
 /* ── Main ────────────────────────────────────────────────── */
 export default function GestorEmpresaPage() {
   const params = useParams()
-  const router = useRouter()
   const { meta } = useAuth()
   const empresaId = params.empresaId as string
 
   const tabs = [
-    { id: 'inicio',       label: 'Início',        icon: 'home'      as const, component: <InicioPane empresaId={empresaId} restId={meta?.restaurante_id ?? ''} /> },
-    { id: 'colaboradores',label: 'Colaboradores',  icon: 'colabs'    as const, component: <ColabsPane empresaId={empresaId} /> },
-    { id: 'relatorio',    label: 'Relatório',      icon: 'relatorio' as const, component: <RelatorioPane empresaId={empresaId} /> },
+    { id: 'inicio',        label: 'Início',       icon: 'home'      as const, component: <InicioPane empresaId={empresaId} /> },
+    { id: 'colaboradores', label: 'Colaboradores', icon: 'colabs'    as const, component: <ColabsPane empresaId={empresaId} /> },
+    { id: 'relatorio',     label: 'Relatório',     icon: 'relatorio' as const, component: <RelatorioPane empresaId={empresaId} /> },
   ]
 
   return (
-    <AppShell
-      tabs={tabs}
-      nome="Menuv"
-      badge="gestor"
-      role="Gestor"
-    />
+    <AppShell tabs={tabs} nome="Menuv" badge="gestor" role="Gestor" />
   )
 }
