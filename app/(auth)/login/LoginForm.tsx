@@ -81,12 +81,12 @@ export default function LoginForm() {
 
         {/* Header */}
         <div className="flex flex-col items-center gap-3 mb-8">
-          <div className="w-14 h-14 flex items-center justify-center rounded-[14px]
-            bg-[linear-gradient(145deg,rgba(0,232,122,.15),rgba(0,196,99,.05))]
-            border border-[rgba(0,232,122,.3)]
-            shadow-[0_0_24px_rgba(0,232,122,.15)]">
-            <MenuvLogo size={36} />
-          </div>
+<div className="w-14 h-14 flex items-center justify-center rounded-[14px]
+  bg-[linear-gradient(145deg,rgba(0,232,122,.15),rgba(0,196,99,.05))]
+  border border-[rgba(0,232,122,.3)]
+  shadow-[0_0_24px_rgba(0,232,122,.15)]">
+  <img src="/favicon.svg" alt="Menuv" width={36} height={36} />
+</div>
           <div className="text-center">
             <h1 className="text-2xl font-black text-[#ddeaf8] tracking-tight">Menuv</h1>
             <p className="font-[var(--mono)] text-[10px] tracking-[2px] text-[#3d5875] uppercase mt-1">
