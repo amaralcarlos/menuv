@@ -222,7 +222,7 @@ export default function DashboardPage() {
 
   const tabs = [
     { id: 'pedidos',   label: 'Pedidos',   icon: 'pedido'    as const, component: <PedidosPane restId={restId} /> },
-    { id: 'grades',    label: 'Grades',    icon: 'grade'     as const, component: <GradesPane restId={restId} /> },
+    { id: 'grades',    label: 'Cardápio', icon: 'grade' as const, component: <GradesPane restId={restId} /> },
     { id: 'empresas',  label: 'Empresas',  icon: 'empresas'  as const, component: <EmpresasPane restId={restId} /> },
     { id: 'relatorio', label: 'Relatório', icon: 'relatorio' as const, component: <RelatorioPane restId={restId} /> },
   ]
