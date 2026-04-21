@@ -264,7 +264,6 @@ export default function GestorEmpresaPage() {
     { id: 'relatorio',     label: 'Relatório',     icon: 'relatorio' as const, component: <RelatorioPane empresaId={empresaId} /> },
   ]
 
-  return (
-    <AppShell tabs={tabs} nome="Menuv" badge="gestor" role="Gestor" />
+  return <AppShell tabs={tabs} nome={meta?.nome ?? 'Menuv'} badge="gestor" role="Gestor" />
   )
 }
