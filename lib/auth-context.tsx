@@ -5,6 +5,7 @@ import type { Session, User } from '@supabase/supabase-js'
 
 export interface AppMeta {
   app_role: 'admin' | 'restaurante' | 'rest_usuario' | 'colaborador' | 'suspenso'
+  nome?: string
   restaurante_id?: string
   empresa_id?: string
   colaborador_id?: string
