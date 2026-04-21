@@ -244,3 +244,4 @@ export default function PedidosPage() {
   ]
 
  return <AppShell tabs={tabs} nome={meta?.nome ?? 'Menuv'} badge="colaborador" role="Colaborador" />
+}
