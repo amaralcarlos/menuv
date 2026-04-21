@@ -66,5 +66,3 @@ export async function GET() {
     restaurantes: restDetalhes,
   })
 }
-
-O Next.js 15 não aceita o padrão `withAuth` com o segundo argumento opcional — por isso substituímos por uma função normal com autenticação manual. Commit e redeploy! 🎯
