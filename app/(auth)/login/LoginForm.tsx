@@ -5,23 +5,12 @@ import { supabaseBrowser } from '@/lib/supabase-browser'
 import { Btn, Input } from '@/components/ui'
 import { MenuvLogo } from '@/components/ui/MenuvLogo'
 
-const ROLE_META = {
-  restaurante: { icon: '🍽', title: 'Acesso do restaurante', isAdmin: false, showRegister: true,  registerPath: '/cadastro?tipo=restaurante' },
-  gestor:      { icon: '🏢', title: 'Acesso do gestor',      isAdmin: false, showRegister: false, registerPath: '' },
-  colaborador: { icon: '👤', title: 'Acesso do colaborador', isAdmin: false, showRegister: true,  registerPath: '/cadastro?tipo=colaborador' },
-  admin:       { icon: '🔐', title: 'Acesso restrito',       isAdmin: true,  showRegister: false, registerPath: '' },
-}
-
 function parseJwt(token: string) {
   try { return JSON.parse(atob(token.split('.')[1])) } catch { return null }
 }
 
 export default function LoginForm() {
   const router = useRouter()
-  const params = useSearchParams()
-  const role   = (params.get('role') ?? 'colaborador') as keyof typeof ROLE_META
-  const meta   = ROLE_META[role] ?? ROLE_META.colaborador
-
   const [email,   setEmail]   = useState('')
   const [senha,   setSenha]   = useState('')
   const [error,   setError]   = useState('')
@@ -33,15 +22,17 @@ export default function LoginForm() {
       if (data.session) {
         const jwt = parseJwt(data.session.access_token)
         const appRole = jwt?.app_metadata?.app_role
-       router.push(
-  appRole === 'admin' ? '/admin' :
-  appRole === 'restaurante' ? '/dashboard' :
-  appRole === 'colaborador' && jwt?.app_metadata?.is_gestor ? '/gestor' :
-  '/pedidos'
-) 
+        redirect(appRole, jwt?.app_metadata?.is_gestor)
       }
     })
   }, [])
+
+  function redirect(appRole: string, isGestor?: boolean) {
+    if (appRole === 'admin')       { router.push('/admin');     return }
+    if (appRole === 'restaurante') { router.push('/dashboard'); return }
+    if (appRole === 'colaborador' && isGestor) { router.push('/gestor'); return }
+    router.push('/pedidos')
+  }
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
@@ -58,18 +49,14 @@ export default function LoginForm() {
 
     if (sbError || !data.session) {
       setLoading(false)
-      setError(sbError?.message === 'Invalid login credentials'
-        ? 'E-mail ou senha incorretos.'
-        : (sbError?.message ?? 'Erro ao entrar.'))
+      setError('E-mail ou senha incorretos.')
       return
     }
 
-    // Aguarda o Hook processar e faz refresh
     await new Promise(resolve => setTimeout(resolve, 500))
     const { data: refreshed } = await sb.auth.refreshSession()
     setLoading(false)
 
-    // Lê do JWT diretamente
     const jwt = parseJwt(refreshed.session?.access_token ?? '')
     const appRole = jwt?.app_metadata?.app_role
 
@@ -79,37 +66,33 @@ export default function LoginForm() {
       return
     }
 
-router.push(
-  appRole === 'admin' ? '/admin' :
-  appRole === 'restaurante' ? '/dashboard' :
-  appRole === 'colaborador' && jwt?.app_metadata?.is_gestor ? '/gestor' :
-  '/pedidos'
-)
+    redirect(appRole, jwt?.app_metadata?.is_gestor)
   }
 
-  const borderColor = meta.isAdmin ? 'rgba(255,77,106,.3)' : 'rgba(0,232,122,.3)'
-
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-8"
-      style={{ background: meta.isAdmin ? '#06060f' : undefined }}>
-
+    <div className="min-h-screen flex items-center justify-center px-4 py-8 bg-[#080c14]">
       <div className="anim-fade-up w-full max-w-[380px]" style={{
         background: 'linear-gradient(145deg, #0d1525, #121e32)',
-        border: `1px solid ${borderColor}`,
+        border: '1px solid rgba(0,232,122,.3)',
         borderRadius: 16,
         padding: '36px 28px',
         boxShadow: '0 20px 60px rgba(0,0,0,.6)',
       }}>
-        <div className="flex items-center gap-2.5 mb-1">
-          <div className="w-9 h-9 flex items-center justify-center rounded-[10px] bg-[rgba(0,232,122,.06)] border border-[rgba(0,232,122,.15)]">
-            <MenuvLogo size={26} />
+
+        {/* Header */}
+        <div className="flex flex-col items-center gap-3 mb-8">
+          <div className="w-14 h-14 flex items-center justify-center rounded-[14px]
+            bg-[linear-gradient(145deg,rgba(0,232,122,.15),rgba(0,196,99,.05))]
+            border border-[rgba(0,232,122,.3)]
+            shadow-[0_0_24px_rgba(0,232,122,.15)]">
+            <MenuvLogo size={36} />
           </div>
-          <span className="text-xl font-black text-[#ddeaf8] tracking-tight">
-            {meta.icon} Menuv
-          </span>
-        </div>
-        <div className="font-[var(--mono)] text-[10px] tracking-[2px] text-[#3d5875] uppercase mb-7">
-          {meta.title}
+          <div className="text-center">
+            <h1 className="text-2xl font-black text-[#ddeaf8] tracking-tight">Menuv</h1>
+            <p className="font-[var(--mono)] text-[10px] tracking-[2px] text-[#3d5875] uppercase mt-1">
+              Gestão de refeições
+            </p>
+          </div>
         </div>
 
         <form onSubmit={handleLogin} className="flex flex-col gap-4">
@@ -134,30 +117,19 @@ router.push(
             <p className="font-[var(--mono)] text-xs text-[#ff4d6a] text-center">{error}</p>
           )}
 
-          <Btn
-            type="submit"
-            loading={loading}
-            variant={meta.isAdmin ? 'danger' : 'primary'}
-            className="mt-1"
-          >
+          <Btn type="submit" loading={loading} className="mt-1">
             Entrar
           </Btn>
         </form>
 
-        <div className="mt-4 flex flex-col items-center gap-2">
-          {meta.showRegister && (
-            <button
-              onClick={() => router.push(meta.registerPath)}
-              className="font-[var(--mono)] text-[10px] tracking-[1px] text-[#3d5875] hover:text-[#7a96b8] transition-colors uppercase cursor-pointer bg-transparent border-none"
-            >
-              Novo aqui? Criar conta →
-            </button>
-          )}
+        <div className="mt-5 text-center">
+          <p className="font-[var(--mono)] text-[10px] text-[#3d5875] mb-2">
+            É um restaurante?
+          </p>
           <button
-            onClick={() => router.push('/')}
-            className="font-[var(--mono)] text-[10px] tracking-[1px] text-[#3d5875] hover:text-[#7a96b8] transition-colors uppercase cursor-pointer bg-transparent border-none"
-          >
-            ← Voltar
+            onClick={() => router.push('/cadastro?tipo=restaurante')}
+            className="font-[var(--mono)] text-[10px] tracking-[1px] text-[#00e87a] hover:text-[#00c463] transition-colors uppercase cursor-pointer bg-transparent border-none">
+            Criar conta de restaurante →
           </button>
         </div>
       </div>
