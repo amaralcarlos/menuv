@@ -7,7 +7,7 @@ import { useToast } from '@/components/ui'
 import { AppShell } from '@/components/layout/AppShell'
 import { Card, SectionLabel, Badge, Btn, Spinner } from '@/components/ui'
 
-const DIAS_PT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
+const DIAS_PT  = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
 const MESES_PT = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
 
 /* ── Day selector ────────────────────────────────────────── */
@@ -21,10 +21,9 @@ function DaySelector({ dias, selected, onSelect }: {
         const date  = new Date(+parts[2], +parts[1] - 1, +parts[0])
         const dow   = DIAS_PT[date.getDay()]
         const hasPedido = !!d.pedido
-        const isToday   = d.data === (() => {
-          const n = new Date()
-          return `${String(n.getDate()).padStart(2,'0')}/${String(n.getMonth()+1).padStart(2,'0')}/${n.getFullYear()}`
-        })()
+        const n = new Date()
+        const hojeStr = `${String(n.getDate()).padStart(2,'0')}/${String(n.getMonth()+1).padStart(2,'0')}/${n.getFullYear()}`
+        const isToday = d.data === hojeStr
 
         return (
           <button key={d.data} onClick={() => onSelect(d.data)}
@@ -49,36 +48,39 @@ function OrderForm({ dia, colabId, empId, restId, onSaved }: {
   dia: any; colabId: string; empId: string; restId: string; onSaved: () => void
 }) {
   const { call } = useApi()
-  const toast = useToast()
+  const toast    = useToast()
   const existingPedido = dia.pedido
-  const [selected, setSelected] = useState<string[]>(existingPedido?.itens ?? [])
-  const [obs, setObs] = useState(existingPedido?.obs ?? '')
-  const [saving, setSaving] = useState(false)
 
-  // Empresa config for cutoff time
+  // ← usa [...] para não partilhar referência
+  const [selected, setSelected] = useState<string[]>([...(existingPedido?.itens ?? [])])
+  const [obs,      setObs]      = useState<string>(existingPedido?.obs ?? '')
+  const [saving,   setSaving]   = useState(false)
   const [empConfig, setEmpConfig] = useState<any>(null)
+
+  useEffect(() => {
+    // Reset ao mudar de dia
+    setSelected([...(existingPedido?.itens ?? [])])
+    setObs(existingPedido?.obs ?? '')
+  }, [dia.data])
+
   useEffect(() => {
     call<any[]>(`/api/empresas?restauranteId=${restId}`).then(r => {
       if (r.success) setEmpConfig(r.data.find((e: any) => e.id === empId))
     })
   }, [empId])
 
-  const parts = dia.data.split('/')
-  const date  = new Date(+parts[2], +parts[1] - 1, +parts[0])
-  const dow   = DIAS_PT[date.getDay()]
-  const hoje  = new Date()
+  const parts  = dia.data.split('/')
+  const date   = new Date(+parts[2], +parts[1] - 1, +parts[0])
+  const dow    = DIAS_PT[date.getDay()]
+  const hoje   = new Date()
   const isToday = date.toDateString() === hoje.toDateString()
 
-  // Check cutoff
   let bloqueado = false
   let motivoBloqueio = ''
   if (isToday && empConfig?.horario_limite) {
     const [h, m] = empConfig.horario_limite.split(':').map(Number)
     const cutoff = new Date(); cutoff.setHours(h, m, 0, 0)
-    if (hoje >= cutoff) {
-      bloqueado = true
-      motivoBloqueio = `Pedidos encerrados às ${empConfig.horario_limite}`
-    }
+    if (hoje >= cutoff) { bloqueado = true; motivoBloqueio = `Pedidos encerrados às ${empConfig.horario_limite}` }
   }
 
   function toggle(item: string) {
@@ -87,21 +89,27 @@ function OrderForm({ dia, colabId, empId, restId, onSaved }: {
 
   async function salvar() {
     if (selected.length === 0) { toast('Selecione ao menos um item.', 'error'); return }
+    if (!colabId) { toast('Erro: colaborador não identificado. Faça logout e login novamente.', 'error'); return }
     setSaving(true)
-    const dateStr = `${parts[2]}-${parts[1]}-${parts[0]}`
     const res = await call('/api/pedidos', {
       method: 'POST',
-      body: JSON.stringify({ colaboradorId: colabId, empresaId: empId, data: dateStr, itens: selected, obs }),
+      body: JSON.stringify({
+        colaboradorId: colabId,
+        empresaId:     empId,
+        data:          `${parts[2]}-${parts[1]}-${parts[0]}`,
+        itens:         selected,
+        obs,
+      }),
     })
     setSaving(false)
     if (res.success) { toast('Pedido salvo!'); onSaved() }
-    else toast(res.error, 'error')
+    else toast(res.error ?? 'Erro ao salvar pedido.', 'error')
   }
 
   const allItems = [
-    ...(dia.pratos    ?? []).map((p: any) => ({ nome: p.nome, tipo: 'prato' })),
+    ...(dia.pratos     ?? []).map((p: any) => ({ nome: p.nome, tipo: 'prato'     })),
     ...(dia.guarnicoes ?? []).map((g: any) => ({ nome: g.nome, tipo: 'guarnicao' })),
-    ...(dia.outros    ?? []).map((o: any) => ({ nome: o.nome, tipo: 'outro' })),
+    ...(dia.outros     ?? []).map((o: any) => ({ nome: o.nome, tipo: 'outro'     })),
   ]
 
   const tipoBadge: Record<string, string> = {
@@ -113,7 +121,9 @@ function OrderForm({ dia, colabId, empId, restId, onSaved }: {
   return (
     <div>
       <div className="flex items-center justify-between mb-3">
-        <p className="text-sm font-bold text-[#ddeaf8]">{dow}, {String(date.getDate()).padStart(2,'0')} {MESES_PT[date.getMonth()]}</p>
+        <p className="text-sm font-bold text-[#ddeaf8]">
+          {dow}, {String(date.getDate()).padStart(2,'0')} {MESES_PT[date.getMonth()]}
+        </p>
         {existingPedido && <Badge color="green">Pedido feito</Badge>}
       </div>
 
@@ -124,7 +134,9 @@ function OrderForm({ dia, colabId, empId, restId, onSaved }: {
       )}
 
       {allItems.length === 0 && (
-        <p className="font-[var(--mono)] text-xs text-[#3d5875] py-4 text-center">Sem cardápio para este dia.</p>
+        <p className="font-[var(--mono)] text-xs text-[#3d5875] py-4 text-center">
+          Sem cardápio para este dia.
+        </p>
       )}
 
       <div className="flex flex-col gap-1.5 mb-4">
@@ -163,35 +175,33 @@ function OrderForm({ dia, colabId, empId, restId, onSaved }: {
 
 /* ── Main pedidos page ───────────────────────────────────── */
 function PedidosContent() {
-  const { meta } = useAuth()
-  const { call } = useApi()
-  const [semana, setSemana] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
+  const { meta }  = useAuth()
+  const { call }  = useApi()
+  const [semana,       setSemana]       = useState<any[]>([])
+  const [loading,      setLoading]      = useState(true)
   const [selectedDate, setSelectedDate] = useState('')
 
   const colabId = meta?.colaborador_id ?? ''
-  const empId   = meta?.empresa_id ?? ''
+  const empId   = meta?.empresa_id     ?? ''
 
   async function load() {
     if (!meta?.restaurante_id) return
     const res = await call<any[]>(`/api/cardapio/semana?restauranteId=${meta.restaurante_id}`)
     if (res.success && res.data.length > 0) {
-      // Merge with existing pedidos
       const pedRes = await call<any[]>(`/api/pedidos?empresaId=${empId}`)
       const pedMap: Record<string, any> = {}
       if (pedRes.success) {
         pedRes.data.forEach((p: any) => {
           const parts = p.data.split('-')
-          const key = `${parts[2]}/${parts[1]}/${parts[0]}`
+          const key   = `${parts[2]}/${parts[1]}/${parts[0]}`
           pedMap[key] = p
         })
       }
       const merged = res.data.map(d => ({ ...d, pedido: pedMap[d.data] ?? null }))
       setSemana(merged)
 
-      // Select today or first day
-      const hoje = new Date()
-      const hojeStr = `${String(hoje.getDate()).padStart(2,'0')}/${String(hoje.getMonth()+1).padStart(2,'0')}/${hoje.getFullYear()}`
+      const n       = new Date()
+      const hojeStr = `${String(n.getDate()).padStart(2,'0')}/${String(n.getMonth()+1).padStart(2,'0')}/${n.getFullYear()}`
       const todayDia = merged.find(d => d.data === hojeStr)
       setSelectedDate(todayDia?.data ?? merged[0]?.data ?? '')
     }
@@ -206,7 +216,9 @@ function PedidosContent() {
     <div className="px-4 pt-8 text-center">
       <p className="text-4xl mb-3">🍽️</p>
       <p className="font-bold text-[#ddeaf8] mb-1">Sem cardápio disponível</p>
-      <p className="font-[var(--mono)] text-xs text-[#3d5875]">Aguarde seu restaurante publicar o cardápio da semana.</p>
+      <p className="font-[var(--mono)] text-xs text-[#3d5875]">
+        Aguarde seu restaurante publicar o cardápio da semana.
+      </p>
     </div>
   )
 
@@ -216,7 +228,6 @@ function PedidosContent() {
     <div className="px-4 pt-4 pb-24">
       <SectionLabel>Selecione o dia</SectionLabel>
       <DaySelector dias={semana} selected={selectedDate} onSelect={setSelectedDate} />
-
       {diaSelected && (
         <Card highlight={!!diaSelected.pedido}>
           <OrderForm
@@ -235,13 +246,12 @@ function PedidosContent() {
 
 export default function PedidosPage() {
   const { meta } = useAuth()
-  const nome = 'Menuv'
   const isGestor = meta?.is_gestor
 
   const tabs = [
-    { id: 'pedido', label: 'Pedido', icon: 'pedido' as const, component: <PedidosContent /> },
+    { id: 'pedido',    label: 'Pedido',    icon: 'pedido'    as const, component: <PedidosContent /> },
     ...(isGestor ? [{ id: 'relatorio', label: 'Relatório', icon: 'relatorio' as const, component: <div /> }] : []),
   ]
 
- return <AppShell tabs={tabs} nome={meta?.nome ?? 'Menuv'} badge="colaborador" role="Colaborador" subInfo={meta?.empresa_nome} />
+  return <AppShell tabs={tabs} nome={meta?.nome ?? 'Menuv'} badge="colaborador" role="Colaborador" subInfo={meta?.empresa_nome} />
 }
