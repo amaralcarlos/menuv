@@ -122,3 +122,4 @@ export default function DashboardPage() {
     : 'restaurante'
 
   return <AppShell tabs={tabs} nome={meta?.nome ?? 'Menuv'} badge={badge} role="Restaurante" />
+} 
