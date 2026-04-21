@@ -1,5 +1,51 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { useAuth } from '@/lib/auth-context'
+import { useApi } from '@/lib/use-api'
+import { useToast } from '@/components/ui'
+import { AppShell } from '@/components/layout/AppShell'
+import { Card, SectionLabel, Badge, Btn, Spinner } from '@/components/ui'
+
+const DIAS_PT  = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
+const MESES_PT = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
+
 type ItemSel = { nome: string; ajuste: 'normal' | 'extra' | 'reduzido' }
 
+/* ── Day selector ────────────────────────────────────────── */
+function DaySelector({ dias, selected, onSelect }: {
+  dias: any[]; selected: string; onSelect: (d: string) => void
+}) {
+  return (
+    <div className="grid grid-cols-5 gap-1.5 mb-4">
+      {dias.map(d => {
+        const parts = d.data.split('/')
+        const date  = new Date(+parts[2], +parts[1] - 1, +parts[0])
+        const dow   = DIAS_PT[date.getDay()]
+        const hasPedido = !!d.pedido
+        const n = new Date()
+        const hojeStr = `${String(n.getDate()).padStart(2,'0')}/${String(n.getMonth()+1).padStart(2,'0')}/${n.getFullYear()}`
+        const isToday = d.data === hojeStr
+
+        return (
+          <button key={d.data} onClick={() => onSelect(d.data)}
+            className={`relative py-2 px-1 rounded-[11px] text-center cursor-pointer transition-all border
+              ${selected === d.data
+                ? 'border-[#00e87a] bg-[rgba(0,232,122,.06)]'
+                : isToday
+                  ? 'border-[rgba(0,232,122,.2)] bg-[rgba(0,232,122,.03)]'
+                  : 'border-[#1c2e48] bg-[#0d1525] hover:border-[rgba(0,232,122,.3)]'}
+              ${hasPedido ? 'after:content-["✓"] after:absolute after:top-[-5px] after:right-[-5px] after:bg-[#00e87a] after:text-black after:text-[9px] after:font-bold after:w-3.5 after:h-3.5 after:rounded-full after:flex after:items-center after:justify-center' : ''}`}>
+            <div className={`font-[var(--mono)] text-[10px] tracking-[.3px] ${selected === d.data ? 'text-[rgba(0,232,122,.7)]' : 'text-[#3d5875]'}`}>{dow}</div>
+            <div className={`text-sm font-semibold mt-0.5 ${selected === d.data ? 'text-[#00e87a]' : 'text-[#ddeaf8]'}`}>{String(date.getDate()).padStart(2,'0')}</div>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+/* ── Order form ──────────────────────────────────────────── */
 function OrderForm({ dia, colabId, empId, restId, onSaved }: {
   dia: any; colabId: string; empId: string; restId: string; onSaved: () => void
 }) {
@@ -16,15 +62,15 @@ function OrderForm({ dia, colabId, empId, restId, onSaved }: {
   function parseExisting(): ItemSel[] {
     if (!existingPedido?.itens) return []
     return existingPedido.itens.map((s: string) => {
-      if (s.endsWith(' [extra]'))    return { nome: s.replace(' [extra]', ''),    ajuste: 'extra'    }
-      if (s.endsWith(' [reduzido]')) return { nome: s.replace(' [reduzido]', ''), ajuste: 'reduzido' }
-      return { nome: s, ajuste: 'normal' }
+      if (s.endsWith(' [extra]'))    return { nome: s.replace(' [extra]', ''),    ajuste: 'extra'    as const }
+      if (s.endsWith(' [reduzido]')) return { nome: s.replace(' [reduzido]', ''), ajuste: 'reduzido' as const }
+      return { nome: s, ajuste: 'normal' as const }
     })
   }
 
-  const [selected, setSelected] = useState<ItemSel[]>(parseExisting())
-  const [obs,      setObs]      = useState<string>(existingPedido?.obs ?? '')
-  const [saving,   setSaving]   = useState(false)
+  const [selected,  setSelected]  = useState<ItemSel[]>(parseExisting())
+  const [obs,       setObs]       = useState<string>(existingPedido?.obs ?? '')
+  const [saving,    setSaving]    = useState(false)
   const [empConfig, setEmpConfig] = useState<any>(null)
 
   useEffect(() => {
@@ -52,7 +98,7 @@ function OrderForm({ dia, colabId, empId, restId, onSaved }: {
     if (hoje >= cutoff) { bloqueado = true; motivoBloqueio = `Pedidos encerrados às ${empConfig.horario_limite}` }
   }
 
-  function isSelected(nome: string) {
+  function isItemSelected(nome: string) {
     return selected.some(s => s.nome === nome)
   }
 
@@ -127,7 +173,7 @@ function OrderForm({ dia, colabId, empId, restId, onSaved }: {
 
       <div className="flex flex-col gap-2 mb-4">
         {allItems.map((item, idx) => {
-          const sel    = isSelected(item.nome)
+          const sel    = isItemSelected(item.nome)
           const ajuste = getAjuste(item.nome)
           return (
             <div key={`${item.nome}-${idx}`}
@@ -135,8 +181,6 @@ function OrderForm({ dia, colabId, empId, restId, onSaved }: {
                 ${sel
                   ? 'border-[rgba(0,232,122,.4)] bg-[rgba(0,232,122,.06)]'
                   : 'border-[#1c2e48] bg-[#0d1525]'}`}>
-
-              {/* Linha principal */}
               <button
                 onClick={() => !bloqueado && toggleItem(item.nome)}
                 disabled={bloqueado}
@@ -155,7 +199,6 @@ function OrderForm({ dia, colabId, empId, restId, onSaved }: {
                 </span>
               </button>
 
-              {/* Extra / Reduzido — só aparece quando seleccionado */}
               {sel && !bloqueado && (
                 <div className="flex gap-2 px-3 pb-3">
                   {(['extra', 'reduzido'] as const).map(a => (
@@ -192,4 +235,87 @@ function OrderForm({ dia, colabId, empId, restId, onSaved }: {
       )}
     </div>
   )
+}
+
+/* ── Main pedidos page ───────────────────────────────────── */
+function PedidosContent() {
+  const { meta }  = useAuth()
+  const { call }  = useApi()
+  const [semana,       setSemana]       = useState<any[]>([])
+  const [loading,      setLoading]      = useState(true)
+  const [selectedDate, setSelectedDate] = useState('')
+
+  const colabId = meta?.colaborador_id ?? ''
+  const empId   = meta?.empresa_id     ?? ''
+
+  async function load() {
+    if (!meta?.restaurante_id) return
+    const res = await call<any[]>(`/api/cardapio/semana?restauranteId=${meta.restaurante_id}`)
+    if (res.success && res.data.length > 0) {
+      const pedRes = await call<any[]>(`/api/pedidos?empresaId=${empId}`)
+      const pedMap: Record<string, any> = {}
+      if (pedRes.success) {
+        pedRes.data.forEach((p: any) => {
+          const parts = p.data.split('-')
+          const key   = `${parts[2]}/${parts[1]}/${parts[0]}`
+          pedMap[key] = p
+        })
+      }
+      const merged = res.data.map(d => ({ ...d, pedido: pedMap[d.data] ?? null }))
+      setSemana(merged)
+
+      const n       = new Date()
+      const hojeStr = `${String(n.getDate()).padStart(2,'0')}/${String(n.getMonth()+1).padStart(2,'0')}/${n.getFullYear()}`
+      const todayDia = merged.find(d => d.data === hojeStr)
+      setSelectedDate(todayDia?.data ?? merged[0]?.data ?? '')
+    }
+    setLoading(false)
+  }
+
+  useEffect(() => { load() }, [meta])
+
+  if (loading) return <Spinner />
+
+  if (semana.length === 0) return (
+    <div className="px-4 pt-8 text-center">
+      <p className="text-4xl mb-3">🍽️</p>
+      <p className="font-bold text-[#ddeaf8] mb-1">Sem cardápio disponível</p>
+      <p className="font-[var(--mono)] text-xs text-[#3d5875]">
+        Aguarde seu restaurante publicar o cardápio da semana.
+      </p>
+    </div>
+  )
+
+  const diaSelected = semana.find(d => d.data === selectedDate)
+
+  return (
+    <div className="px-4 pt-4 pb-24">
+      <SectionLabel>Selecione o dia</SectionLabel>
+      <DaySelector dias={semana} selected={selectedDate} onSelect={setSelectedDate} />
+      {diaSelected && (
+        <Card highlight={!!diaSelected.pedido}>
+          <OrderForm
+            key={selectedDate}
+            dia={diaSelected}
+            colabId={colabId}
+            empId={empId}
+            restId={meta?.restaurante_id ?? ''}
+            onSaved={load}
+          />
+        </Card>
+      )}
+    </div>
+  )
+}
+
+export default function PedidosPage() {
+  const { meta } = useAuth()
+  const isGestor = meta?.is_gestor
+
+  const tabs = [
+    { id: 'pedido',    label: 'Pedido',    icon: 'pedido'    as const, component: <PedidosContent /> },
+    ...(isGestor ? [{ id: 'relatorio', label: 'Relatório', icon: 'relatorio' as const, component: <div /> }] : []),
+  ]
+
+  return <AppShell tabs={tabs} nome={meta?.nome ?? 'Menuv'} badge="colaborador" role="Colaborador" subInfo={meta?.empresa_nome} />
 }
