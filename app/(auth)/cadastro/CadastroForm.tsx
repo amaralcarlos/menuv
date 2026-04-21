@@ -25,9 +25,10 @@ export default function CadastroForm() {
   const [senha, setSenha] = useState('')
   const [conf,  setConf]  = useState('')
 
-  const [empNome,  setEmpNome]  = useState('')
-  const [empHl,    setEmpHl]    = useState('09:30')
-  const [empPreco, setEmpPreco] = useState('15.00')
+  const [empNome,   setEmpNome]   = useState('')
+  const [empHl,     setEmpHl]     = useState('09:30')
+  const [empPreco,  setEmpPreco]  = useState('15.00')
+  const [empFormato, setEmpFormato] = useState<'marmita' | 'buffet'>('marmita')
 
   const [colabId, setColabId] = useState('')
 
@@ -91,6 +92,7 @@ export default function CadastroForm() {
         preco:          parseFloat(empPreco) || 15,
         restauranteRef: ref,
         colabId,
+        formato:        empFormato,
       }),
     })
     const data = await res.json()
@@ -183,6 +185,29 @@ export default function CadastroForm() {
               onChange={e => setEmpHl(e.target.value)} placeholder="09:30" />
             <Input label="Preço por refeição (R$)" type="number" step="0.01"
               value={empPreco} onChange={e => setEmpPreco(e.target.value)} placeholder="15.00" />
+
+            {/* Formato de entrega */}
+            <div>
+              <p className="font-[var(--mono)] text-[10px] text-[#3d5875] uppercase tracking-[1px] mb-2">
+                Formato de entrega
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                {(['marmita', 'buffet'] as const).map(f => (
+                  <button
+                    key={f}
+                    type="button"
+                    onClick={() => setEmpFormato(f)}
+                    className={`py-2.5 rounded-[8px] font-[var(--mono)] text-xs uppercase tracking-[1px] border transition-all
+                      ${empFormato === f
+                        ? 'bg-[rgba(0,232,122,.1)] border-[rgba(0,232,122,.4)] text-[#00e87a]'
+                        : 'bg-transparent border-[#253d5e] text-[#3d5875] hover:border-[#3d5875]'
+                      }`}>
+                    {f === 'marmita' ? '🍱 Marmita' : '🍽️ Buffet'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {error && <p className="font-[var(--mono)] text-xs text-[#ff4d6a] text-center">{error}</p>}
             <Btn type="submit" loading={loading} className="mt-1">Finalizar cadastro</Btn>
           </form>
