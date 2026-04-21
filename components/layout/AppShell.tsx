@@ -1,7 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/lib/auth-context'
-import { MenuvLogo } from '@/components/ui/MenuvLogo'
 
 /* ── Clock ───────────────────────────────────────────────── */
 function Clock() {
@@ -115,3 +114,42 @@ export function AppShell({ tabs, nome, badge, role, subInfo }: AppShellProps) {
           </div>
         </div>
         <div className="flex items-center gap-3 relative z-[1]">
+          <Clock />
+          <UserMenu nome={nome} role={role} subInfo={subInfo} />
+        </div>
+      </header>
+
+      {/* Tab bar */}
+      <nav className="sticky top-[57px] z-[99] bg-[rgba(9,16,26,.97)] border-b border-[#1c2e48] backdrop-blur-[20px]"
+        style={{ display: 'grid', gridTemplateColumns: `repeat(${tabs.length}, 1fr)` }}>
+        {tabs.map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActive(tab.id)}
+            className={`bg-none border-none flex flex-col items-center gap-1 py-2.5 px-1 cursor-pointer relative transition-colors duration-200 select-none
+              font-[var(--mono)] text-[10px] tracking-[.3px]
+              ${active === tab.id ? 'text-[#00e87a]' : 'text-[#3d5875] hover:text-[#7a96b8]'}
+              after:content-[''] after:absolute after:bottom-0 after:left-[15%] after:right-[15%] after:h-0.5
+              after:bg-[linear-gradient(90deg,transparent,#00e87a,transparent)] after:rounded-t-[2px]
+              after:transition-transform after:duration-[280ms] after:[cubic-bezier(.34,1.56,.64,1)]
+              ${active === tab.id ? 'after:scale-x-100' : 'after:scale-x-0'}`}
+          >
+            <span className={`transition-transform duration-200 ${active === tab.id ? 'drop-shadow-[0_0_4px_rgba(0,232,122,.5)] -translate-y-px' : ''}`}>
+              {ICONS[tab.icon]}
+            </span>
+            {tab.label}
+          </button>
+        ))}
+      </nav>
+
+      {/* Panes */}
+      <div className="flex-1">
+        {tabs.map(tab => (
+          <div key={tab.id} className={active === tab.id ? 'block anim-fade-up' : 'hidden'}>
+            {tab.component}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
