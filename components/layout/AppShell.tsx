@@ -24,7 +24,7 @@ function Clock() {
 }
 
 /* ── User menu ───────────────────────────────────────────── */
-function UserMenu({ nome, role }: { nome: string; role: string }) {
+function UserMenu({ nome, role, subInfo }: { nome: string; role: string; subInfo?: string }) {
   const { signOut } = useAuth()
   const [open, setOpen] = useState(false)
 
@@ -42,13 +42,16 @@ function UserMenu({ nome, role }: { nome: string; role: string }) {
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute top-full right-0 mt-2 z-50 w-48
+          <div className="absolute top-full right-0 mt-2 z-50 w-56
             bg-[image:linear-gradient(145deg,#0d1525,#121e32)]
             border border-[#253d5e] rounded-[11px]
             shadow-[0_16px_40px_rgba(0,0,0,.6)] overflow-hidden anim-fade-up">
             <div className="px-4 py-3 border-b border-[#1c2e48]">
               <div className="font-semibold text-sm text-[#ddeaf8] truncate">{nome}</div>
-              <div className="font-[var(--mono)] text-[10px] tracking-[1.5px] text-[#3d5875] uppercase mt-0.5">{role}</div>
+              <div className="font-[var(--mono)] text-[10px] tracking-[1.5px] text-[#00e87a] uppercase mt-0.5">{role}</div>
+              {subInfo && (
+                <div className="font-[var(--mono)] text-[10px] text-[#3d5875] mt-0.5 truncate">{subInfo}</div>
+              )}
             </div>
             <button
               onClick={() => { setOpen(false); signOut() }}
@@ -84,9 +87,10 @@ interface AppShellProps {
   nome: string
   badge: string
   role: string
+  subInfo?: string
 }
 
-export function AppShell({ tabs, nome, badge, role }: AppShellProps) {
+export function AppShell({ tabs, nome, badge, role, subInfo }: AppShellProps) {
   const [active, setActive] = useState(tabs[0]?.id ?? '')
 
   return (
@@ -101,50 +105,13 @@ export function AppShell({ tabs, nome, badge, role }: AppShellProps) {
             bg-[linear-gradient(145deg,rgba(0,232,122,.15),rgba(0,196,99,.05))]
             border border-[rgba(0,232,122,.3)]
             shadow-[0_0_14px_rgba(0,232,122,.15),inset_0_1px_0_rgba(0,232,122,.2)]">
-            <MenuvLogo size={28} />
+            <img src="/favicon.svg" alt="Menuv" width={28} height={28} />
           </div>
           <div>
             <div className="font-extrabold text-base text-[#ddeaf8] tracking-tight leading-none">{nome}</div>
-            <div className="font-[var(--mono)] text-[10px] tracking-[2px] text-[#00e87a] opacity-80 mt-0.5 uppercase">{badge}</div>
+            <div className="font-[var(--mono)] text-[10px] tracking-[2px] text-[#00e87a] opacity-80 mt-0.5 uppercase">
+              {badge}{subInfo ? ` · ${subInfo}` : ''}
+            </div>
           </div>
         </div>
         <div className="flex items-center gap-3 relative z-[1]">
-          <Clock />
-          <UserMenu nome={nome} role={role} />
-        </div>
-      </header>
-
-      {/* Tab bar */}
-      <nav className="sticky top-[57px] z-[99] bg-[rgba(9,16,26,.97)] border-b border-[#1c2e48] backdrop-blur-[20px]"
-        style={{ display: 'grid', gridTemplateColumns: `repeat(${tabs.length}, 1fr)` }}>
-        {tabs.map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setActive(tab.id)}
-            className={`bg-none border-none flex flex-col items-center gap-1 py-2.5 px-1 cursor-pointer relative transition-colors duration-200 select-none
-              font-[var(--mono)] text-[10px] tracking-[.3px]
-              ${active === tab.id ? 'text-[#00e87a]' : 'text-[#3d5875] hover:text-[#7a96b8]'}
-              after:content-[''] after:absolute after:bottom-0 after:left-[15%] after:right-[15%] after:h-0.5
-              after:bg-[linear-gradient(90deg,transparent,#00e87a,transparent)] after:rounded-t-[2px]
-              after:transition-transform after:duration-[280ms] after:[cubic-bezier(.34,1.56,.64,1)]
-              ${active === tab.id ? 'after:scale-x-100' : 'after:scale-x-0'}`}
-          >
-            <span className={`transition-transform duration-200 ${active === tab.id ? 'drop-shadow-[0_0_4px_rgba(0,232,122,.5)] -translate-y-px' : ''}`}>
-              {ICONS[tab.icon]}
-            </span>
-            {tab.label}
-          </button>
-        ))}
-      </nav>
-
-      {/* Panes */}
-      <div className="flex-1">
-        {tabs.map(tab => (
-          <div key={tab.id} className={active === tab.id ? 'block anim-fade-up' : 'hidden'}>
-            {tab.component}
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
