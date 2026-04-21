@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useAuth } from '@/lib/auth-context'
 import { useApi } from '@/lib/use-api'
 import { useToast } from '@/components/ui'
@@ -10,80 +10,179 @@ import GradesPane from '@/components/grade/GradesPane'
 import EmpresasPane from '../empresas/EmpresasPane'
 import RelatorioPane from '../relatorio/RelatorioPane'
 
-function CardapioHoje({ cardapio }: { cardapio: any }) {
-  if (!cardapio) return (
-    <Card>
-      <div className="text-center py-4">
-        <p className="font-[var(--mono)] text-xs text-[#3d5875]">Nenhum cardápio publicado para hoje.</p>
-      </div>
-    </Card>
-  )
-  return (
-    <Card highlight>
-      <div className="flex items-center justify-between mb-3">
-        <span className="font-[var(--mono)] text-[10px] tracking-[2px] text-[#00e87a] uppercase">Hoje · {cardapio.data}</span>
-        <Badge color="green">Publicado</Badge>
-      </div>
-      {cardapio.pratos?.length > 0 && (
-        <div className="mb-2">
-          <p className="font-[var(--mono)] text-[10px] tracking-[1px] text-[#3d5875] uppercase mb-1">Prato</p>
-          {cardapio.pratos.map((p: any) => (
-            <p key={p.nome} className="text-sm font-semibold text-[#ddeaf8] py-1 border-b border-[#1c2e48] last:border-none">{p.nome}</p>
-          ))}
-        </div>
-      )}
-      {cardapio.guarnicoes?.length > 0 && (
-        <div className="mb-2">
-          <p className="font-[var(--mono)] text-[10px] tracking-[1px] text-[#7a96b8] uppercase mb-1">Guarnições</p>
-          {cardapio.guarnicoes.map((g: any) => (
-            <p key={g.nome} className="text-sm text-[#7a96b8] py-0.5">{g.nome}</p>
-          ))}
-        </div>
-      )}
-      {cardapio.outros?.length > 0 && (
-        <div>
-          <p className="font-[var(--mono)] text-[10px] tracking-[1px] text-[#3d5875] uppercase mb-1">Outros</p>
-          {cardapio.outros.map((o: any) => (
-            <p key={o.nome} className="text-sm text-[#3d5875] py-0.5">{o.nome}</p>
-          ))}
-        </div>
-      )}
-    </Card>
-  )
-}
+/* ── Tarja de empresa com pedidos ────────────────────────── */
+function EmpresaTarja({ empresa, restId }: { empresa: any; restId: string }) {
+  const { call } = useApi()
+  const toast = useToast()
+  const [expanded, setExpanded] = useState(false)
+  const [pedidos, setPedidos]   = useState<any[]>([])
+  const [loading, setLoading]   = useState(false)
+  const [salvando, setSalvando] = useState<string | null>(null)
 
-function StatsRow({ empresas, pedidosHoje }: { empresas: any[]; pedidosHoje: number }) {
-  const stats = [
-    { label: 'Empresas',     value: empresas.length, color: 'text-[#00e87a]' },
-    { label: 'Pedidos hoje', value: pedidosHoje,      color: 'text-[#4da6ff]' },
-  ]
+  const hoje = new Date()
+  const dataStr = `${String(hoje.getDate()).padStart(2,'0')}/${String(hoje.getMonth()+1).padStart(2,'0')}/${hoje.getFullYear()}`
+
+  const total      = empresa.total ?? 0
+  const separados  = pedidos.filter(p => p.status === 'separado' || p.status === 'confirmado').length
+  const despachado = pedidos.every(p => p.status === 'despachado' || p.status === 'confirmado') && pedidos.length > 0
+
+  const statusBadge = despachado
+    ? { label: 'Despachado', color: 'green' as const }
+    : separados > 0
+      ? { label: `${separados}/${total} separados`, color: 'blue' as const }
+      : { label: `${total} em aberto`, color: 'gray' as const }
+
+  async function expandir() {
+    if (expanded) { setExpanded(false); return }
+    setLoading(true)
+    setExpanded(true)
+    const res = await call<any[]>(`/api/pedidos?empresaId=${empresa.id}&data=${dataStr}`)
+    if (res.success) setPedidos(res.data)
+    setLoading(false)
+  }
+
+  async function marcarStatus(pedidoId: string, status: string) {
+    setSalvando(pedidoId)
+    const res = await call(`/api/pedidos/${pedidoId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    })
+    if (res.success) {
+      setPedidos(ps => ps.map(p => p.id === pedidoId ? { ...p, status } : p))
+      toast('Status atualizado.')
+    } else {
+      toast(res.error ?? 'Erro ao atualizar.', 'error')
+    }
+    setSalvando(null)
+  }
+
+  async function despacharTudo() {
+    if (!confirm(`Marcar todos os pedidos de ${empresa.nome} como despachados?`)) return
+    setSalvando('all')
+    await Promise.all(pedidos.map(p => call(`/api/pedidos/${p.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status: empresa.formato === 'buffet' ? 'confirmado' : 'despachado' }),
+    })))
+    setPedidos(ps => ps.map(p => ({ ...p, status: empresa.formato === 'buffet' ? 'confirmado' : 'despachado' })))
+    toast('Todos despachados!')
+    setSalvando(null)
+  }
+
+  const isMarmita = empresa.formato !== 'buffet'
+
   return (
-    <div className="grid grid-cols-2 gap-2.5 mb-3">
-      {stats.map(s => (
-        <div key={s.label} className="bg-[#0d1525] border border-[#1c2e48] rounded-[11px] p-3 text-center">
-          <div className={`text-2xl font-black font-[var(--mono)] ${s.color}`}>{s.value}</div>
-          <div className="font-[var(--mono)] text-[10px] tracking-[1px] text-[#3d5875] uppercase mt-0.5">{s.label}</div>
+    <div className="mb-3">
+      <button
+        onClick={expandir}
+        className="w-full text-left"
+      >
+        <Card>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-bold text-sm text-[#ddeaf8]">{empresa.nome}</p>
+              <p className="font-[var(--mono)] text-[10px] text-[#3d5875] mt-0.5">
+                {isMarmita ? '🍱 Marmita' : '🍽️ Buffet'}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge color={statusBadge.color}>{statusBadge.label}</Badge>
+              <svg
+                className={`text-[#3d5875] transition-transform duration-200 ${expanded ? 'rotate-90' : ''}`}
+                width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polyline points="9 18 15 12 9 6" />
+              </svg>
+            </div>
+          </div>
+        </Card>
+      </button>
+
+      {expanded && (
+        <div className="ml-2 border-l-2 border-[#1c2e48] pl-3 mt-1">
+          {loading && <Spinner />}
+
+          {!loading && pedidos.length === 0 && (
+            <p className="font-[var(--mono)] text-xs text-[#3d5875] py-2 px-2">
+              Nenhum pedido hoje.
+            </p>
+          )}
+
+          {!loading && pedidos.map(p => (
+            <div key={p.id} className="bg-[#0d1525] border border-[#1c2e48] rounded-[8px] p-3 mb-2">
+              <div className="flex items-center justify-between mb-1">
+                <p className="font-semibold text-sm text-[#ddeaf8]">{p.colaboradorNome}</p>
+                <Badge color={
+                  p.status === 'despachado' || p.status === 'confirmado' ? 'green' :
+                  p.status === 'separado' ? 'blue' : 'gray'
+                }>
+                  {p.status === 'despachado' ? 'Despachado' :
+                   p.status === 'confirmado' ? 'Confirmado' :
+                   p.status === 'separado'   ? 'Separado'   :
+                   isMarmita ? 'Em aberto' : 'Reservado'}
+                </Badge>
+              </div>
+
+              {isMarmita && p.itens?.length > 0 && (
+                <p className="font-[var(--mono)] text-[10px] text-[#7a96b8] mb-2">
+                  {p.itens.join(', ')}
+                </p>
+              )}
+
+              {p.obs && (
+                <p className="font-[var(--mono)] text-[10px] text-[#3d5875] mb-2">
+                  Obs: {p.obs}
+                </p>
+              )}
+
+              {isMarmita && p.status === 'aberto' && (
+                <Btn size="sm" className="w-auto" loading={salvando === p.id}
+                  onClick={() => marcarStatus(p.id, 'separado')}>
+                  Marcar separado
+                </Btn>
+              )}
+            </div>
+          ))}
+
+          {!loading && pedidos.length > 0 && !despachado && (
+            <Btn
+              size="sm"
+              variant="primary"
+              className="w-full mt-1"
+              loading={salvando === 'all'}
+              onClick={despacharTudo}>
+              {isMarmita ? '🚀 Despachar todos' : '✅ Confirmar todos'}
+            </Btn>
+          )}
         </div>
-      ))}
+      )}
     </div>
   )
 }
 
-function HomePane({ restId }: { restId: string }) {
+/* ── Pedidos pane ────────────────────────────────────────── */
+function PedidosPane({ restId }: { restId: string }) {
   const { call } = useApi()
-  const [dados, setDados] = useState<any>(null)
-  const [pedidosHoje, setPedidosHoje] = useState(0)
-  const [loading, setLoading] = useState(true)
+  const [empresas, setEmpresas] = useState<any[]>([])
+  const [loading, setLoading]   = useState(true)
 
   useEffect(() => {
     if (!restId) return
     async function load() {
-      const [dadosRes, pedRes] = await Promise.all([
-        call<any>(`/api/dados-iniciais?restauranteId=${restId}`),
-        call<any[]>(`/api/pedidos?restauranteId=${restId}`),
+      const hoje = new Date()
+      const dataStr = `${String(hoje.getDate()).padStart(2,'0')}/${String(hoje.getMonth()+1).padStart(2,'0')}/${hoje.getFullYear()}`
+
+      const [empRes, pedRes] = await Promise.all([
+        call<any[]>(`/api/empresas?restauranteId=${restId}`),
+        call<any[]>(`/api/pedidos?restauranteId=${restId}&data=${dataStr}`),
       ])
-      if (dadosRes.success) setDados(dadosRes.data)
-      if (pedRes.success) setPedidosHoje(Array.isArray(pedRes.data) ? pedRes.data.length : 0)
+
+      if (empRes.success && pedRes.success) {
+        const pedidos = pedRes.data ?? []
+        const emps = (empRes.data ?? []).map((e: any) => ({
+          ...e,
+          total: pedidos.filter((p: any) => p.empresaNome === e.nome).length,
+        }))
+        setEmpresas(emps)
+      }
       setLoading(false)
     }
     load()
@@ -93,13 +192,24 @@ function HomePane({ restId }: { restId: string }) {
 
   return (
     <div className="px-4 pt-4 pb-24">
-      <StatsRow empresas={dados?.empresas ?? []} pedidosHoje={pedidosHoje} />
-      <SectionLabel>Cardápio de hoje</SectionLabel>
-      <CardapioHoje cardapio={dados?.cardapioHoje} />
+      <SectionLabel>Pedidos de hoje</SectionLabel>
+
+      {empresas.length === 0 && (
+        <Card>
+          <p className="text-center font-[var(--mono)] text-xs text-[#3d5875] py-4">
+            Nenhuma empresa cadastrada.
+          </p>
+        </Card>
+      )}
+
+      {empresas.map(e => (
+        <EmpresaTarja key={e.id} empresa={e} restId={restId} />
+      ))}
     </div>
   )
 }
 
+/* ── Main ────────────────────────────────────────────────── */
 export default function DashboardPage() {
   const { meta, loading } = useAuth()
   const restId = meta?.restaurante_id ?? ''
@@ -111,7 +221,7 @@ export default function DashboardPage() {
   )
 
   const tabs = [
-    { id: 'home',      label: 'Início',    icon: 'home'      as const, component: <HomePane restId={restId} /> },
+    { id: 'pedidos',   label: 'Pedidos',   icon: 'pedido'    as const, component: <PedidosPane restId={restId} /> },
     { id: 'grades',    label: 'Grades',    icon: 'grade'     as const, component: <GradesPane restId={restId} /> },
     { id: 'empresas',  label: 'Empresas',  icon: 'empresas'  as const, component: <EmpresasPane restId={restId} /> },
     { id: 'relatorio', label: 'Relatório', icon: 'relatorio' as const, component: <RelatorioPane restId={restId} /> },
@@ -121,5 +231,5 @@ export default function DashboardPage() {
     ? (meta.perfil === 'admin' ? 'admin' : 'equipe')
     : 'restaurante'
 
- return <AppShell tabs={tabs} nome={meta?.nome ?? 'Menuv'} badge={badge} role="Restaurante" />
-} 
+  return <AppShell tabs={tabs} nome={meta?.nome ?? 'Menuv'} badge={badge} role="Restaurante" />
+}
