@@ -121,5 +121,4 @@ export default function DashboardPage() {
     ? (meta.perfil === 'admin' ? 'admin' : 'equipe')
     : 'restaurante'
 
-  return <AppShell tabs={tabs} nome="Menuv" badge={badge} role="Restaurante" />
-}
+  return <AppShell tabs={tabs} nome={meta?.nome ?? 'Menuv'} badge={badge} role="Restaurante" />
