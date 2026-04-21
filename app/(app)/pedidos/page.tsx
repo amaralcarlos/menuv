@@ -243,5 +243,4 @@ export default function PedidosPage() {
     ...(isGestor ? [{ id: 'relatorio', label: 'Relatório', icon: 'relatorio' as const, component: <div /> }] : []),
   ]
 
-  return <AppShell tabs={tabs} nome={nome} badge="colaborador" role="Colaborador" />
-}
+ return <AppShell tabs={tabs} nome={meta?.nome ?? 'Menuv'} badge="colaborador" role="Colaborador" />
