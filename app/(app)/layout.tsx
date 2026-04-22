@@ -1,4 +1,4 @@
-import { AuthProvider } from '@/lib/auth-context'
+ole import { AuthProvider } from '@/lib/auth-context'
 import { ToastContainer } from '@/components/ui'
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
