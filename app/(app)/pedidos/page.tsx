@@ -12,6 +12,12 @@ const MESES_PT = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','N
 
 type ItemSel = { nome: string; ajuste: 'normal' | 'extra' | 'reduzido' }
 
+function isPassado(dataStr: string) {
+  const parts = dataStr.split('/')
+  const date  = new Date(+parts[2], +parts[1] - 1, +parts[0])
+  return date < new Date(new Date().setHours(0,0,0,0))
+}
+
 /* ── Day selector ────────────────────────────────────────── */
 function DaySelector({ dias, selected, onSelect }: {
   dias: any[]; selected: string; onSelect: (d: string) => void
@@ -26,15 +32,20 @@ function DaySelector({ dias, selected, onSelect }: {
         const n = new Date()
         const hojeStr = `${String(n.getDate()).padStart(2,'0')}/${String(n.getMonth()+1).padStart(2,'0')}/${n.getFullYear()}`
         const isToday = d.data === hojeStr
+        const isPast  = isPassado(d.data)
 
         return (
-          <button key={d.data} onClick={() => onSelect(d.data)}
-            className={`relative py-2 px-1 rounded-[11px] text-center cursor-pointer transition-all border
-              ${selected === d.data
-                ? 'border-[#00e87a] bg-[rgba(0,232,122,.06)]'
-                : isToday
-                  ? 'border-[rgba(0,232,122,.2)] bg-[rgba(0,232,122,.03)]'
-                  : 'border-[#1c2e48] bg-[#0d1525] hover:border-[rgba(0,232,122,.3)]'}
+          <button key={d.data}
+            onClick={() => !isPast && onSelect(d.data)}
+            disabled={isPast}
+            className={`relative py-2 px-1 rounded-[11px] text-center transition-all border
+              ${isPast
+                ? 'opacity-40 cursor-not-allowed border-[#1c2e48] bg-[#0d1525]'
+                : selected === d.data
+                  ? 'cursor-pointer border-[#00e87a] bg-[rgba(0,232,122,.06)]'
+                  : isToday
+                    ? 'cursor-pointer border-[rgba(0,232,122,.2)] bg-[rgba(0,232,122,.03)]'
+                    : 'cursor-pointer border-[#1c2e48] bg-[#0d1525] hover:border-[rgba(0,232,122,.3)]'}
               ${hasPedido ? 'after:content-["✓"] after:absolute after:top-[-5px] after:right-[-5px] after:bg-[#00e87a] after:text-black after:text-[9px] after:font-bold after:w-3.5 after:h-3.5 after:rounded-full after:flex after:items-center after:justify-center' : ''}`}>
             <div className={`font-[var(--mono)] text-[10px] tracking-[.3px] ${selected === d.data ? 'text-[rgba(0,232,122,.7)]' : 'text-[#3d5875]'}`}>{dow}</div>
             <div className={`text-sm font-semibold mt-0.5 ${selected === d.data ? 'text-[#00e87a]' : 'text-[#ddeaf8]'}`}>{String(date.getDate()).padStart(2,'0')}</div>
@@ -57,8 +68,7 @@ function BuffetForm({ dia, colabId, empId, onSaved }: {
   const [empConfig, setEmpConfig] = useState<any>(null)
 
   useEffect(() => {
-    call<any[]>(`/api/empresas?restauranteId=${''}`).then(() => {})
-    call<any>(`/api/empresas?empresaId=${empId}`).then(r => {
+    call<any[]>(`/api/empresas?empresaId=${empId}`).then(r => {
       if (r.success && Array.isArray(r.data)) setEmpConfig(r.data[0])
       else if (r.success) setEmpConfig(r.data)
     })
@@ -69,6 +79,7 @@ function BuffetForm({ dia, colabId, empId, onSaved }: {
   const dow     = DIAS_PT[date.getDay()]
   const hoje    = new Date()
   const isToday = date.toDateString() === hoje.toDateString()
+  const isPast  = isPassado(dia.data)
 
   let bloqueado = false
   let motivoBloqueio = ''
@@ -124,13 +135,18 @@ function BuffetForm({ dia, colabId, empId, onSaved }: {
         }
       </div>
 
-      {bloqueado && (
+      {isPast && (
+        <div className="bg-[rgba(122,150,184,.07)] border border-[rgba(122,150,184,.2)] rounded-[11px] px-3 py-2 mb-3">
+          <p className="font-[var(--mono)] text-xs text-[#7a96b8]">📅 Consulta apenas — dia anterior.</p>
+        </div>
+      )}
+
+      {!isPast && bloqueado && (
         <div className="bg-[rgba(255,179,64,.07)] border border-[rgba(255,179,64,.2)] rounded-[11px] px-3 py-2 mb-3">
           <p className="font-[var(--mono)] text-xs text-[#ffb340]">⏰ {motivoBloqueio}</p>
         </div>
       )}
 
-      {/* Cardápio do dia — só visualização */}
       {allItems.length > 0 && (
         <div className="mb-4">
           <p className="font-[var(--mono)] text-[10px] text-[#3d5875] uppercase tracking-[1px] mb-2">
@@ -152,17 +168,12 @@ function BuffetForm({ dia, colabId, empId, onSaved }: {
         </p>
       )}
 
-      {/* Botões de acção */}
-      {!bloqueado && allItems.length > 0 && (
+      {!isPast && !bloqueado && allItems.length > 0 && (
         <div className="flex flex-col gap-2">
           {!existingPedido ? (
-            <Btn onClick={reservar} loading={saving}>
-              ✅ Confirmar reserva
-            </Btn>
+            <Btn onClick={reservar} loading={saving}>✅ Confirmar reserva</Btn>
           ) : (
-            <Btn variant="danger" onClick={cancelar} loading={canceling}>
-              ✕ Cancelar reserva
-            </Btn>
+            <Btn variant="danger" onClick={cancelar} loading={canceling}>✕ Cancelar reserva</Btn>
           )}
         </div>
       )}
@@ -214,6 +225,7 @@ function OrderForm({ dia, colabId, empId, restId, onSaved }: {
   const dow     = DIAS_PT[date.getDay()]
   const hoje    = new Date()
   const isToday = date.toDateString() === hoje.toDateString()
+  const isPast  = isPassado(dia.data)
 
   let bloqueado = false
   let motivoBloqueio = ''
@@ -249,11 +261,9 @@ function OrderForm({ dia, colabId, empId, restId, onSaved }: {
     if (selected.length === 0) { toast('Selecione ao menos um item.', 'error'); return }
     if (!colabId) { toast('Erro: faça logout e login novamente.', 'error'); return }
     setSaving(true)
-
     const itens = selected.map(s =>
       s.ajuste === 'normal' ? s.nome : `${s.nome} [${s.ajuste}]`
     )
-
     const res = await call('/api/pedidos', {
       method: 'POST',
       body: JSON.stringify({
@@ -284,7 +294,13 @@ function OrderForm({ dia, colabId, empId, restId, onSaved }: {
         {existingPedido && <Badge color="green">Pedido feito</Badge>}
       </div>
 
-      {bloqueado && (
+      {isPast && (
+        <div className="bg-[rgba(122,150,184,.07)] border border-[rgba(122,150,184,.2)] rounded-[11px] px-3 py-2 mb-3">
+          <p className="font-[var(--mono)] text-xs text-[#7a96b8]">📅 Consulta apenas — dia anterior.</p>
+        </div>
+      )}
+
+      {!isPast && bloqueado && (
         <div className="bg-[rgba(255,179,64,.07)] border border-[rgba(255,179,64,.2)] rounded-[11px] px-3 py-2 mb-3">
           <p className="font-[var(--mono)] text-xs text-[#ffb340]">⏰ {motivoBloqueio}</p>
         </div>
@@ -307,8 +323,8 @@ function OrderForm({ dia, colabId, empId, restId, onSaved }: {
                   ? 'border-[rgba(0,232,122,.4)] bg-[rgba(0,232,122,.06)]'
                   : 'border-[#1c2e48] bg-[#0d1525]'}`}>
               <button
-                onClick={() => !bloqueado && toggleItem(item.nome)}
-                disabled={bloqueado}
+                onClick={() => !bloqueado && !isPast && toggleItem(item.nome)}
+                disabled={bloqueado || isPast}
                 className="w-full flex items-center gap-2.5 p-3 text-left cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
                 <div className={`w-4 h-4 rounded-[4px] border flex items-center justify-center flex-shrink-0 transition-all
                   ${sel ? 'bg-[#00e87a] border-[#00e87a]' : 'border-[#253d5e]'}`}>
@@ -324,7 +340,7 @@ function OrderForm({ dia, colabId, empId, restId, onSaved }: {
                 </span>
               </button>
 
-              {sel && !bloqueado && (
+              {sel && !bloqueado && !isPast && (
                 <div className="flex gap-2 px-3 pb-3">
                   {(['extra', 'reduzido'] as const).map(a => (
                     <button
@@ -353,7 +369,7 @@ function OrderForm({ dia, colabId, empId, restId, onSaved }: {
         })}
       </div>
 
-      {!bloqueado && allItems.length > 0 && (
+      {!isPast && !bloqueado && allItems.length > 0 && (
         <Btn onClick={salvar} loading={saving}>
           {existingPedido ? 'Atualizar pedido' : 'Confirmar pedido'}
         </Btn>
@@ -377,7 +393,6 @@ function PedidosContent() {
   async function load() {
     if (!meta?.restaurante_id) return
 
-    // Carrega config da empresa para saber o formato
     const empRes = await call<any[]>(`/api/empresas?restauranteId=${meta.restaurante_id}`)
     if (empRes.success) {
       const emp = empRes.data.find((e: any) => e.id === empId)
