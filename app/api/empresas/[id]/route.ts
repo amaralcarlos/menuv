@@ -5,16 +5,14 @@ function parseJwt(token: string) {
   try { return JSON.parse(atob(token.split('.')[1])) } catch { return null }
 }
 
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
-  const id = params?.id
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
   if (!id) return E.badRequest()
 
   const sb = await supabaseServer()
   const { data: { session } } = await sb.auth.getSession()
   if (!session) return E.unauthorized()
-
-  const jwt  = parseJwt(session.access_token)
-  const meta = jwt?.app_metadata as any
+  const meta = parseJwt(session.access_token)?.app_metadata as any
 
   const body = await req.json().catch(() => null)
   if (!body) return E.badRequest()
@@ -41,16 +39,14 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   return ok({ id })
 }
 
-export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
-  const id = params?.id
+export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
   if (!id) return E.badRequest()
 
   const sb = await supabaseServer()
   const { data: { session } } = await sb.auth.getSession()
   if (!session) return E.unauthorized()
-
-  const jwt  = parseJwt(session.access_token)
-  const meta = jwt?.app_metadata as any
+  const meta = parseJwt(session.access_token)?.app_metadata as any
 
   if (meta?.app_role !== 'admin') {
     const { data: emp } = await sb.from('empresas').select('restaurante_id').eq('id', id).single() as any
