@@ -5,12 +5,6 @@ function parseJwt(token: string) {
   try { return JSON.parse(atob(token.split('.')[1])) } catch { return null }
 }
 
-async function getSession() {
-  const sb = await supabaseServer()
-  const { data: { session } } = await sb.auth.getSession()
-  return session
-}
-
 async function getOwner(pedidoId: string) {
   const sb = await supabaseServer()
   const { data } = await sb.from('pedidos')
@@ -19,11 +13,12 @@ async function getOwner(pedidoId: string) {
   return data as any
 }
 
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
-  const id = params?.id
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
   if (!id) return E.badRequest()
 
-  const session = await getSession()
+  const sb = await supabaseServer()
+  const { data: { session } } = await sb.auth.getSession()
   if (!session) return E.unauthorized()
   const meta = parseJwt(session.access_token)?.app_metadata as any
 
@@ -41,7 +36,6 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     if ((owner.empresas as any)?.restaurante_id !== meta?.restaurante_id) return E.forbidden()
   }
 
-  const sb = await supabaseServer()
   await sb.from('pedidos').update({ obs }).eq('id', id)
   await sb.from('pedido_itens').delete().eq('pedido_id', id)
   if (itens.length > 0) {
@@ -54,15 +48,15 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   return ok({})
 }
 
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
-  const id = params?.id
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
   if (!id) return E.badRequest()
 
-  const session = await getSession()
+  const sb = await supabaseServer()
+  const { data: { session } } = await sb.auth.getSession()
   if (!session) return E.unauthorized()
   const meta = parseJwt(session.access_token)?.app_metadata as any
 
-  // Só restaurante e admin podem actualizar status
   if (!['restaurante', 'rest_usuario', 'admin'].includes(meta?.app_role)) return E.forbidden()
 
   const body = await req.json().catch(() => null)
@@ -79,7 +73,6 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     if ((owner.empresas as any)?.restaurante_id !== meta?.restaurante_id) return E.forbidden()
   }
 
-  const sb = await supabaseServer()
   const { error } = await sb.from('pedidos').update({ status }).eq('id', id)
   if (error) return E.internal(error.message)
 
@@ -87,11 +80,12 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   return ok({})
 }
 
-export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
-  const id = params?.id
+export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
   if (!id) return E.badRequest()
 
-  const session = await getSession()
+  const sb = await supabaseServer()
+  const { data: { session } } = await sb.auth.getSession()
   if (!session) return E.unauthorized()
   const meta = parseJwt(session.access_token)?.app_metadata as any
 
@@ -103,7 +97,6 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
     if ((owner.empresas as any)?.restaurante_id !== meta?.restaurante_id) return E.forbidden()
   }
 
-  const sb = await supabaseServer()
   const { error } = await sb.from('pedidos').delete().eq('id', id)
   if (error) return E.internal(error.message)
 
