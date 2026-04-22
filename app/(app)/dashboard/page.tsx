@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState } from 'react'
 import { useAuth } from '@/lib/auth-context'
 import { useApi } from '@/lib/use-api'
 import { useToast } from '@/components/ui'
@@ -10,27 +10,63 @@ import GradesPane from '@/components/grade/GradesPane'
 import EmpresasPane from '../empresas/EmpresasPane'
 import RelatorioPane from '../relatorio/RelatorioPane'
 
-/* ── Tarja de empresa com pedidos ────────────────────────── */
-function EmpresaTarja({ empresa, restId }: { empresa: any; restId: string }) {
-  const { call } = useApi()
-  const toast = useToast()
-  const [expanded, setExpanded] = useState(false)
-  const [pedidos, setPedidos]   = useState<any[]>([])
-  const [loading, setLoading]   = useState(false)
-  const [salvando, setSalvando] = useState<string | null>(null)
+const DIAS_PT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
 
-  const hoje = new Date()
-  const dataStr = `${String(hoje.getDate()).padStart(2,'0')}/${String(hoje.getMonth()+1).padStart(2,'0')}/${hoje.getFullYear()}`
+/* ── Day selector do restaurante ─────────────────────────── */
+function DaySelectorRest({ dias, selected, onSelect }: {
+  dias: string[]; selected: string; onSelect: (d: string) => void
+}) {
+  return (
+    <div className="grid grid-cols-5 gap-1.5 mb-4">
+      {dias.map(d => {
+        const parts = d.split('/')
+        const date  = new Date(+parts[2], +parts[1] - 1, +parts[0])
+        const dow   = DIAS_PT[date.getDay()]
+        const n     = new Date()
+        const hojeStr = `${String(n.getDate()).padStart(2,'0')}/${String(n.getMonth()+1).padStart(2,'0')}/${n.getFullYear()}`
+        const isToday = d === hojeStr
+
+        return (
+          <button key={d} onClick={() => onSelect(d)}
+            className={`py-2 px-1 rounded-[11px] text-center cursor-pointer transition-all border
+              ${selected === d
+                ? 'border-[#00e87a] bg-[rgba(0,232,122,.06)]'
+                : isToday
+                  ? 'border-[rgba(0,232,122,.2)] bg-[rgba(0,232,122,.03)]'
+                  : 'border-[#1c2e48] bg-[#0d1525] hover:border-[rgba(0,232,122,.3)]'}`}>
+            <div className={`font-[var(--mono)] text-[10px] tracking-[.3px] ${selected === d ? 'text-[rgba(0,232,122,.7)]' : 'text-[#3d5875]'}`}>{dow}</div>
+            <div className={`text-sm font-semibold mt-0.5 ${selected === d ? 'text-[#00e87a]' : 'text-[#ddeaf8]'}`}>{String(date.getDate()).padStart(2,'0')}</div>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+/* ── Tarja de empresa com pedidos ────────────────────────── */
+function EmpresaTarja({ empresa, dataStr }: { empresa: any; dataStr: string }) {
+  const { call } = useApi()
+  const toast    = useToast()
+  const [expanded, setExpanded] = useState(false)
+  const [pedidos,  setPedidos]  = useState<any[]>([])
+  const [loading,  setLoading]  = useState(false)
+  const [salvando, setSalvando] = useState<string | null>(null)
 
   const total      = empresa.total ?? 0
   const separados  = pedidos.filter(p => p.status === 'separado' || p.status === 'confirmado').length
   const despachado = pedidos.every(p => p.status === 'despachado' || p.status === 'confirmado') && pedidos.length > 0
 
   const statusBadge = despachado
-    ? { label: 'Despachado', color: 'green' as const }
+    ? { label: 'Despachado',           color: 'green' as const }
     : separados > 0
       ? { label: `${separados}/${total} separados`, color: 'blue' as const }
       : { label: `${total} em aberto`, color: 'gray' as const }
+
+  // Fecha e limpa quando a data muda
+  useEffect(() => {
+    setExpanded(false)
+    setPedidos([])
+  }, [dataStr])
 
   async function expandir() {
     if (expanded) { setExpanded(false); return }
@@ -50,20 +86,19 @@ function EmpresaTarja({ empresa, restId }: { empresa: any; restId: string }) {
     if (res.success) {
       setPedidos(ps => ps.map(p => p.id === pedidoId ? { ...p, status } : p))
       toast('Status atualizado.')
-    } else {
-      toast(res.error ?? 'Erro ao atualizar.', 'error')
-    }
+    } else toast(res.error ?? 'Erro ao atualizar.', 'error')
     setSalvando(null)
   }
 
   async function despacharTudo() {
     if (!confirm(`Marcar todos os pedidos de ${empresa.nome} como despachados?`)) return
     setSalvando('all')
+    const novoStatus = empresa.formato === 'buffet' ? 'confirmado' : 'despachado'
     await Promise.all(pedidos.map(p => call(`/api/pedidos/${p.id}`, {
       method: 'PATCH',
-      body: JSON.stringify({ status: empresa.formato === 'buffet' ? 'confirmado' : 'despachado' }),
+      body: JSON.stringify({ status: novoStatus }),
     })))
-    setPedidos(ps => ps.map(p => ({ ...p, status: empresa.formato === 'buffet' ? 'confirmado' : 'despachado' })))
+    setPedidos(ps => ps.map(p => ({ ...p, status: novoStatus })))
     toast('Todos despachados!')
     setSalvando(null)
   }
@@ -72,10 +107,7 @@ function EmpresaTarja({ empresa, restId }: { empresa: any; restId: string }) {
 
   return (
     <div className="mb-3">
-      <button
-        onClick={expandir}
-        className="w-full text-left"
-      >
+      <button onClick={expandir} className="w-full text-left">
         <Card>
           <div className="flex items-center justify-between">
             <div>
@@ -86,8 +118,7 @@ function EmpresaTarja({ empresa, restId }: { empresa: any; restId: string }) {
             </div>
             <div className="flex items-center gap-2">
               <Badge color={statusBadge.color}>{statusBadge.label}</Badge>
-              <svg
-                className={`text-[#3d5875] transition-transform duration-200 ${expanded ? 'rotate-90' : ''}`}
+              <svg className={`text-[#3d5875] transition-transform duration-200 ${expanded ? 'rotate-90' : ''}`}
                 width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <polyline points="9 18 15 12 9 6" />
               </svg>
@@ -102,7 +133,7 @@ function EmpresaTarja({ empresa, restId }: { empresa: any; restId: string }) {
 
           {!loading && pedidos.length === 0 && (
             <p className="font-[var(--mono)] text-xs text-[#3d5875] py-2 px-2">
-              Nenhum pedido hoje.
+              Nenhum pedido neste dia.
             </p>
           )}
 
@@ -143,12 +174,8 @@ function EmpresaTarja({ empresa, restId }: { empresa: any; restId: string }) {
           ))}
 
           {!loading && pedidos.length > 0 && !despachado && (
-            <Btn
-              size="sm"
-              variant="primary"
-              className="w-full mt-1"
-              loading={salvando === 'all'}
-              onClick={despacharTudo}>
+            <Btn size="sm" variant="primary" className="w-full mt-1"
+              loading={salvando === 'all'} onClick={despacharTudo}>
               {isMarmita ? '🚀 Despachar todos' : '✅ Confirmar todos'}
             </Btn>
           )}
@@ -160,23 +187,40 @@ function EmpresaTarja({ empresa, restId }: { empresa: any; restId: string }) {
 
 /* ── Pedidos pane ────────────────────────────────────────── */
 function PedidosPane({ restId }: { restId: string }) {
-  const { call } = useApi()
-  const [empresas, setEmpresas] = useState<any[]>([])
-  const [loading, setLoading]   = useState(true)
+  const { call }  = useApi()
+  const [empresas,     setEmpresas]     = useState<any[]>([])
+  const [diasSemana,   setDiasSemana]   = useState<string[]>([])
+  const [selectedDate, setSelectedDate] = useState('')
+  const [loading,      setLoading]      = useState(true)
 
   useEffect(() => {
     if (!restId) return
     async function load() {
-      const hoje = new Date()
-      const dataStr = `${String(hoje.getDate()).padStart(2,'0')}/${String(hoje.getMonth()+1).padStart(2,'0')}/${hoje.getFullYear()}`
+      const n       = new Date()
+      const hojeStr = `${String(n.getDate()).padStart(2,'0')}/${String(n.getMonth()+1).padStart(2,'0')}/${n.getFullYear()}`
 
+      // Carrega o cardápio para obter os dias da semana
+      const cardRes = await call<any[]>(`/api/cardapio/semana?restauranteId=${restId}`)
+      let dias: string[] = []
+      if (cardRes.success && cardRes.data.length > 0) {
+        dias = cardRes.data.map((d: any) => d.data)
+      } else {
+        // Se não houver cardápio, mostra só hoje
+        dias = [hojeStr]
+      }
+      setDiasSemana(dias)
+
+      const hoje = dias.includes(hojeStr) ? hojeStr : dias[0]
+      setSelectedDate(hoje)
+
+      // Carrega empresas e pedidos de hoje
       const [empRes, pedRes] = await Promise.all([
         call<any[]>(`/api/empresas?restauranteId=${restId}`),
-        call<any[]>(`/api/pedidos?restauranteId=${restId}&data=${dataStr}`),
+        call<any[]>(`/api/pedidos?restauranteId=${restId}&data=${hoje}`),
       ])
 
-      if (empRes.success && pedRes.success) {
-        const pedidos = pedRes.data ?? []
+      if (empRes.success) {
+        const pedidos = pedRes.success ? (pedRes.data ?? []) : []
         const emps = (empRes.data ?? []).map((e: any) => ({
           ...e,
           total: pedidos.filter((p: any) => p.empresaNome === e.nome).length,
@@ -188,11 +232,39 @@ function PedidosPane({ restId }: { restId: string }) {
     load()
   }, [restId])
 
+  async function mudarDia(data: string) {
+    setSelectedDate(data)
+    const [empRes, pedRes] = await Promise.all([
+      call<any[]>(`/api/empresas?restauranteId=${restId}`),
+      call<any[]>(`/api/pedidos?restauranteId=${restId}&data=${data}`),
+    ])
+    if (empRes.success) {
+      const pedidos = pedRes.success ? (pedRes.data ?? []) : []
+      const emps = (empRes.data ?? []).map((e: any) => ({
+        ...e,
+        total: pedidos.filter((p: any) => p.empresaNome === e.nome).length,
+      }))
+      setEmpresas(emps)
+    }
+  }
+
   if (loading) return <Spinner />
 
   return (
     <div className="px-4 pt-4 pb-24">
-      <SectionLabel>Pedidos de hoje</SectionLabel>
+      {diasSemana.length > 1 && (
+        <>
+          <SectionLabel>Selecione o dia</SectionLabel>
+          <DaySelectorRest dias={diasSemana} selected={selectedDate} onSelect={mudarDia} />
+        </>
+      )}
+
+      <SectionLabel>
+        Pedidos de {selectedDate === (() => {
+          const n = new Date()
+          return `${String(n.getDate()).padStart(2,'0')}/${String(n.getMonth()+1).padStart(2,'0')}/${n.getFullYear()}`
+        })() ? 'hoje' : selectedDate}
+      </SectionLabel>
 
       {empresas.length === 0 && (
         <Card>
@@ -203,7 +275,7 @@ function PedidosPane({ restId }: { restId: string }) {
       )}
 
       {empresas.map(e => (
-        <EmpresaTarja key={e.id} empresa={e} restId={restId} />
+        <EmpresaTarja key={e.id} empresa={e} dataStr={selectedDate} />
       ))}
     </div>
   )
@@ -221,10 +293,10 @@ export default function DashboardPage() {
   )
 
   const tabs = [
-    { id: 'pedidos',   label: 'Pedidos',   icon: 'pedido'    as const, component: <PedidosPane restId={restId} /> },
-    { id: 'cardapio', label: 'Cardápio Semanal', icon: 'grade' as const, component: <GradesPane restId={restId} /> },
-    { id: 'empresas',  label: 'Empresas',  icon: 'empresas'  as const, component: <EmpresasPane restId={restId} /> },
-    { id: 'relatorio', label: 'Relatório', icon: 'relatorio' as const, component: <RelatorioPane restId={restId} /> },
+    { id: 'pedidos',   label: 'Pedidos',          icon: 'pedido'    as const, component: <PedidosPane restId={restId} /> },
+    { id: 'cardapio',  label: 'Cardápio Semanal',  icon: 'grade'     as const, component: <GradesPane restId={restId} /> },
+    { id: 'empresas',  label: 'Empresas',          icon: 'empresas'  as const, component: <EmpresasPane restId={restId} /> },
+    { id: 'relatorio', label: 'Relatório',         icon: 'relatorio' as const, component: <RelatorioPane restId={restId} /> },
   ]
 
   const badge = meta?.app_role === 'rest_usuario'
