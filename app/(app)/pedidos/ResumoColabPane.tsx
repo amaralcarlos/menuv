@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { useAuth } from '@/lib/auth-context'
 import { useApi } from '@/lib/use-api'
 import { Spinner } from '@/components/ui'
 
@@ -24,20 +25,14 @@ function ultimos12Meses() {
   return meses
 }
 
-function fmtData(dataIso: string) {
-  const parts = dataIso.split('-')
-  if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`
-  return dataIso
-}
-
 export default function ResumoColabPane({ empresaId }: { empresaId: string }) {
+  const { meta } = useAuth()
   const { call } = useApi()
-  const [mesAno,   setMesAno]   = useState(mesAtual())
-  const [detalhe,  setDetalhe]  = useState<any>(null)
-  const [loading,  setLoading]  = useState(false)
-  const [pct,      setPct]      = useState(0)
+  const [mesAno,  setMesAno]  = useState(mesAtual())
+  const [detalhe, setDetalhe] = useState<any>(null)
+  const [loading, setLoading] = useState(false)
+  const [pct,     setPct]     = useState(0)
 
-  // Lê o percentual configurado pelo gestor
   useEffect(() => {
     const saved = localStorage.getItem(`alm_pct_${empresaId}`)
     if (saved) setPct(parseInt(saved) || 0)
@@ -52,15 +47,13 @@ export default function ResumoColabPane({ empresaId }: { empresaId: string }) {
 
   useEffect(() => { buscar(mesAno) }, [empresaId])
 
+  const meuNome    = meta?.nome ?? ''
   const preco      = Number(detalhe?.preco ?? 0)
-  const total      = detalhe?.totalPedidos ?? 0
-  const valorTotal = total * preco
+  const meuTotal   = detalhe?.colaboradores?.find((c: any) => c.nome === meuNome)?.total ?? 0
+  const valorTotal = meuTotal * preco
   const valorColab = valorTotal * (pct / 100)
   const valorEmp   = valorTotal * (1 - pct / 100)
   const temRateio  = pct > 0 && pct < 100
-
-  // Filtra só os pedidos do colaborador logado
-  const meusColabs = detalhe?.colaboradores ?? []
 
   return (
     <div className="px-4 pt-4 pb-24">
@@ -85,7 +78,7 @@ export default function ResumoColabPane({ empresaId }: { empresaId: string }) {
           {/* Cards */}
           <div className="grid grid-cols-2 gap-2.5 mb-4">
             <div className="bg-[#0d1525] border border-[#1c2e48] rounded-[11px] p-3 text-center">
-              <div className="text-2xl font-black font-[var(--mono)] text-[#4da6ff]">{total}</div>
+              <div className="text-2xl font-black font-[var(--mono)] text-[#4da6ff]">{meuTotal}</div>
               <div className="font-[var(--mono)] text-[9px] text-[#3d5875] uppercase mt-0.5">🍽️ Refeições</div>
               <div className="font-[var(--mono)] text-[9px] text-[#3d5875] mt-0.5">{nomeMes(mesAno)}</div>
             </div>
@@ -109,8 +102,8 @@ export default function ResumoColabPane({ empresaId }: { empresaId: string }) {
             )}
           </div>
 
-          {/* Banner ou bloco de subsídio */}
-          {pct === 0 && (
+          {/* Banner 100% empresa */}
+          {pct === 0 && meuTotal > 0 && (
             <div className="bg-[rgba(0,232,122,.06)] border border-[rgba(0,232,122,.15)] rounded-[11px] px-4 py-3 mb-4 text-center">
               <p className="font-[var(--mono)] text-xs text-[#00e87a]">
                 🎉 Sua empresa cobre 100% das refeições!
@@ -118,7 +111,8 @@ export default function ResumoColabPane({ empresaId }: { empresaId: string }) {
             </div>
           )}
 
-          {temRateio && (
+          {/* Bloco subsídio */}
+          {temRateio && meuTotal > 0 && (
             <div className="bg-[#0d1525] border border-[#1c2e48] rounded-[11px] p-3 mb-4">
               <div className="flex items-center justify-between mb-2">
                 <span className="font-[var(--mono)] text-xs text-[#3d5875]">🏢 Empresa subsidia</span>
@@ -127,10 +121,8 @@ export default function ResumoColabPane({ empresaId }: { empresaId: string }) {
                 </span>
               </div>
               <div className="h-1.5 bg-[#1c2e48] rounded-full overflow-hidden mb-2">
-                <div
-                  className="h-full rounded-full bg-[linear-gradient(90deg,#00e87a,#00c4a0)]"
-                  style={{ width: `${100 - pct}%` }}
-                />
+                <div className="h-full rounded-full bg-[linear-gradient(90deg,#00e87a,#00c4a0)]"
+                  style={{ width: `${100 - pct}%` }} />
               </div>
               <div className="flex items-center justify-between">
                 <span className="font-[var(--mono)] text-xs text-[#7a96b8]">
@@ -143,65 +135,52 @@ export default function ResumoColabPane({ empresaId }: { empresaId: string }) {
             </div>
           )}
 
-          {pct === 100 && (
+          {/* 100% colaborador */}
+          {pct === 100 && meuTotal > 0 && (
             <div className="bg-[rgba(77,166,255,.06)] border border-[rgba(77,166,255,.15)] rounded-[11px] px-4 py-3 mb-4 text-center">
               <p className="font-[var(--mono)] text-xs text-[#4da6ff]">
-                💳 Você paga 100% das refeições
+                💳 Você paga 100% das refeições — {valorTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
               </p>
             </div>
           )}
 
-          {/* Lista de pedidos */}
+          {/* Lista colaboradores da empresa */}
           <p className="font-[var(--mono)] text-[10px] text-[#3d5875] uppercase tracking-[1px] mb-2">
-            Meus pedidos
+            Meu resumo do mês
           </p>
 
-          {total === 0 && (
+          {meuTotal === 0 ? (
             <div className="bg-[#0d1525] border border-[#1c2e48] rounded-[11px] p-4 text-center">
-              <p className="font-[var(--mono)] text-xs text-[#3d5875]">Nenhum pedido neste mês.</p>
+              <p className="font-[var(--mono)] text-xs text-[#3d5875]">Nenhum pedido em {nomeMes(mesAno)}.</p>
+            </div>
+          ) : (
+            <div className="bg-[#0d1525] border border-[#1c2e48] rounded-[11px] p-3">
+              <div className="flex justify-between items-center py-1.5 border-b border-[#1c2e48]">
+                <span className="font-[var(--mono)] text-xs text-[#7a96b8]">Total de refeições</span>
+                <span className="font-[var(--mono)] text-xs font-bold text-[#00e87a]">{meuTotal} ref.</span>
+              </div>
+              <div className="flex justify-between items-center py-1.5 border-b border-[#1c2e48]">
+                <span className="font-[var(--mono)] text-xs text-[#7a96b8]">Valor total</span>
+                <span className="font-[var(--mono)] text-xs text-[#ddeaf8]">
+                  {valorTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-1.5 border-b border-[#1c2e48]">
+                <span className="font-[var(--mono)] text-xs text-[#7a96b8]">Empresa subsidia</span>
+                <span className="font-[var(--mono)] text-xs text-[#00e87a]">
+                  {valorEmp.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} ({100-pct}%)
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-1.5">
+                <span className="font-[var(--mono)] text-xs text-[#7a96b8]">Minha parte</span>
+                <span className={`font-[var(--mono)] text-xs font-bold ${pct > 0 ? 'text-[#4da6ff]' : 'text-[#00e87a]'}`}>
+                  {pct === 0 ? 'R$ 0,00 🎉' : valorColab.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                </span>
+              </div>
             </div>
           )}
-
-          {/* Busca pedidos detalhados */}
-          <PedidosLista empresaId={empresaId} mesAno={mesAno} preco={preco} pct={pct} />
         </>
       )}
     </div>
   )
-}
-
-/* ── Lista detalhada de pedidos ──────────────────────────── */
-function PedidosLista({ empresaId, mesAno, preco, pct }: {
-  empresaId: string; mesAno: string; preco: number; pct: number
-}) {
-  const { call }  = useApi()
-  const [pedidos, setPedidos] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    async function load() {
-      setLoading(true)
-      const parts  = mesAno.split('/')
-      const mes    = parts[0]
-      const ano    = parts[1]
-      const inicio = `${ano}-${mes}-01`
-      const fim    = new Date(parseInt(ano), parseInt(mes), 0).toISOString().split('T')[0]
-
-      // Busca pedidos dia a dia não é eficiente — usamos o endpoint de relatório
-      // e filtramos pelo colaborador logado
-      const res = await call<any[]>(`/api/pedidos?empresaId=${empresaId}&data=${inicio.replace(/-/g,'/')}`)
-      // Como não temos endpoint por mês, buscamos via relatorio
-      const relRes = await call<any>(`/api/relatorio/empresa?empresaId=${empresaId}&mesAno=${mesAno}`)
-      if (relRes.success) {
-        // Pedidos detalhados não vêm do relatório — vamos buscar por intervalo
-        // Por agora mostramos o resumo por colaborador
-      }
-      setLoading(false)
-    }
-    load()
-  }, [empresaId, mesAno])
-
-  if (loading) return <Spinner />
-
-  return null
 }
