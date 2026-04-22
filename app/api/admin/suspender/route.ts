@@ -1,30 +1,38 @@
 import { NextRequest } from 'next/server'
-import { supabaseServer, ok, E, withAuth, sanitize, log } from '@/lib/api-helpers'
+import { supabaseServer, ok, E, sanitize, log } from '@/lib/api-helpers'
 
-export const POST = withAuth(['admin'])(
-  async (req) => {
-    const body = await req.json().catch(() => null)
-    if (!body) return E.badRequest()
+function parseJwt(token: string) {
+  try { return JSON.parse(atob(token.split('.')[1])) } catch { return null }
+}
 
-    const tipo      = body.tipo === 'empresa' ? 'empresa' : 'restaurante'
-    const titularId = sanitize(body.titularId)
-    const motivo    = sanitize(body.motivo ?? 'Suspenso pelo admin')
-    if (!titularId) return E.badRequest('titularId é obrigatório.')
+export async function POST(req: NextRequest) {
+  const sb = await supabaseServer()
+  const { data: { session } } = await sb.auth.getSession()
+  if (!session) return E.unauthorized()
 
-    const sb = await supabaseServer()
-    if (tipo === 'restaurante') {
-      await sb.from('restaurantes').update({ ativo: false }).eq('id', titularId)
-    } else {
-      await sb.from('empresas').update({ ativa: false }).eq('id', titularId)
-    }
+  const meta = parseJwt(session.access_token)?.app_metadata as any
+  if (meta?.app_role !== 'admin') return E.forbidden()
 
-    const colFk = tipo === 'restaurante' ? 'restaurante_id' : 'empresa_id'
-    await sb.from('planos').upsert({
-      titular_tipo: tipo, [colFk]: titularId,
-      plano: 'suspenso', status: 'suspenso', observacao: motivo,
-    }, { onConflict: colFk })
+  const body = await req.json().catch(() => null)
+  if (!body) return E.badRequest()
 
-    await log('ACESSO_SUSPENSO', `${tipo} ${titularId} — ${motivo}`)
-    return ok({})
+  const tipo      = body.tipo === 'empresa' ? 'empresa' : 'restaurante'
+  const titularId = sanitize(body.titularId)
+  const motivo    = sanitize(body.motivo ?? 'Suspenso pelo admin')
+  if (!titularId) return E.badRequest('titularId é obrigatório.')
+
+  if (tipo === 'restaurante') {
+    await sb.from('restaurantes').update({ ativo: false }).eq('id', titularId)
+  } else {
+    await sb.from('empresas').update({ ativa: false }).eq('id', titularId)
   }
-)
+
+  const colFk = tipo === 'restaurante' ? 'restaurante_id' : 'empresa_id'
+  await sb.from('planos').upsert({
+    titular_tipo: tipo, [colFk]: titularId,
+    plano: 'suspenso', status: 'suspenso', observacao: motivo,
+  }, { onConflict: colFk })
+
+  await log('ACESSO_SUSPENSO', `${tipo} ${titularId} — ${motivo}`)
+  return ok({})
+}
