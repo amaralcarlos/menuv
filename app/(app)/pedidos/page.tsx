@@ -6,6 +6,7 @@ import { useApi } from '@/lib/use-api'
 import { useToast } from '@/components/ui'
 import { AppShell } from '@/components/layout/AppShell'
 import { Card, SectionLabel, Badge, Btn, Spinner } from '@/components/ui'
+import ResumoColabPane from './ResumoColabPane'
 
 const DIAS_PT  = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
 const MESES_PT = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
@@ -478,9 +479,11 @@ function PedidosContent() {
 export default function PedidosPage() {
   const { meta } = useAuth()
   const isGestor = meta?.is_gestor
+  const empId    = meta?.empresa_id ?? ''
 
   const tabs = [
-    { id: 'pedido',    label: 'Pedido',    icon: 'pedido'    as const, component: <PedidosContent /> },
+    { id: 'pedido',  label: 'Pedido',  icon: 'pedido'    as const, component: <PedidosContent /> },
+    { id: 'resumo',  label: 'Resumo',  icon: 'relatorio' as const, component: <ResumoColabPane empresaId={empId} /> },
     ...(isGestor ? [{ id: 'relatorio', label: 'Relatório', icon: 'relatorio' as const, component: <div /> }] : []),
   ]
 
