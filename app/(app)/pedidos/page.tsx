@@ -45,7 +45,132 @@ function DaySelector({ dias, selected, onSelect }: {
   )
 }
 
-/* ── Order form ──────────────────────────────────────────── */
+/* ── Buffet form ─────────────────────────────────────────── */
+function BuffetForm({ dia, colabId, empId, onSaved }: {
+  dia: any; colabId: string; empId: string; onSaved: () => void
+}) {
+  const { call } = useApi()
+  const toast    = useToast()
+  const existingPedido = dia.pedido
+  const [saving,    setSaving]    = useState(false)
+  const [canceling, setCanceling] = useState(false)
+  const [empConfig, setEmpConfig] = useState<any>(null)
+
+  useEffect(() => {
+    call<any[]>(`/api/empresas?restauranteId=${''}`).then(() => {})
+    call<any>(`/api/empresas?empresaId=${empId}`).then(r => {
+      if (r.success && Array.isArray(r.data)) setEmpConfig(r.data[0])
+      else if (r.success) setEmpConfig(r.data)
+    })
+  }, [empId])
+
+  const parts   = dia.data.split('/')
+  const date    = new Date(+parts[2], +parts[1] - 1, +parts[0])
+  const dow     = DIAS_PT[date.getDay()]
+  const hoje    = new Date()
+  const isToday = date.toDateString() === hoje.toDateString()
+
+  let bloqueado = false
+  let motivoBloqueio = ''
+  if (isToday && empConfig?.horario_limite) {
+    const [h, m] = empConfig.horario_limite.split(':').map(Number)
+    const cutoff = new Date(); cutoff.setHours(h, m, 0, 0)
+    if (hoje >= cutoff) { bloqueado = true; motivoBloqueio = `Reservas encerradas às ${empConfig.horario_limite}` }
+  }
+
+  const allItems = [
+    ...(dia.pratos     ?? []).map((p: any) => p.nome),
+    ...(dia.guarnicoes ?? []).map((g: any) => g.nome),
+    ...(dia.outros     ?? []).map((o: any) => o.nome),
+  ]
+
+  async function reservar() {
+    if (!colabId) { toast('Erro: faça logout e login novamente.', 'error'); return }
+    setSaving(true)
+    const res = await call('/api/pedidos', {
+      method: 'POST',
+      body: JSON.stringify({
+        colaboradorId: colabId,
+        empresaId:     empId,
+        data:          `${parts[2]}-${parts[1]}-${parts[0]}`,
+        itens:         ['reserva'],
+        obs:           '',
+      }),
+    })
+    setSaving(false)
+    if (res.success) { toast('Reserva confirmada!'); onSaved() }
+    else toast(res.error ?? 'Erro ao reservar.', 'error')
+  }
+
+  async function cancelar() {
+    if (!existingPedido?.id) return
+    if (!confirm('Cancelar reserva?')) return
+    setCanceling(true)
+    const res = await call(`/api/pedidos/${existingPedido.id}`, { method: 'DELETE' })
+    setCanceling(false)
+    if (res.success) { toast('Reserva cancelada.'); onSaved() }
+    else toast(res.error ?? 'Erro ao cancelar.', 'error')
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-sm font-bold text-[#ddeaf8]">
+          {dow}, {String(date.getDate()).padStart(2,'0')} {MESES_PT[date.getMonth()]}
+        </p>
+        {existingPedido
+          ? <Badge color="green">Reservado</Badge>
+          : <Badge color="gray">Sem reserva</Badge>
+        }
+      </div>
+
+      {bloqueado && (
+        <div className="bg-[rgba(255,179,64,.07)] border border-[rgba(255,179,64,.2)] rounded-[11px] px-3 py-2 mb-3">
+          <p className="font-[var(--mono)] text-xs text-[#ffb340]">⏰ {motivoBloqueio}</p>
+        </div>
+      )}
+
+      {/* Cardápio do dia — só visualização */}
+      {allItems.length > 0 && (
+        <div className="mb-4">
+          <p className="font-[var(--mono)] text-[10px] text-[#3d5875] uppercase tracking-[1px] mb-2">
+            🍽️ Cardápio do dia
+          </p>
+          <div className="flex flex-col gap-1">
+            {allItems.map((item, idx) => (
+              <div key={idx} className="flex items-center gap-2 bg-[#0d1525] border border-[#1c2e48] rounded-[8px] px-3 py-2">
+                <span className="text-sm text-[#ddeaf8]">{item}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {allItems.length === 0 && (
+        <p className="font-[var(--mono)] text-xs text-[#3d5875] py-4 text-center">
+          Sem cardápio para este dia.
+        </p>
+      )}
+
+      {/* Botões de acção */}
+      {!bloqueado && allItems.length > 0 && (
+        <div className="flex flex-col gap-2">
+          {!existingPedido ? (
+            <Btn onClick={reservar} loading={saving}>
+              ✅ Confirmar reserva
+            </Btn>
+          ) : (
+            <Btn variant="danger" onClick={cancelar} loading={canceling}>
+              ✕ Cancelar reserva
+            </Btn>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ── Marmita form ────────────────────────────────────────── */
 function OrderForm({ dia, colabId, empId, restId, onSaved }: {
   dia: any; colabId: string; empId: string; restId: string; onSaved: () => void
 }) {
@@ -242,6 +367,7 @@ function PedidosContent() {
   const { meta }  = useAuth()
   const { call }  = useApi()
   const [semana,       setSemana]       = useState<any[]>([])
+  const [empConfig,    setEmpConfig]    = useState<any>(null)
   const [loading,      setLoading]      = useState(true)
   const [selectedDate, setSelectedDate] = useState('')
 
@@ -250,6 +376,14 @@ function PedidosContent() {
 
   async function load() {
     if (!meta?.restaurante_id) return
+
+    // Carrega config da empresa para saber o formato
+    const empRes = await call<any[]>(`/api/empresas?restauranteId=${meta.restaurante_id}`)
+    if (empRes.success) {
+      const emp = empRes.data.find((e: any) => e.id === empId)
+      setEmpConfig(emp)
+    }
+
     const res = await call<any[]>(`/api/cardapio/semana?restauranteId=${meta.restaurante_id}`)
     if (res.success && res.data.length > 0) {
       const pedRes = await call<any[]>(`/api/pedidos?empresaId=${empId}`)
@@ -276,6 +410,8 @@ function PedidosContent() {
 
   if (loading) return <Spinner />
 
+  const isBuffet = empConfig?.formato === 'buffet'
+
   if (semana.length === 0) return (
     <div className="px-4 pt-8 text-center">
       <p className="text-4xl mb-3">🍽️</p>
@@ -290,18 +426,34 @@ function PedidosContent() {
 
   return (
     <div className="px-4 pt-4 pb-24">
+      {isBuffet && (
+        <div className="flex items-center gap-2 mb-3 bg-[rgba(77,166,255,.06)] border border-[rgba(77,166,255,.15)] rounded-[8px] px-3 py-2">
+          <span className="text-sm">🍽️</span>
+          <p className="font-[var(--mono)] text-[10px] text-[#4da6ff]">Formato buffet — visualize o cardápio e faça a sua reserva</p>
+        </div>
+      )}
       <SectionLabel>Selecione o dia</SectionLabel>
       <DaySelector dias={semana} selected={selectedDate} onSelect={setSelectedDate} />
       {diaSelected && (
         <Card highlight={!!diaSelected.pedido}>
-          <OrderForm
-            key={selectedDate}
-            dia={diaSelected}
-            colabId={colabId}
-            empId={empId}
-            restId={meta?.restaurante_id ?? ''}
-            onSaved={load}
-          />
+          {isBuffet ? (
+            <BuffetForm
+              key={selectedDate}
+              dia={diaSelected}
+              colabId={colabId}
+              empId={empId}
+              onSaved={load}
+            />
+          ) : (
+            <OrderForm
+              key={selectedDate}
+              dia={diaSelected}
+              colabId={colabId}
+              empId={empId}
+              restId={meta?.restaurante_id ?? ''}
+              onSaved={load}
+            />
+          )}
         </Card>
       )}
     </div>
