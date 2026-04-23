@@ -80,6 +80,7 @@ function abrirPdf(detalhe: any, mesAno: string, pct: number) {
     @media print { .btn-print { display: none; } }
   </style></head><body>
   <button class="btn-print" onclick="window.print()">🖨️ Imprimir / Salvar PDF</button>
+ <img src="https://app.menuv.com.br/logo-pdf.png" alt="Menuv" style="height:48px;margin-bottom:16px;display:block;" />
   <h1>Relatório de Refeições — ${detalhe.empresaNome}</h1>
   <div class="sub">${nomeMes(mesAno)}</div>
   ${cardsHtml}
