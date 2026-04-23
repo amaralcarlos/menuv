@@ -90,6 +90,7 @@ function abrirPdfEmpresa(empresa: any, detalhe: any, mesAno: string) {
     @media print { .btn-print { display: none; } }
   </style></head><body>
   <button class="btn-print" onclick="window.print()">🖨️ Imprimir / PDF</button>
+<img src="https://app.menuv.com.br/logo-pdf.png" alt="Menuv" style="height:48px;margin-bottom:16px;display:block;" />
   <h1>${empresa.empresaNome}</h1>
   <div class="sub">Relatório de ${nomeMes(mesAno)} · Gerado por Menuv</div>
   <div class="boxes">
