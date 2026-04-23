@@ -164,10 +164,20 @@ function BuffetForm({ dia, colabId, empId, onSaved }: {
       )}
 
       {allItems.length === 0 && (
-        <p className="font-[var(--mono)] text-xs text-[#3d5875] py-4 text-center">
-          Sem cardápio para este dia.
-        </p>
-      )}
+  <p className="font-[var(--mono)] text-xs text-[#3d5875] py-4 text-center">
+    Sem cardápio para este dia.
+  </p>
+)}
+
+{!isPast && !bloqueado && !existingPedido && allItems.length > 0 && (
+  <button
+    onClick={() => setSelected(allItems.map(i => ({ nome: i.nome, ajuste: 'normal' as const })))}
+    className="w-full mb-3 py-2 rounded-[8px] border border-dashed border-[rgba(0,232,122,.3)] font-[var(--mono)] text-xs text-[#00e87a] hover:bg-[rgba(0,232,122,.05)] transition-colors cursor-pointer">
+    🍽️ Pedir refeição completa
+  </button>
+)}
+
+<div className="flex flex-col gap-2 mb-4">
 
       {!isPast && !bloqueado && allItems.length > 0 && (
         <div className="flex flex-col gap-2">
