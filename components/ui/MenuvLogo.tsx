@@ -1,6 +1,10 @@
-export function MenuvLogo({ size = 36 }: { size?: number }) {
+export function MenuvLogo({ size }: { size?: number }) {
+  const props = size
+    ? { width: size, height: size }
+    : { width: '100%', height: '100%' }
+
   return (
-    <svg width={size} height={size} viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg {...props} viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <linearGradient id="mv_cloud" x1="4" y1="8" x2="32" y2="28" gradientUnits="userSpaceOnUse">
           <stop offset="0%" stopColor="#00e87a" />
