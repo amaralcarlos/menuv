@@ -79,7 +79,7 @@ export default function PedidoGestorPane({ empresaId }: { empresaId: string }) {
     if (empRes.success) setEmpConfig(empRes.data.find((e: any) => e.id === empresaId))
 
     if (cardRes.success && cardRes.data.length > 0) {
-      const pedRes = await call<any[]>(`/api/pedidos?empresaId=${empresaId}`)
+      const pedRes = await call<any[]>(`/api/pedidos?empresaId=${empresaId}&dataInicio=${cardRes.data[0].data}&dataFim=${cardRes.data[cardRes.data.length-1].data}`)
       const pedMap: Record<string, any> = {}
       if (pedRes.success) {
         pedRes.data.forEach((p: any) => {
