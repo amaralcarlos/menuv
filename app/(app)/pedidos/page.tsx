@@ -164,20 +164,10 @@ function BuffetForm({ dia, colabId, empId, onSaved }: {
       )}
 
       {allItems.length === 0 && (
-  <p className="font-[var(--mono)] text-xs text-[#3d5875] py-4 text-center">
-    Sem cardápio para este dia.
-  </p>
-)}
-
-{!isPast && !bloqueado && !existingPedido && allItems.length > 0 && (
-  <button
-    onClick={() => setSelected(allItems.map(i => ({ nome: i.nome, ajuste: 'normal' as const })))}
-    className="w-full mb-3 py-2 rounded-[8px] border border-dashed border-[rgba(0,232,122,.3)] font-[var(--mono)] text-xs text-[#00e87a] hover:bg-[rgba(0,232,122,.05)] transition-colors cursor-pointer">
-    🍽️ Pedir refeição completa
-  </button>
-)}
-
-<div className="flex flex-col gap-2 mb-4">
+        <p className="font-[var(--mono)] text-xs text-[#3d5875] py-4 text-center">
+          Sem cardápio para este dia.
+        </p>
+      )}
 
       {!isPast && !bloqueado && allItems.length > 0 && (
         <div className="flex flex-col gap-2">
@@ -208,6 +198,9 @@ function OrderForm({ dia, colabId, empId, restId, onSaved }: {
 
   function parseExisting(): ItemSel[] {
     if (!existingPedido?.itens) return []
+    if (existingPedido.itens.length === 1 && existingPedido.itens[0] === 'Refeição completa') {
+      return allItems.map(i => ({ nome: i.nome, ajuste: 'normal' as const }))
+    }
     return existingPedido.itens.map((s: string) => {
       if (s.endsWith(' [extra]'))    return { nome: s.replace(' [extra]', ''),    ajuste: 'extra'    as const }
       if (s.endsWith(' [reduzido]')) return { nome: s.replace(' [reduzido]', ''), ajuste: 'reduzido' as const }
@@ -268,13 +261,24 @@ function OrderForm({ dia, colabId, empId, restId, onSaved }: {
     ))
   }
 
+  function pedidoCompleto() {
+    setSelected(allItems.map(i => ({ nome: i.nome, ajuste: 'normal' as const })))
+  }
+
   async function salvar() {
     if (selected.length === 0) { toast('Selecione ao menos um item.', 'error'); return }
     if (!colabId) { toast('Erro: faça logout e login novamente.', 'error'); return }
     setSaving(true)
-    const itens = selected.map(s =>
-      s.ajuste === 'normal' ? s.nome : `${s.nome} [${s.ajuste}]`
-    )
+
+    const todosItens = allItems.map(i => i.nome)
+    const isCompleto = todosItens.length > 0 &&
+      selected.length === todosItens.length &&
+      todosItens.every(nome => selected.some(s => s.nome === nome && s.ajuste === 'normal'))
+
+    const itens = isCompleto
+      ? ['Refeição completa']
+      : selected.map(s => s.ajuste === 'normal' ? s.nome : `${s.nome} [${s.ajuste}]`)
+
     const res = await call('/api/pedidos', {
       method: 'POST',
       body: JSON.stringify({
@@ -321,6 +325,13 @@ function OrderForm({ dia, colabId, empId, restId, onSaved }: {
         <p className="font-[var(--mono)] text-xs text-[#3d5875] py-4 text-center">
           Sem cardápio para este dia.
         </p>
+      )}
+
+      {!isPast && !bloqueado && !existingPedido && allItems.length > 0 && (
+        <button onClick={pedidoCompleto}
+          className="w-full mb-3 py-2 rounded-[8px] border border-dashed border-[rgba(0,232,122,.3)] font-[var(--mono)] text-xs text-[#00e87a] hover:bg-[rgba(0,232,122,.05)] transition-colors cursor-pointer">
+          🍽️ Pedir refeição completa
+        </button>
       )}
 
       <div className="flex flex-col gap-2 mb-4">
