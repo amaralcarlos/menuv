@@ -47,6 +47,7 @@ function abrirPdfMes(mesAno: string, empresas: any[], totais: { total: number; v
     @media print { .btn-print { display: none; } }
   </style></head><body>
   <button class="btn-print" onclick="window.print()">🖨️ Imprimir / PDF</button>
+<img src="https://app.menuv.com.br/logo-pdf.png" alt="Menuv" style="height:48px;margin-bottom:16px;display:block;" />
   <h1>Relatório Mensal de Refeições</h1>
   <div class="sub">${nomeMes(mesAno)} · Gerado por Menuv</div>
   <div class="boxes">
