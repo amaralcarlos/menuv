@@ -7,24 +7,25 @@ import { useToast } from '@/components/ui'
 import { AppShell } from '@/components/layout/AppShell'
 import { Card, SectionLabel, Badge, Btn, Modal, Input, Spinner } from '@/components/ui'
 import RelatorioGestorPane from './RelatorioGestorPane'
+import PedidoGestorPane from './PedidoGestorPane'
 
 /* ── Início ──────────────────────────────────────────────── */
 function InicioPane({ empresaId }: { empresaId: string }) {
   const { call } = useApi()
-  const [stats, setStats] = useState({ colabs: 0, pedidosHoje: 0 })
-  const [loading, setLoading] = useState(true)
+  const [colabs,       setColabs]       = useState<any[]>([])
+  const [pedidos,      setPedidos]      = useState<any[]>([])
+  const [loading,      setLoading]      = useState(true)
+  const [expandPedidos, setExpandPedidos] = useState(false)
 
   useEffect(() => {
-    const hoje = new Date()
+    const hoje    = new Date()
     const dataStr = `${String(hoje.getDate()).padStart(2,'0')}/${String(hoje.getMonth()+1).padStart(2,'0')}/${hoje.getFullYear()}`
     Promise.all([
       call<any[]>(`/api/colaboradores?empresaId=${empresaId}`),
       call<any[]>(`/api/pedidos?empresaId=${empresaId}&data=${dataStr}`),
     ]).then(([colabsRes, pedidosRes]) => {
-      setStats({
-        colabs:      colabsRes.success ? colabsRes.data.length : 0,
-        pedidosHoje: pedidosRes.success ? pedidosRes.data.length : 0,
-      })
+      setColabs(colabsRes.success ? colabsRes.data : [])
+      setPedidos(pedidosRes.success ? pedidosRes.data : [])
       setLoading(false)
     })
   }, [empresaId])
@@ -34,16 +35,61 @@ function InicioPane({ empresaId }: { empresaId: string }) {
   return (
     <div className="px-4 pt-4 pb-24">
       <div className="grid grid-cols-2 gap-2.5 mb-4">
-        {[
-          { label: 'Colaboradores', value: stats.colabs,      color: 'text-[#00e87a]' },
-          { label: 'Pedidos hoje',  value: stats.pedidosHoje, color: 'text-[#4da6ff]' },
-        ].map(s => (
-          <div key={s.label} className="bg-[#0d1525] border border-[#1c2e48] rounded-[11px] p-3 text-center">
-            <div className={`text-2xl font-black font-[var(--mono)] ${s.color}`}>{s.value}</div>
-            <div className="font-[var(--mono)] text-[10px] tracking-[1px] text-[#3d5875] uppercase mt-0.5">{s.label}</div>
+        {/* Card colaboradores */}
+        <div className="bg-[#0d1525] border border-[#1c2e48] rounded-[11px] p-3 text-center">
+          <div className="text-2xl font-black font-[var(--mono)] text-[#00e87a]">{colabs.length}</div>
+          <div className="font-[var(--mono)] text-[10px] tracking-[1px] text-[#3d5875] uppercase mt-0.5">Colaboradores</div>
+        </div>
+
+        {/* Card pedidos — expansível */}
+        <button
+          onClick={() => pedidos.length > 0 && setExpandPedidos(e => !e)}
+          className={`bg-[#0d1525] border rounded-[11px] p-3 text-center transition-all
+            ${pedidos.length > 0 ? 'cursor-pointer hover:border-[rgba(77,166,255,.3)]' : 'cursor-default'}
+            ${expandPedidos ? 'border-[rgba(77,166,255,.4)]' : 'border-[#1c2e48]'}`}>
+          <div className="text-2xl font-black font-[var(--mono)] text-[#4da6ff]">{pedidos.length}</div>
+          <div className="font-[var(--mono)] text-[10px] tracking-[1px] text-[#3d5875] uppercase mt-0.5">
+            Pedidos hoje {pedidos.length > 0 && <span className="text-[#4da6ff]">{expandPedidos ? '▲' : '▼'}</span>}
           </div>
-        ))}
+        </button>
       </div>
+
+      {/* Lista expandida de pedidos */}
+      {expandPedidos && pedidos.length > 0 && (
+        <div className="mb-4">
+          <p className="font-[var(--mono)] text-[10px] text-[#3d5875] uppercase tracking-[1px] mb-2">
+            Pedidos de hoje
+          </p>
+          <div className="flex flex-col gap-2">
+            {pedidos.map((p: any) => (
+              <div key={p.id} className="bg-[#0d1525] border border-[#1c2e48] rounded-[8px] px-3 py-2.5">
+                <div className="flex items-center justify-between mb-1">
+                  <p className="font-semibold text-sm text-[#ddeaf8]">{p.colaboradorNome}</p>
+                  <Badge color={
+                    p.status === 'despachado' || p.status === 'confirmado' ? 'green' :
+                    p.status === 'separado' ? 'blue' : 'gray'
+                  }>
+                    {p.status === 'despachado' ? 'Despachado' :
+                     p.status === 'confirmado' ? 'Confirmado' :
+                     p.status === 'separado'   ? 'Separado'   : 'Em aberto'}
+                  </Badge>
+                </div>
+                {p.itens?.length > 0 && (
+                  <p className="font-[var(--mono)] text-[10px] text-[#7a96b8]">
+                    {p.itens.join(', ')}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {pedidos.length === 0 && (
+        <div className="bg-[#0d1525] border border-[#1c2e48] rounded-[11px] p-4 text-center">
+          <p className="font-[var(--mono)] text-xs text-[#3d5875]">Nenhum pedido hoje ainda.</p>
+        </div>
+      )}
     </div>
   )
 }
@@ -52,12 +98,12 @@ function InicioPane({ empresaId }: { empresaId: string }) {
 function ColabsPane({ empresaId }: { empresaId: string }) {
   const { call } = useApi()
   const toast = useToast()
-  const [colabs, setColabs] = useState<any[]>([])
+  const [colabs,  setColabs]  = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [modal, setModal] = useState<any>(null)
-  const [form, setForm] = useState({ nome: '', email: '', senha: '', isGestor: false })
-  const [saving, setSaving] = useState(false)
-  const [copied, setCopied] = useState(false)
+  const [modal,   setModal]   = useState<any>(null)
+  const [form,    setForm]    = useState({ nome: '', email: '', senha: '', isGestor: false })
+  const [saving,  setSaving]  = useState(false)
+  const [copied,  setCopied]  = useState(false)
 
   const link = typeof window !== 'undefined'
     ? `${window.location.origin}/cadastro?tipo=colaborador&emp=${empresaId}`
@@ -109,9 +155,7 @@ function ColabsPane({ empresaId }: { empresaId: string }) {
   return (
     <div className="px-4 pt-4 pb-24">
       <Card>
-        <p className="font-[var(--mono)] text-[10px] text-[#3d5875] uppercase tracking-[1px] mb-1">
-          Link de convite
-        </p>
+        <p className="font-[var(--mono)] text-[10px] text-[#3d5875] uppercase tracking-[1px] mb-1">Link de convite</p>
         <p className="font-[var(--mono)] text-[10px] text-[#3d5875] mb-3">
           Partilhe com colaboradores para que criem a sua conta.
         </p>
@@ -191,15 +235,16 @@ function ColabsPane({ empresaId }: { empresaId: string }) {
 
 /* ── Main ────────────────────────────────────────────────── */
 export default function GestorEmpresaPage() {
-  const params = useParams()
-  const { meta } = useAuth()
+  const params    = useParams()
+  const { meta }  = useAuth()
   const empresaId = params.empresaId as string
 
   const tabs = [
     { id: 'inicio',        label: 'Início',       icon: 'home'      as const, component: <InicioPane empresaId={empresaId} /> },
+    { id: 'pedido',        label: 'Pedido',        icon: 'pedido'    as const, component: <PedidoGestorPane empresaId={empresaId} /> },
     { id: 'colaboradores', label: 'Colaboradores', icon: 'colabs'    as const, component: <ColabsPane empresaId={empresaId} /> },
     { id: 'relatorio',     label: 'Relatório',     icon: 'relatorio' as const, component: <RelatorioGestorPane empresaId={empresaId} /> },
   ]
 
   return <AppShell tabs={tabs} nome={meta?.nome ?? 'Menuv'} badge="gestor" role="Gestor" subInfo={meta?.empresa_nome} />
-}
+      }
