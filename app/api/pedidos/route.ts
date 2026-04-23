@@ -12,31 +12,49 @@ export async function GET(req: NextRequest) {
 
   const meta = parseJwt(session.access_token)?.app_metadata as any
 
-  const dataParam = req.nextUrl.searchParams.get('data')
-  const empresaId = req.nextUrl.searchParams.get('empresaId')
-  const dataIso   = dataParam ? toIsoDate(dataParam) : new Date().toISOString().split('T')[0]
-  if (!dataIso) return E.badRequest('Data inválida. Use DD/MM/YYYY.')
+  const dataParam  = req.nextUrl.searchParams.get('data')
+  const dataIniParam = req.nextUrl.searchParams.get('dataInicio')
+  const dataFimParam = req.nextUrl.searchParams.get('dataFim')
+  const empresaId  = req.nextUrl.searchParams.get('empresaId')
+  const restId     = req.nextUrl.searchParams.get('restauranteId')
 
   let query = sb.from('pedidos')
-    .select('id, data_pedido, obs, status, criado_em, colaboradores(id,nome), empresas(id,nome), pedido_itens(item,ordem)')
-    .eq('data_pedido', dataIso).order('criado_em')
+    .select('id, data_pedido, obs, status, criado_em, colaborador_id, colaboradores(id,nome), empresas(id,nome), pedido_itens(item,ordem)')
+    .order('criado_em')
 
+  // Filtro de data
+  if (dataParam) {
+    const dataIso = toIsoDate(dataParam)
+    if (!dataIso) return E.badRequest('Data inválida. Use DD/MM/YYYY.')
+    query = query.eq('data_pedido', dataIso)
+  } else if (dataIniParam && dataFimParam) {
+    const ini = toIsoDate(dataIniParam)
+    const fim = toIsoDate(dataFimParam)
+    if (!ini || !fim) return E.badRequest('Datas inválidas.')
+    query = query.gte('data_pedido', ini).lte('data_pedido', fim)
+  } else if (dataIniParam) {
+    const ini = toIsoDate(dataIniParam)
+    if (!ini) return E.badRequest('Data inválida.')
+    query = query.gte('data_pedido', ini)
+  }
+  // Se não houver nenhum filtro de data, retorna sem filtrar por data
+
+  // Filtro por role
   if (meta?.app_role === 'colaborador') {
     query = query.eq('colaborador_id', meta?.colaborador_id)
+    if (empresaId) query = query.eq('empresa_id', empresaId)
   } else if (empresaId) {
     if (meta?.app_role !== 'admin') {
       const { data: emp } = await sb.from('empresas').select('restaurante_id').eq('id', empresaId).single() as any
       if (!emp || emp.restaurante_id !== meta?.restaurante_id) return E.forbidden()
     }
     query = query.eq('empresa_id', empresaId)
-  } else if (meta?.app_role === 'restaurante' || meta?.app_role === 'rest_usuario') {
-    // Busca todos os pedidos do restaurante
+  } else if (restId || meta?.app_role === 'restaurante' || meta?.app_role === 'rest_usuario') {
+    const rid = restId ?? meta?.restaurante_id
     const { data: emps } = await sb.from('empresas')
-      .select('id').eq('restaurante_id', meta?.restaurante_id).eq('ativa', true)
+      .select('id').eq('restaurante_id', rid).eq('ativa', true)
     const empIds = (emps ?? []).map((e: any) => e.id)
-    if (empIds.length > 0) {
-      query = query.in('empresa_id', empIds)
-    }
+    if (empIds.length > 0) query = query.in('empresa_id', empIds)
   }
 
   const { data, error } = await query
@@ -47,6 +65,7 @@ export async function GET(req: NextRequest) {
     data:            p.data_pedido,
     obs:             p.obs,
     status:          p.status ?? 'aberto',
+    colaboradorId:   p.colaborador_id,
     colaboradorNome: p.colaboradores?.nome ?? '',
     empresaNome:     p.empresas?.nome ?? '',
     itens:           (p.pedido_itens ?? []).sort((a: any, b: any) => a.ordem - b.ordem).map((i: any) => i.item),
