@@ -1,11 +1,12 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { useApi } from '@/lib/use-api'
 import { useToast } from '@/components/ui'
 import { AppShell } from '@/components/layout/AppShell'
 import { Card, SectionLabel, Badge, Btn, Modal, Input, Spinner } from '@/components/ui'
+import RelatorioGestorPane from './RelatorioGestorPane'
 
 /* ── Início ──────────────────────────────────────────────── */
 function InicioPane({ empresaId }: { empresaId: string }) {
@@ -107,8 +108,6 @@ function ColabsPane({ empresaId }: { empresaId: string }) {
 
   return (
     <div className="px-4 pt-4 pb-24">
-
-      {/* Link de convite no topo */}
       <Card>
         <p className="font-[var(--mono)] text-[10px] text-[#3d5875] uppercase tracking-[1px] mb-1">
           Link de convite
@@ -120,8 +119,7 @@ function ColabsPane({ empresaId }: { empresaId: string }) {
           <div className="flex-1 bg-[#080c14] border border-[#1c2e48] rounded-[7px] px-2.5 py-2 font-[var(--mono)] text-xs text-[#7a96b8] truncate">
             {link}
           </div>
-          <button
-            onClick={copiarLink}
+          <button onClick={copiarLink}
             className={`flex-shrink-0 rounded-[7px] px-3 py-2 font-[var(--mono)] text-xs cursor-pointer transition-all border
               ${copied
                 ? 'bg-[rgba(0,232,122,.15)] border-[rgba(0,232,122,.4)] text-[#00e87a]'
@@ -191,67 +189,6 @@ function ColabsPane({ empresaId }: { empresaId: string }) {
   )
 }
 
-/* ── Relatório ───────────────────────────────────────────── */
-function RelatorioPane({ empresaId }: { empresaId: string }) {
-  const { call } = useApi()
-  const [dados, setDados] = useState<any>(null)
-  const [loading, setLoading] = useState(false)
-  const hoje = new Date()
-  const [mesAno, setMesAno] = useState(`${String(hoje.getMonth()+1).padStart(2,'0')}/${hoje.getFullYear()}`)
-
-  async function buscar() {
-    setLoading(true)
-    const r = await call<any>(`/api/relatorio/empresa?empresaId=${empresaId}&mesAno=${mesAno}`)
-    if (r.success) setDados(r.data)
-    setLoading(false)
-  }
-
-  useEffect(() => { buscar() }, [])
-
-  return (
-    <div className="px-4 pt-4 pb-24">
-      <div className="flex gap-2 mb-4 items-end">
-        <div className="flex-1">
-          <Input label="Mês/Ano (MM/AAAA)" value={mesAno} onChange={e => setMesAno(e.target.value)} placeholder="04/2025" />
-        </div>
-        <Btn size="sm" className="w-auto" onClick={buscar} loading={loading}>Buscar</Btn>
-      </div>
-
-      {dados && (
-        <>
-          <div className="grid grid-cols-2 gap-2.5 mb-4">
-            <div className="bg-[#0d1525] border border-[#1c2e48] rounded-[11px] p-3 text-center">
-              <div className="text-2xl font-black font-[var(--mono)] text-[#4da6ff]">{dados.totalPedidos}</div>
-              <div className="font-[var(--mono)] text-[10px] tracking-[1px] text-[#3d5875] uppercase mt-0.5">Pedidos</div>
-            </div>
-            <div className="bg-[#0d1525] border border-[#1c2e48] rounded-[11px] p-3 text-center">
-              <div className="text-2xl font-black font-[var(--mono)] text-[#00e87a]">
-                {Number(dados.valorTotal).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-              </div>
-              <div className="font-[var(--mono)] text-[10px] tracking-[1px] text-[#3d5875] uppercase mt-0.5">Total</div>
-            </div>
-          </div>
-
-          <SectionLabel>Por colaborador</SectionLabel>
-          {(dados.colaboradores ?? []).map((c: any) => (
-            <Card key={c.nome}>
-              <div className="flex justify-between">
-                <span className="text-sm text-[#ddeaf8]">{c.nome}</span>
-                <div className="text-right">
-                  <div className="font-[var(--mono)] text-sm font-bold text-[#00e87a]">{c.total}x</div>
-                  <div className="font-[var(--mono)] text-[10px] text-[#3d5875]">
-                    {Number(c.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                  </div>
-                </div>
-              </div>
-            </Card>
-          ))}
-        </>
-      )}
-    </div>
-  )
-}
-
 /* ── Main ────────────────────────────────────────────────── */
 export default function GestorEmpresaPage() {
   const params = useParams()
@@ -261,8 +198,8 @@ export default function GestorEmpresaPage() {
   const tabs = [
     { id: 'inicio',        label: 'Início',       icon: 'home'      as const, component: <InicioPane empresaId={empresaId} /> },
     { id: 'colaboradores', label: 'Colaboradores', icon: 'colabs'    as const, component: <ColabsPane empresaId={empresaId} /> },
-    { id: 'relatorio',     label: 'Relatório',     icon: 'relatorio' as const, component: <RelatorioPane empresaId={empresaId} /> },
+    { id: 'relatorio',     label: 'Relatório',     icon: 'relatorio' as const, component: <RelatorioGestorPane empresaId={empresaId} /> },
   ]
 
-return <AppShell tabs={tabs} nome={meta?.nome ?? 'Menuv'} badge="gestor" role="Gestor" subInfo={meta?.empresa_nome} />
+  return <AppShell tabs={tabs} nome={meta?.nome ?? 'Menuv'} badge="gestor" role="Gestor" subInfo={meta?.empresa_nome} />
 }
