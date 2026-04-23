@@ -402,7 +402,7 @@ function PedidosContent() {
 
     const res = await call<any[]>(`/api/cardapio/semana?restauranteId=${meta.restaurante_id}`)
     if (res.success && res.data.length > 0) {
-      const pedRes = await call<any[]>(`/api/pedidos?empresaId=${empId}`)
+      const pedRes = await call<any[]>(`/api/pedidos?empresaId=${empId}&dataInicio=${res.data[0].data}&dataFim=${res.data[res.data.length-1].data}`)
       const pedMap: Record<string, any> = {}
       if (pedRes.success) {
         pedRes.data.forEach((p: any) => {
