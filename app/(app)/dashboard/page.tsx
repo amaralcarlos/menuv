@@ -284,7 +284,9 @@ function PedidosPane({ restId }: { restId: string }) {
 /* ── Main ────────────────────────────────────────────────── */
 export default function DashboardPage() {
   const { meta, loading } = useAuth()
-  const restId = meta?.restaurante_id ?? ''
+  const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null
+  const restIdOverride = searchParams?.get('restId') ?? ''
+  const restId = (meta?.app_role === 'admin' && restIdOverride) ? restIdOverride : (meta?.restaurante_id ?? '')
 
   if (loading || !restId) return (
     <div className="min-h-screen bg-[#080c14] flex items-center justify-center">
