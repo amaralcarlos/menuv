@@ -99,15 +99,19 @@ function DashboardPane() {
             </div>
           </div>
           <div className="flex gap-2 flex-wrap">
-            <Btn size="sm" variant="secondary" className="w-auto"
-              onClick={() => { setPlanoModal({ ...r, tipo: 'restaurante' }); setPlanoForm({ plano: r.plano, status: r.statusPlano, trialFim: r.trialFim ?? '', obs: r.obs ?? '' }) }}>
-              Plano
-            </Btn>
-            {r.statusPlano === 'suspenso'
-              ? <Btn size="sm" className="w-auto" loading={acting === r.id} onClick={() => reativar('restaurante', r.id)}>Reativar</Btn>
-              : <Btn size="sm" variant="danger" className="w-auto" loading={acting === r.id} onClick={() => suspender('restaurante', r.id)}>Suspender</Btn>
-            }
-          </div>
+  <Btn size="sm" variant="secondary" className="w-auto"
+    onClick={() => { setPlanoModal({ ...r, tipo: 'restaurante' }); setPlanoForm({ plano: r.plano, status: r.statusPlano, trialFim: r.trialFim ?? '', obs: r.obs ?? '' }) }}>
+    Plano
+  </Btn>
+  <Btn size="sm" variant="secondary" className="w-auto"
+    onClick={() => window.location.href = `/dashboard?restId=${r.id}`}>
+    👁️ Aceder
+  </Btn>
+  {r.statusPlano === 'suspenso'
+    ? <Btn size="sm" className="w-auto" loading={acting === r.id} onClick={() => reativar('restaurante', r.id)}>Reativar</Btn>
+    : <Btn size="sm" variant="danger" className="w-auto" loading={acting === r.id} onClick={() => suspender('restaurante', r.id)}>Suspender</Btn>
+  }
+</div>
         </Card>
       ))}
 
