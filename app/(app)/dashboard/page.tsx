@@ -46,66 +46,70 @@ function DaySelectorRest({ dias, selected, onSelect }: {
 /* ── Relatório de cozinha ────────────────────────────────── */
 function gerarRelatorioCozinha(empresa: any, pedidos: any[], dataStr: string) {
   const isMarmita = empresa.formato !== 'buffet'
-  const hoje = new Date().toLocaleDateString('pt-BR')
-
-  const linhas = pedidos.map((p, i) => {
-    const itens = p.itens?.length > 0 ? p.itens.join(', ') : (isMarmita ? '—' : 'Reserva')
-    const obs   = p.obs ? `\n   Obs: ${p.obs}` : ''
-    const status = p.status === 'separado' ? ' ✓' : ''
-    return `${String(i+1).padStart(2,'0')}. ${p.colaboradorNome}${status}\n   ${itens}${obs}`
-  }).join('\n\n')
-
-  const total = pedidos.length
-  const separados = pedidos.filter(p => p.status === 'separado' || p.status === 'despachado' || p.status === 'confirmado').length
+  const hoje = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
 
   const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/>
-  <title>Cozinha — ${empresa.nome} — ${dataStr}</title>
+  <title>Pedidos ${empresa.nome} — ${dataStr}</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Courier New', monospace; padding: 24px; color: #111; font-size: 14px; }
-    .header { border-bottom: 3px solid #111; padding-bottom: 12px; margin-bottom: 16px; }
-    .title { font-size: 20px; font-weight: bold; text-transform: uppercase; letter-spacing: 2px; }
-    .sub { font-size: 12px; color: #444; margin-top: 4px; }
-    .stats { display: flex; gap: 24px; margin-bottom: 16px; padding: 10px; background: #f5f5f5; border-radius: 4px; }
-    .stat { text-align: center; }
-    .stat-val { font-size: 24px; font-weight: bold; }
-    .stat-lbl { font-size: 10px; text-transform: uppercase; color: #666; }
-    .divider { border: none; border-top: 1px dashed #ccc; margin: 8px 0; }
-    .pedido { padding: 10px 0; border-bottom: 1px solid #eee; }
+    body { font-family: Arial, sans-serif; padding: 24px; color: #111; font-size: 14px; }
+    .header { display: flex; align-items: center; justify-content: space-between; border-bottom: 3px solid #111; padding-bottom: 12px; margin-bottom: 8px; }
+    .header-left { display: flex; align-items: center; gap: 12px; }
+    .logo { height: 40px; }
+    .title { font-size: 20px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
+    .data { font-size: 13px; color: #444; margin-top: 2px; }
+    .stats { display: flex; gap: 20px; background: #f5f5f5; padding: 8px 12px; border-radius: 4px; margin-bottom: 16px; font-size: 12px; color: #444; }
+    .stats span { font-weight: bold; color: #111; }
+    .pedido { padding: 10px 0; border-bottom: 1px solid #ddd; }
     .pedido:last-child { border-bottom: none; }
-    .num { font-size: 11px; color: #666; }
-    .nome { font-size: 16px; font-weight: bold; margin: 2px 0; }
-    .itens { font-size: 13px; color: #222; padding-left: 8px; border-left: 3px solid #111; margin-top: 4px; }
-    .obs { font-size: 11px; color: #666; margin-top: 3px; font-style: italic; }
-    .check { float: right; width: 20px; height: 20px; border: 2px solid #111; border-radius: 3px; margin-top: 2px; }
-    .footer { margin-top: 24px; padding-top: 12px; border-top: 1px solid #ccc; font-size: 11px; color: #999; text-align: center; }
-    .btn-print { background: #111; color: white; border: none; padding: 10px 24px; border-radius: 4px; cursor: pointer; font-size: 13px; margin-bottom: 20px; font-family: inherit; }
-    @media print { .btn-print { display: none; } body { padding: 12px; } }
+    .linha-nome { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+    .check { width: 18px; height: 18px; border: 2px solid #111; border-radius: 3px; flex-shrink: 0; }
+    .nome { font-size: 15px; font-weight: bold; }
+    .itens { display: flex; flex-wrap: wrap; gap: 6px; padding-left: 26px; }
+    .item { background: #f0f0f0; border-radius: 3px; padding: 2px 8px; font-size: 12px; }
+    .obs { padding-left: 26px; font-size: 11px; color: #666; font-style: italic; margin-top: 3px; }
+    .footer { margin-top: 20px; padding-top: 10px; border-top: 1px solid #ddd; font-size: 10px; color: #999; display: flex; justify-content: space-between; }
+    .btn-print { background: #111; color: white; border: none; padding: 10px 24px; border-radius: 4px; cursor: pointer; font-size: 13px; margin-bottom: 20px; }
+    @media print { .btn-print { display: none; } }
   </style></head><body>
   <button class="btn-print" onclick="window.print()">🖨️ Imprimir</button>
+
   <div class="header">
-    <div class="title">📋 Cozinha — ${empresa.nome}</div>
-    <div class="sub">${isMarmita ? '🍱 Marmita' : '🍽️ Buffet'} · ${dataStr} · Gerado às ${hoje}</div>
+    <div class="header-left">
+      <img src="https://app.menuv.com.br/logo-pdf.png" alt="Menuv" class="logo" />
+      <div>
+        <div class="title">Pedidos ${empresa.nome}</div>
+        <div class="data">${dataStr} · ${isMarmita ? '🍱 Marmita' : '🍽️ Buffet'} · gerado às ${hoje}</div>
+      </div>
+    </div>
+    <div style="text-align:right;font-size:28px;font-weight:bold;">${pedidos.length}</div>
   </div>
+
   <div class="stats">
-    <div class="stat"><div class="stat-val">${total}</div><div class="stat-lbl">Total</div></div>
-    <div class="stat"><div class="stat-val">${separados}</div><div class="stat-lbl">Separados</div></div>
-    <div class="stat"><div class="stat-val">${total - separados}</div><div class="stat-lbl">Pendentes</div></div>
+    Total: <span>${pedidos.length}</span> &nbsp;|&nbsp;
+    Separados: <span>${pedidos.filter(p => ['separado','despachado','confirmado'].includes(p.status)).length}</span> &nbsp;|&nbsp;
+    Pendentes: <span>${pedidos.filter(p => p.status === 'aberto' || p.status === 'reservado').length}</span>
   </div>
-  <hr class="divider"/>
+
   ${pedidos.map((p, i) => `
     <div class="pedido">
-      <div class="check"></div>
-      <div class="num">#${String(i+1).padStart(2,'0')}</div>
-      <div class="nome">${p.colaboradorNome}</div>
-      ${p.itens?.length > 0
-        ? `<div class="itens">${p.itens.join('<br/>')}</div>`
-        : `<div class="itens">${isMarmita ? '—' : 'Reserva buffet'}</div>`
-      }
+      <div class="linha-nome">
+        <div class="check"></div>
+        <div class="nome">${String(i+1).padStart(2,'0')}. ${p.colaboradorNome}</div>
+      </div>
+      ${p.itens?.length > 0 ? `
+        <div class="itens">
+          ${p.itens.map((item: string) => `<span class="item">${item}</span>`).join('')}
+        </div>
+      ` : `<div class="itens"><span class="item">${isMarmita ? '—' : 'Reserva buffet'}</span></div>`}
       ${p.obs ? `<div class="obs">⚠️ ${p.obs}</div>` : ''}
     </div>
   `).join('')}
-  <div class="footer">Menuv · ${dataStr} · ${total} refeições</div>
+
+  <div class="footer">
+    <span>Menuv — Gestão inteligente de refeições</span>
+    <span>${dataStr} · ${pedidos.length} refeições</span>
+  </div>
   </body></html>`
 
   const w = window.open('', '_blank')
