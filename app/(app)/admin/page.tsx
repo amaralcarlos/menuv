@@ -10,16 +10,67 @@ import { Card, SectionLabel, Badge, Btn, Spinner, Modal, Input } from '@/compone
 const PLANO_LABELS: Record<string, string> = { trial: 'Trial', starter: 'Starter', pro: 'Pro', scale: 'Scale', free: 'Free' }
 const STATUS_COLOR: Record<string, any> = { trial: 'yellow', ativo: 'green', suspenso: 'red', cancelado: 'red' }
 
+/* ── Empresas do restaurante ─────────────────────────────── */
+function EmpresasDoRest({ restId }: { restId: string }) {
+  const { call } = useApi()
+  const [empresas, setEmpresas] = useState<any[]>([])
+  const [loading,  setLoading]  = useState(true)
+
+  useEffect(() => {
+    call<any[]>(`/api/empresas?restauranteId=${restId}`).then(r => {
+      if (r.success) setEmpresas(r.data)
+      setLoading(false)
+    })
+  }, [restId])
+
+  if (loading) return <Spinner />
+
+  if (empresas.length === 0) return (
+    <p className="font-[var(--mono)] text-xs text-[#3d5875] py-2">Nenhuma empresa cadastrada.</p>
+  )
+
+  return (
+    <div className="flex flex-col gap-2 mt-2 border-t border-[#1c2e48] pt-2">
+      {empresas.map(e => (
+        <div key={e.id} className="flex items-center justify-between bg-[#080c14] border border-[#1c2e48] rounded-[8px] px-3 py-2">
+          <div>
+            <p className="text-sm text-[#ddeaf8] font-medium">{e.nome}</p>
+            <p className="font-[var(--mono)] text-[10px] text-[#3d5875]">
+              {e.formato === 'buffet' ? '🍽️ Buffet' : '🍱 Marmita'}
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => window.location.href = `/gestor/${e.id}`}
+              className="font-[var(--mono)] text-[10px] text-[#4da6ff] border border-[rgba(77,166,255,.3)] rounded-[6px] px-2.5 py-1 cursor-pointer hover:bg-[rgba(77,166,255,.08)] transition-colors">
+              👥 Gestor
+            </button>
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(`${window.location.origin}/cadastro?tipo=colaborador&emp=${e.id}`)
+                alert('Link copiado!')
+              }}
+              className="font-[var(--mono)] text-[10px] text-[#3d5875] border border-[#1c2e48] rounded-[6px] px-2.5 py-1 cursor-pointer hover:border-[#3d5875] transition-colors">
+              🔗 Link
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 /* ── Dashboard pane ──────────────────────────────────────── */
 function DashboardPane() {
   const { call } = useApi()
   const toast = useToast()
-  const [dados, setDados] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
-  const [planoModal, setPlanoModal] = useState<any>(null)
-  const [planoForm, setPlanoForm] = useState({ plano: 'trial', status: 'trial', trialFim: '', obs: '' })
-  const [saving, setSaving] = useState(false)
-  const [acting, setActing] = useState('')
+  const [dados,        setDados]        = useState<any>(null)
+  const [loading,      setLoading]      = useState(true)
+  const [planoModal,   setPlanoModal]   = useState<any>(null)
+  const [planoForm,    setPlanoForm]    = useState({ plano: 'trial', status: 'trial', trialFim: '', obs: '' })
+  const [saving,       setSaving]       = useState(false)
+  const [acting,       setActing]       = useState('')
+  const [expandedRest, setExpandedRest] = useState<string | null>(null)
 
   async function load() {
     const res = await call<any>('/api/admin/dashboard')
@@ -35,11 +86,7 @@ function DashboardPane() {
     setSaving(true)
     const res = await call('/api/admin/planos', {
       method: 'POST',
-      body: JSON.stringify({
-        tipo: planoModal.tipo,
-        titularId: planoModal.id,
-        ...planoForm,
-      }),
+      body: JSON.stringify({ tipo: planoModal.tipo, titularId: planoModal.id, ...planoForm }),
     })
     setSaving(false)
     if (res.success) { toast('Plano atualizado.'); setPlanoModal(null); load() }
@@ -67,13 +114,13 @@ function DashboardPane() {
 
   return (
     <div className="px-4 pt-4 pb-24">
-      {/* Totals */}
+      {/* Totais */}
       <div className="grid grid-cols-2 gap-2 mb-4">
         {[
-          { label: 'Restaurantes', value: dados?.totais?.restaurantes ?? 0, color: 'text-[#00e87a]' },
-          { label: 'Empresas',     value: dados?.totais?.empresas     ?? 0, color: 'text-[#4da6ff]' },
-          { label: 'Colaboradores',value: dados?.totais?.colaboradores ?? 0, color: 'text-[#a259ff]' },
-          { label: 'Pedidos/mês',  value: dados?.totais?.pedidosMes   ?? 0, color: 'text-[#ffb340]' },
+          { label: 'Restaurantes',  value: dados?.totais?.restaurantes ?? 0, color: 'text-[#00e87a]' },
+          { label: 'Empresas',      value: dados?.totais?.empresas     ?? 0, color: 'text-[#4da6ff]' },
+          { label: 'Colaboradores', value: dados?.totais?.colaboradores ?? 0, color: 'text-[#a259ff]' },
+          { label: 'Pedidos/mês',   value: dados?.totais?.pedidosMes   ?? 0, color: 'text-[#ffb340]' },
         ].map(s => (
           <div key={s.label} className="bg-[#0d1525] border border-[#1c2e48] rounded-[11px] p-3 text-center">
             <div className={`text-2xl font-black font-[var(--mono)] ${s.color}`}>{s.value}</div>
@@ -98,20 +145,27 @@ function DashboardPane() {
               <Badge color="gray">{PLANO_LABELS[r.plano] ?? r.plano}</Badge>
             </div>
           </div>
-          <div className="flex gap-2 flex-wrap">
-  <Btn size="sm" variant="secondary" className="w-auto"
-    onClick={() => { setPlanoModal({ ...r, tipo: 'restaurante' }); setPlanoForm({ plano: r.plano, status: r.statusPlano, trialFim: r.trialFim ?? '', obs: r.obs ?? '' }) }}>
-    Plano
-  </Btn>
-  <Btn size="sm" variant="secondary" className="w-auto"
-    onClick={() => window.location.href = `/dashboard?restId=${r.id}`}>
-    👁️ Aceder
-  </Btn>
-  {r.statusPlano === 'suspenso'
-    ? <Btn size="sm" className="w-auto" loading={acting === r.id} onClick={() => reativar('restaurante', r.id)}>Reativar</Btn>
-    : <Btn size="sm" variant="danger" className="w-auto" loading={acting === r.id} onClick={() => suspender('restaurante', r.id)}>Suspender</Btn>
-  }
-</div>
+
+          <div className="flex gap-2 flex-wrap mb-2">
+            <Btn size="sm" variant="secondary" className="w-auto"
+              onClick={() => { setPlanoModal({ ...r, tipo: 'restaurante' }); setPlanoForm({ plano: r.plano, status: r.statusPlano, trialFim: r.trialFim ?? '', obs: r.obs ?? '' }) }}>
+              Plano
+            </Btn>
+            <Btn size="sm" variant="secondary" className="w-auto"
+              onClick={() => window.location.href = `/dashboard?restId=${r.id}`}>
+              👁️ Dashboard
+            </Btn>
+            <Btn size="sm" variant="secondary" className="w-auto"
+              onClick={() => setExpandedRest(e => e === r.id ? null : r.id)}>
+              🏢 Empresas {expandedRest === r.id ? '▲' : '▼'}
+            </Btn>
+            {r.statusPlano === 'suspenso'
+              ? <Btn size="sm" className="w-auto" loading={acting === r.id} onClick={() => reativar('restaurante', r.id)}>Reativar</Btn>
+              : <Btn size="sm" variant="danger" className="w-auto" loading={acting === r.id} onClick={() => suspender('restaurante', r.id)}>Suspender</Btn>
+            }
+          </div>
+
+          {expandedRest === r.id && <EmpresasDoRest restId={r.id} />}
         </Card>
       ))}
 
@@ -120,21 +174,15 @@ function DashboardPane() {
         <div className="flex flex-col gap-4">
           <div>
             <label className="font-[var(--mono)] text-[10px] tracking-[1.5px] text-[#3d5875] uppercase block mb-1.5">Plano</label>
-            <select
-              value={planoForm.plano}
-              onChange={e => setPlanoForm(f => ({ ...f, plano: e.target.value }))}
-              className="w-full bg-[#080c14] border border-[#253d5e] rounded-[11px] px-3 py-2.5 font-[var(--mono)] text-[#ddeaf8] outline-none"
-            >
+            <select value={planoForm.plano} onChange={e => setPlanoForm(f => ({ ...f, plano: e.target.value }))}
+              className="w-full bg-[#080c14] border border-[#253d5e] rounded-[11px] px-3 py-2.5 font-[var(--mono)] text-[#ddeaf8] outline-none">
               {['trial','starter','pro','scale','free'].map(p => <option key={p} value={p}>{PLANO_LABELS[p]}</option>)}
             </select>
           </div>
           <div>
             <label className="font-[var(--mono)] text-[10px] tracking-[1.5px] text-[#3d5875] uppercase block mb-1.5">Status</label>
-            <select
-              value={planoForm.status}
-              onChange={e => setPlanoForm(f => ({ ...f, status: e.target.value }))}
-              className="w-full bg-[#080c14] border border-[#253d5e] rounded-[11px] px-3 py-2.5 font-[var(--mono)] text-[#ddeaf8] outline-none"
-            >
+            <select value={planoForm.status} onChange={e => setPlanoForm(f => ({ ...f, status: e.target.value }))}
+              className="w-full bg-[#080c14] border border-[#253d5e] rounded-[11px] px-3 py-2.5 font-[var(--mono)] text-[#ddeaf8] outline-none">
               {['trial','ativo','suspenso','cancelado'].map(s => <option key={s} value={s}>{s}</option>)}
             </select>
           </div>
@@ -150,7 +198,7 @@ function DashboardPane() {
 /* ── Logs pane ───────────────────────────────────────────── */
 function LogsPane() {
   const { call } = useApi()
-  const [logs, setLogs] = useState<any[]>([])
+  const [logs,    setLogs]    = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -188,11 +236,6 @@ export default function AdminPage() {
   ]
 
   return (
-    <AppShell
-      tabs={tabs}
-      nome="Menuv Admin"
-      badge="superadmin"
-      role="Admin"
-    />
+    <AppShell tabs={tabs} nome="Menuv Admin" badge="superadmin" role="Admin" />
   )
 }
