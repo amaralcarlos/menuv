@@ -12,9 +12,9 @@ import PedidoGestorPane from './PedidoGestorPane'
 /* ── Início ──────────────────────────────────────────────── */
 function InicioPane({ empresaId }: { empresaId: string }) {
   const { call } = useApi()
-  const [colabs,       setColabs]       = useState<any[]>([])
-  const [pedidos,      setPedidos]      = useState<any[]>([])
-  const [loading,      setLoading]      = useState(true)
+  const [colabs,        setColabs]        = useState<any[]>([])
+  const [pedidos,       setPedidos]       = useState<any[]>([])
+  const [loading,       setLoading]       = useState(true)
   const [expandPedidos, setExpandPedidos] = useState(false)
 
   useEffect(() => {
@@ -35,13 +35,11 @@ function InicioPane({ empresaId }: { empresaId: string }) {
   return (
     <div className="px-4 pt-4 pb-24">
       <div className="grid grid-cols-2 gap-2.5 mb-4">
-        {/* Card colaboradores */}
         <div className="bg-[#0d1525] border border-[#1c2e48] rounded-[11px] p-3 text-center">
           <div className="text-2xl font-black font-[var(--mono)] text-[#00e87a]">{colabs.length}</div>
           <div className="font-[var(--mono)] text-[10px] tracking-[1px] text-[#3d5875] uppercase mt-0.5">Colaboradores</div>
         </div>
 
-        {/* Card pedidos — expansível */}
         <button
           onClick={() => pedidos.length > 0 && setExpandPedidos(e => !e)}
           className={`bg-[#0d1525] border rounded-[11px] p-3 text-center transition-all
@@ -54,7 +52,6 @@ function InicioPane({ empresaId }: { empresaId: string }) {
         </button>
       </div>
 
-      {/* Lista expandida de pedidos */}
       {expandPedidos && pedidos.length > 0 && (
         <div className="mb-4">
           <p className="font-[var(--mono)] text-[10px] text-[#3d5875] uppercase tracking-[1px] mb-2">
@@ -97,7 +94,7 @@ function InicioPane({ empresaId }: { empresaId: string }) {
 /* ── Colaboradores ───────────────────────────────────────── */
 function ColabsPane({ empresaId }: { empresaId: string }) {
   const { call } = useApi()
-  const toast = useToast()
+  const toast    = useToast()
   const [colabs,  setColabs]  = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [modal,   setModal]   = useState<any>(null)
@@ -150,6 +147,16 @@ function ColabsPane({ empresaId }: { empresaId: string }) {
     else toast(res.error, 'error')
   }
 
+  async function excluir(id: string, nome: string) {
+    if (!confirm(`Excluir permanentemente ${nome}? Esta ação não pode ser desfeita.`)) return
+    const res = await call(`/api/colaboradores/${id}`, {
+      method: 'DELETE',
+      body: JSON.stringify({ permanent: true }),
+    })
+    if (res.success) { toast('Colaborador excluído.'); load() }
+    else toast(res.error ?? 'Erro ao excluir.', 'error')
+  }
+
   if (loading) return <Spinner />
 
   return (
@@ -197,13 +204,16 @@ function ColabsPane({ empresaId }: { empresaId: string }) {
               {c.is_gestor ? 'Gestor' : 'Colaborador'}
             </Badge>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <Btn size="sm" variant="secondary" className="w-auto"
               onClick={() => { setModal(c); setForm({ nome: c.nome, email: c.email, senha: '', isGestor: c.is_gestor }) }}>
               Editar
             </Btn>
             <Btn size="sm" variant="danger" className="w-auto" onClick={() => inativar(c.id)}>
               Inativar
+            </Btn>
+            <Btn size="sm" variant="danger" className="w-auto" onClick={() => excluir(c.id, c.nome)}>
+              Excluir
             </Btn>
           </div>
         </Card>
