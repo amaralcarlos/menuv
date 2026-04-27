@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { supabaseServer, ok, E, sanitize, log } from '@/lib/api-helpers'
+import { supabaseServer, supabaseAdmin, ok, E, sanitize, log } from '@/lib/api-helpers'
 
 function parseJwt(token: string) {
   try { return JSON.parse(atob(token.split('.')[1])) } catch { return null }
@@ -39,7 +39,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   return ok({ id })
 }
 
-export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   if (!id) return E.badRequest()
 
@@ -57,9 +57,34 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     if (!pertenceAoRestaurante && !pertenceAoGestor) return E.forbidden()
   }
 
-  const { error } = await sb.from('colaboradores').update({ ativo: false }).eq('id', id)
-  if (error) return E.internal(error.message)
+  const body = await req.json().catch(() => ({}))
+  const permanent = body?.permanent === true
 
-  await log('COLAB_REMOVIDO', id)
+  if (permanent) {
+    // Apaga pedidos e itens primeiro
+    const { data: pedidos } = await sb.from('pedidos').select('id').eq('colaborador_id', id)
+    const pedidoIds = (pedidos ?? []).map((p: any) => p.id)
+    if (pedidoIds.length > 0) {
+      await sb.from('pedido_itens').delete().in('pedido_id', pedidoIds)
+      await sb.from('pedidos').delete().in('id', pedidoIds)
+    }
+
+    // Busca auth_user_id antes de apagar
+    const { data: colab } = await sb.from('colaboradores').select('auth_user_id').eq('id', id).single() as any
+    await sb.from('colaboradores').delete().eq('id', id)
+
+    // Apaga do auth
+    if (colab?.auth_user_id) {
+      const admin = supabaseAdmin()
+      await admin.auth.admin.deleteUser(colab.auth_user_id)
+    }
+
+    await log('COLAB_EXCLUIDO', id)
+  } else {
+    const { error } = await sb.from('colaboradores').update({ ativo: false }).eq('id', id)
+    if (error) return E.internal(error.message)
+    await log('COLAB_REMOVIDO', id)
+  }
+
   return ok({})
 }
