@@ -247,7 +247,7 @@ export default function GestorEmpresaPage() {
     { id: 'relatorio',     label: 'Relatório',     icon: 'relatorio' as const, component: <RelatorioGestorPane empresaId={empresaId} /> },
   ]
 
-    return (
+ return (
   <>
     {isAdmin && (
       <div className="bg-[rgba(255,179,64,.07)] border-b border-[rgba(255,179,64,.2)] px-4 py-2 flex items-center justify-between">
@@ -258,6 +258,6 @@ export default function GestorEmpresaPage() {
         </button>
       </div>
     )}
-
-  <AppShell tabs={tabs} nome={meta?.nome ?? 'Menuv'} badge="gestor" role="Gestor" subInfo={meta?.empresa_nome} />
-      }
+    <AppShell tabs={tabs} nome={meta?.nome ?? 'Menuv'} badge="gestor" role="Gestor" subInfo={meta?.empresa_nome} />
+  </>
+)
