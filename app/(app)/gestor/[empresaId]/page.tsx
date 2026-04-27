@@ -238,6 +238,7 @@ export default function GestorEmpresaPage() {
   const params    = useParams()
   const { meta }  = useAuth()
   const empresaId = params.empresaId as string
+  const isAdmin   = meta?.app_role === 'admin'
 
   const tabs = [
     { id: 'inicio',        label: 'Início',       icon: 'home'      as const, component: <InicioPane empresaId={empresaId} /> },
@@ -246,5 +247,17 @@ export default function GestorEmpresaPage() {
     { id: 'relatorio',     label: 'Relatório',     icon: 'relatorio' as const, component: <RelatorioGestorPane empresaId={empresaId} /> },
   ]
 
-  return <AppShell tabs={tabs} nome={meta?.nome ?? 'Menuv'} badge="gestor" role="Gestor" subInfo={meta?.empresa_nome} />
+    return (
+  <>
+    {isAdmin && (
+      <div className="bg-[rgba(255,179,64,.07)] border-b border-[rgba(255,179,64,.2)] px-4 py-2 flex items-center justify-between">
+        <p className="font-[var(--mono)] text-[10px] text-[#ffb340]">👁️ Modo admin — a visualizar como gestor</p>
+        <button onClick={() => window.location.href = '/admin'}
+          className="font-[var(--mono)] text-[10px] text-[#ffb340] cursor-pointer border border-[rgba(255,179,64,.3)] rounded-[6px] px-2 py-0.5">
+          ← Voltar
+        </button>
+      </div>
+    )}
+
+  <AppShell tabs={tabs} nome={meta?.nome ?? 'Menuv'} badge="gestor" role="Gestor" subInfo={meta?.empresa_nome} />
       }
