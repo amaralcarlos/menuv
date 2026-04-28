@@ -109,27 +109,29 @@ function ColabRow({ c, i, empresaId, mesAno, pct, temRateio }: {
   const [pedidos,  setPedidos]  = useState<any[]>([])
   const [loading,  setLoading]  = useState(false)
 
-  async function expandir() {
-    if (expanded) { setExpanded(false); return }
-    if (c.total === 0) return
-    setLoading(true)
-    setExpanded(true)
+async function expandir() {
+  if (expanded) { setExpanded(false); return }
+  if (c.total === 0) return
+  setLoading(true)
+  setExpanded(true)
 
-    const parts  = mesAno.split('/')
-    const mes    = parts[0]
-    const ano    = parts[1]
-    const inicio = `${ano}-${mes}-01`
-    const fim    = new Date(parseInt(ano), parseInt(mes), 0).toISOString().split('T')[0]
-    const fmtInicio = `${inicio.split('-')[2]}/${inicio.split('-')[1]}/${inicio.split('-')[0]}`
-    const fmtFim    = `${fim.split('-')[2]}/${fim.split('-')[1]}/${fim.split('-')[0]}`
+  const parts   = mesAno.split('/')
+  const mes     = parts[0]
+  const ano     = parts[1]
+  const inicio  = `${ano}-${mes}-01`
+  const fim     = new Date(parseInt(ano), parseInt(mes), 0).toISOString().split('T')[0]
+  const fmtInicio = `${inicio.split('-')[2]}/${inicio.split('-')[1]}/${inicio.split('-')[0]}`
+  const fmtFim    = `${fim.split('-')[2]}/${fim.split('-')[1]}/${fim.split('-')[0]}`
 
-    const res = await call<any[]>(`/api/pedidos?empresaId=${empresaId}&dataInicio=${fmtInicio}&dataFim=${fmtFim}`)
-    if (res.success) {
-      const meus = res.data.filter((p: any) => p.colaboradorNome === c.nome)
-      setPedidos(meus)
-    }
-    setLoading(false)
+  const res = await call<any[]>(`/api/pedidos?empresaId=${empresaId}&dataInicio=${fmtInicio}&dataFim=${fmtFim}`)
+  if (res.success) {
+    const meus = res.data.filter((p: any) =>
+      p.colaboradorId === c.id || p.colaboradorNome === c.nome
+    )
+    setPedidos(meus)
   }
+  setLoading(false)
+}
 
   return (
     <>
