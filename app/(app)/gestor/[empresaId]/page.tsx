@@ -194,30 +194,32 @@ function ColabsPane({ empresaId }: { empresaId: string }) {
       )}
 
       {colabs.map(c => (
-        <Card key={c.id}>
-          <div className="flex items-center justify-between mb-2">
-            <div>
-              <p className="font-bold text-sm text-[#ddeaf8]">{c.nome}</p>
-              <p className="font-[var(--mono)] text-[10px] text-[#3d5875] mt-0.5">{c.email}</p>
-            </div>
-            <Badge color={c.is_gestor ? 'blue' : 'gray'}>
-              {c.is_gestor ? 'Gestor' : 'Colaborador'}
-            </Badge>
-          </div>
-          <div className="flex gap-2 flex-wrap">
-            <Btn size="sm" variant="secondary" className="w-auto"
-              onClick={() => { setModal(c); setForm({ nome: c.nome, email: c.email, senha: '', isGestor: c.is_gestor }) }}>
-              Editar
-            </Btn>
-            <Btn size="sm" variant="danger" className="w-auto" onClick={() => inativar(c.id)}>
-              Inativar
-            </Btn>
-            <Btn size="sm" variant="danger" className="w-auto" onClick={() => excluir(c.id, c.nome)}>
-              Excluir
-            </Btn>
-          </div>
-        </Card>
-      ))}
+  <Card key={c.id}>
+    <div className="flex flex-wrap items-center gap-2">
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <p className="font-bold text-sm text-[#ddeaf8] truncate">{c.nome}</p>
+          <Badge color={c.is_gestor ? 'blue' : 'gray'}>
+            {c.is_gestor ? 'Gestor' : 'Colaborador'}
+          </Badge>
+        </div>
+        <p className="font-[var(--mono)] text-[10px] text-[#3d5875] mt-0.5 truncate">{c.email}</p>
+      </div>
+      <div className="flex gap-1.5 flex-shrink-0">
+        <Btn size="sm" variant="secondary" className="w-auto"
+          onClick={() => { setModal(c); setForm({ nome: c.nome, email: c.email, senha: '', isGestor: c.is_gestor }) }}>
+          Editar
+        </Btn>
+        <Btn size="sm" variant="danger" className="w-auto" onClick={() => inativar(c.id)}>
+          Inativar
+        </Btn>
+        <Btn size="sm" variant="danger" className="w-auto" onClick={() => excluir(c.id, c.nome)}>
+          Excluir
+        </Btn>
+      </div>
+    </div>
+  </Card>
+))}
 
       <Modal open={!!modal} onClose={() => setModal(null)}
         title={modal?.id ? `Editar: ${modal.nome}` : 'Novo colaborador'}>
