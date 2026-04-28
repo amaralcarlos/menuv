@@ -55,11 +55,12 @@ export async function GET(req: NextRequest) {
   })
 
   const preco = Number(emp.preco_por_refeicao)
-  const colaboradores = (todosColabs ?? []).map((c: any) => ({
-    nome:  c.nome,
-    total: cnt[c.nome] ?? 0,
-    valor: (cnt[c.nome] ?? 0) * preco,
-  }))
+const colaboradores = (todosColabs ?? []).map((c: any) => ({
+  id:    c.id,
+  nome:  c.nome,
+  total: cnt[c.nome] ?? 0,
+  valor: (cnt[c.nome] ?? 0) * preco,
+}))
 
   return ok({
     empresaNome:   emp.nome,
