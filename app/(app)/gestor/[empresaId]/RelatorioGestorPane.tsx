@@ -171,24 +171,7 @@ async function expandir() {
             {loading && <div className="py-2"><Spinner /></div>}
             {!loading && pedidos.length === 0 && (
               <p className="font-[var(--mono)] text-[10px] text-[#3d5875] py-1">Sem pedidos encontrados.</p>
-            )}
-            {!loading && pedidos.length > 0 && (
-              <div className="flex flex-col gap-1 ml-4 border-l-2 border-[#1c2e48] pl-3">
-                {pedidos
-                  .sort((a, b) => a.data.localeCompare(b.data))
-                  .map((p: any) => (
-                    <div key={p.id} className="flex items-start gap-2 py-1">
-                      <span className="font-[var(--mono)] text-[10px] text-[#3d5875] w-20 flex-shrink-0">
-                        {fmtData(p.data)}
-                      </span>
-                      <span className="font-[var(--mono)] text-[10px] text-[#7a96b8]">
-                        {p.itens?.length > 0 ? p.itens.join(', ') : '—'}
-                      </span>
-                    </div>
-                  ))
-                }
-              </div>
-            )}
+            )}{!loading && pedidos.length > 0 && (
           </td>
         </tr>
       )}
