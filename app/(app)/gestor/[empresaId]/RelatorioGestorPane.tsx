@@ -25,6 +25,12 @@ function ultimos12Meses() {
   return meses
 }
 
+function fmtData(dataIso: string) {
+  const parts = dataIso.split('-')
+  if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`
+  return dataIso
+}
+
 function abrirPdf(detalhe: any, mesAno: string, pct: number) {
   const hoje        = new Date().toLocaleDateString('pt-BR')
   const temRateio   = pct > 0
@@ -80,7 +86,7 @@ function abrirPdf(detalhe: any, mesAno: string, pct: number) {
     @media print { .btn-print { display: none; } }
   </style></head><body>
   <button class="btn-print" onclick="window.print()">🖨️ Imprimir / Salvar PDF</button>
- <img src="https://app.menuv.com.br/logo-pdf.png" alt="Menuv" style="height:48px;margin-bottom:16px;display:block;" />
+  <img src="https://app.menuv.com.br/logo-pdf.png" alt="Menuv" style="height:48px;margin-bottom:16px;display:block;" />
   <h1>Relatório de Refeições — ${detalhe.empresaNome}</h1>
   <div class="sub">${nomeMes(mesAno)}</div>
   ${cardsHtml}
@@ -92,6 +98,100 @@ function abrirPdf(detalhe: any, mesAno: string, pct: number) {
   const w = window.open('', '_blank')
   w?.document.write(html)
   w?.document.close()
+}
+
+/* ── Linha de colaborador expansível ─────────────────────── */
+function ColabRow({ c, i, empresaId, mesAno, pct, temRateio }: {
+  c: any; i: number; empresaId: string; mesAno: string; pct: number; temRateio: boolean
+}) {
+  const { call }  = useApi()
+  const [expanded, setExpanded] = useState(false)
+  const [pedidos,  setPedidos]  = useState<any[]>([])
+  const [loading,  setLoading]  = useState(false)
+
+  async function expandir() {
+    if (expanded) { setExpanded(false); return }
+    if (c.total === 0) return
+    setLoading(true)
+    setExpanded(true)
+
+    const parts  = mesAno.split('/')
+    const mes    = parts[0]
+    const ano    = parts[1]
+    const inicio = `${ano}-${mes}-01`
+    const fim    = new Date(parseInt(ano), parseInt(mes), 0).toISOString().split('T')[0]
+    const fmtInicio = `${inicio.split('-')[2]}/${inicio.split('-')[1]}/${inicio.split('-')[0]}`
+    const fmtFim    = `${fim.split('-')[2]}/${fim.split('-')[1]}/${fim.split('-')[0]}`
+
+    const res = await call<any[]>(`/api/pedidos?empresaId=${empresaId}&dataInicio=${fmtInicio}&dataFim=${fmtFim}`)
+    if (res.success) {
+      const meus = res.data.filter((p: any) => p.colaboradorNome === c.nome)
+      setPedidos(meus)
+    }
+    setLoading(false)
+  }
+
+  return (
+    <>
+      <tr
+        onClick={expandir}
+        className={`border-b border-[#1c2e48] transition-colors
+          ${c.total > 0 ? 'cursor-pointer hover:bg-[rgba(0,232,122,.03)]' : ''}
+          ${expanded ? 'bg-[rgba(0,232,122,.03)]' : ''}`}>
+        <td className="py-2 pr-2">
+          <span className="font-[var(--mono)] text-[10px] text-[#3d5875]">{i+1}</span>
+        </td>
+        <td className="py-2 pr-2">
+          <div className="flex items-center gap-1.5">
+            <span className="text-sm text-[#ddeaf8]">{c.nome}</span>
+            {c.total > 0 && (
+              <span className={`font-[var(--mono)] text-[9px] text-[#3d5875] transition-transform ${expanded ? 'rotate-90' : ''}`}>▶</span>
+            )}
+          </div>
+        </td>
+        <td className="py-2 pr-2 text-right font-[var(--mono)] text-xs text-[#00e87a] font-bold">
+          {c.total > 0 ? c.total : '—'}
+        </td>
+        <td className="py-2 pr-2 text-right font-[var(--mono)] text-xs text-[#7a96b8]">
+          {c.total > 0 ? Number(c.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '—'}
+        </td>
+        {temRateio && (
+          <td className="py-2 text-right font-[var(--mono)] text-xs text-[#4da6ff] font-bold">
+            {c.total > 0 ? (c.valor * pct / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '—'}
+          </td>
+        )}
+      </tr>
+
+      {/* Pedidos expandidos */}
+      {expanded && (
+        <tr className="border-b border-[#1c2e48]">
+          <td colSpan={temRateio ? 5 : 4} className="pb-3 pt-1 px-2">
+            {loading && <div className="py-2"><Spinner /></div>}
+            {!loading && pedidos.length === 0 && (
+              <p className="font-[var(--mono)] text-[10px] text-[#3d5875] py-1">Sem pedidos encontrados.</p>
+            )}
+            {!loading && pedidos.length > 0 && (
+              <div className="flex flex-col gap-1 ml-4 border-l-2 border-[#1c2e48] pl-3">
+                {pedidos
+                  .sort((a, b) => a.data.localeCompare(b.data))
+                  .map((p: any) => (
+                    <div key={p.id} className="flex items-start gap-2 py-1">
+                      <span className="font-[var(--mono)] text-[10px] text-[#3d5875] w-20 flex-shrink-0">
+                        {fmtData(p.data)}
+                      </span>
+                      <span className="font-[var(--mono)] text-[10px] text-[#7a96b8]">
+                        {p.itens?.length > 0 ? p.itens.join(', ') : '—'}
+                      </span>
+                    </div>
+                  ))
+                }
+              </div>
+            )}
+          </td>
+        </tr>
+      )}
+    </>
+  )
 }
 
 export default function RelatorioGestorPane({ empresaId }: { empresaId: string }) {
@@ -217,7 +317,6 @@ export default function RelatorioGestorPane({ empresaId }: { empresaId: string }
               <div className="font-[var(--mono)] text-[9px] text-[#3d5875] uppercase mt-0.5">🍽️ Refeições</div>
               <div className="font-[var(--mono)] text-[9px] text-[#3d5875] mt-0.5">{nomeMes(mesAno)}</div>
             </div>
-
             {temRateio ? (
               <>
                 <div className="bg-[#0d1525] border border-[#1c2e48] rounded-[11px] p-3 text-center">
@@ -246,9 +345,12 @@ export default function RelatorioGestorPane({ empresaId }: { empresaId: string }
             )}
           </div>
 
-          {/* Tabela */}
-          <p className="font-[var(--mono)] text-[10px] text-[#3d5875] uppercase tracking-[1px] mb-2">
+          {/* Tabela com linhas expansíveis */}
+          <p className="font-[var(--mono)] text-[10px] text-[#3d5875] uppercase tracking-[1px] mb-1">
             Cobrança por colaborador
+          </p>
+          <p className="font-[var(--mono)] text-[9px] text-[#3d5875] mb-2">
+            Toque num colaborador para ver os pedidos do mês
           </p>
           <div className="overflow-x-auto mb-4">
             <table className="w-full" style={{ minWidth: temRateio ? 380 : 280 }}>
@@ -265,23 +367,15 @@ export default function RelatorioGestorPane({ empresaId }: { empresaId: string }
               </thead>
               <tbody>
                 {colabs.map((c: any, i: number) => (
-                  <tr key={c.nome} className="border-b border-[#1c2e48] last:border-none">
-                    <td className="py-2 pr-2">
-                      <span className="font-[var(--mono)] text-[10px] text-[#3d5875]">{i+1}</span>
-                    </td>
-                    <td className="py-2 pr-2 text-sm text-[#ddeaf8]">{c.nome}</td>
-                    <td className="py-2 pr-2 text-right font-[var(--mono)] text-xs text-[#00e87a] font-bold">
-                      {c.total > 0 ? c.total : '—'}
-                    </td>
-                    <td className="py-2 pr-2 text-right font-[var(--mono)] text-xs text-[#7a96b8]">
-                      {c.total > 0 ? Number(c.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '—'}
-                    </td>
-                    {temRateio && (
-                      <td className="py-2 text-right font-[var(--mono)] text-xs text-[#4da6ff] font-bold">
-                        {c.total > 0 ? (c.valor * pct / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '—'}
-                      </td>
-                    )}
-                  </tr>
+                  <ColabRow
+                    key={c.nome}
+                    c={c}
+                    i={i}
+                    empresaId={empresaId}
+                    mesAno={mesAno}
+                    pct={pct}
+                    temRateio={temRateio}
+                  />
                 ))}
               </tbody>
             </table>
