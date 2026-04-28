@@ -339,4 +339,85 @@ export default function RelatorioGestorPane({ empresaId }: { empresaId: string }
               </>
             ) : (
               <div className="bg-[#0d1525] border border-[#1c2e48] rounded-[11px] p-3 text-center">
-                <div className="text-lg fo
+                <div className="text-lg font-black font-[var(--mono)] text-[#00e87a]">
+                  {Number(detalhe.valorTotal).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                </div>
+                <div className="font-[var(--mono)] text-[9px] text-[#3d5875] uppercase mt-0.5">💰 Faturamento</div>
+                <div className="font-[var(--mono)] text-[9px] text-[#3d5875] mt-0.5">R$ {Number(detalhe.preco).toFixed(2)}/ref</div>
+              </div>
+            )}
+          </div>
+
+          {/* Tabela */}
+          <p className="font-[var(--mono)] text-[10px] text-[#3d5875] uppercase tracking-[1px] mb-1">
+            Cobrança por colaborador
+          </p>
+          <p className="font-[var(--mono)] text-[9px] text-[#3d5875] mb-2">
+            Toque num colaborador para ver os pedidos do mês
+          </p>
+          <div className="overflow-x-auto mb-4">
+            <table className="w-full" style={{ minWidth: temRateio ? 380 : 280 }}>
+              <thead>
+                <tr className="border-b border-[#1c2e48]">
+                  <th className="font-[var(--mono)] text-[9px] text-[#3d5875] text-left pb-2 pr-2">#</th>
+                  <th className="font-[var(--mono)] text-[9px] text-[#3d5875] text-left pb-2 pr-2">Colaborador</th>
+                  <th className="font-[var(--mono)] text-[9px] text-[#3d5875] text-right pb-2 pr-2">Ref.</th>
+                  <th className="font-[var(--mono)] text-[9px] text-[#3d5875] text-right pb-2 pr-2">Total</th>
+                  {temRateio && (
+                    <th className="font-[var(--mono)] text-[9px] text-[#4da6ff] text-right pb-2">A cobrar ({pct}%)</th>
+                  )}
+                </tr>
+              </thead>
+              <tbody>
+                {colabs.map((c: any, i: number) => (
+                  <ColabRow
+                    key={c.nome}
+                    c={c}
+                    i={i}
+                    empresaId={empresaId}
+                    mesAno={mesAno}
+                    pct={pct}
+                    temRateio={temRateio}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Botões */}
+          <div className="flex gap-2">
+            <Btn variant="secondary" className="flex-1" onClick={() => abrirPdf(detalhe, mesAno, pct)}>
+              📄 PDF
+            </Btn>
+            <Btn variant="secondary" className="flex-1" onClick={() => setEmailModal(true)}>
+              📧 E-mail
+            </Btn>
+          </div>
+        </>
+      )}
+
+      {/* Modal e-mail */}
+      <Modal open={emailModal} onClose={() => setEmailModal(false)} title="Enviar relatório por e-mail">
+        <div className="flex flex-col gap-3">
+          <div>
+            <p className="font-[var(--mono)] text-[10px] text-[#3d5875] uppercase tracking-[1px] mb-1">Destinatário</p>
+            <input type="email" value={emailDest} onChange={e => setEmailDest(e.target.value)}
+              className="w-full bg-[#080c14] border border-[#1c2e48] rounded-[8px] px-3 py-2 font-[var(--mono)] text-sm text-[#ddeaf8] outline-none" />
+          </div>
+          <div>
+            <p className="font-[var(--mono)] text-[10px] text-[#3d5875] uppercase tracking-[1px] mb-1">Assunto</p>
+            <input type="text" value={emailAssunto} onChange={e => setEmailAssunto(e.target.value)}
+              className="w-full bg-[#080c14] border border-[#1c2e48] rounded-[8px] px-3 py-2 font-[var(--mono)] text-sm text-[#ddeaf8] outline-none" />
+          </div>
+          <div>
+            <p className="font-[var(--mono)] text-[10px] text-[#3d5875] uppercase tracking-[1px] mb-1">Mensagem (opcional)</p>
+            <textarea value={emailMsg} onChange={e => setEmailMsg(e.target.value)}
+              rows={3} placeholder="Segue o relatório do mês..."
+              className="w-full bg-[#080c14] border border-[#1c2e48] rounded-[8px] px-3 py-2 font-[var(--mono)] text-sm text-[#ddeaf8] outline-none resize-none" />
+          </div>
+          <Btn loading={sending} onClick={enviarEmail}>Enviar</Btn>
+        </div>
+      </Modal>
+    </div>
+  )
+}
