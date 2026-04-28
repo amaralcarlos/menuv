@@ -104,34 +104,35 @@ function abrirPdf(detalhe: any, mesAno: string, pct: number) {
 function ColabRow({ c, i, empresaId, mesAno, pct, temRateio }: {
   c: any; i: number; empresaId: string; mesAno: string; pct: number; temRateio: boolean
 }) {
-  const { call }  = useApi()
+  const { call }   = useApi()
   const [expanded, setExpanded] = useState(false)
   const [pedidos,  setPedidos]  = useState<any[]>([])
   const [loading,  setLoading]  = useState(false)
 
-async function expandir() {
-  if (expanded) { setExpanded(false); return }
-  if (c.total === 0) return
-  setLoading(true)
-  setExpanded(true)
+  async function expandir() {
+    if (expanded) { setExpanded(false); return }
+    if (c.total === 0) return
+    setLoading(true)
+    setExpanded(true)
 
-  const parts   = mesAno.split('/')
-  const mes     = parts[0]
-  const ano     = parts[1]
-  const inicio  = `${ano}-${mes}-01`
-  const fim     = new Date(parseInt(ano), parseInt(mes), 0).toISOString().split('T')[0]
-  const fmtInicio = `${inicio.split('-')[2]}/${inicio.split('-')[1]}/${inicio.split('-')[0]}`
-  const fmtFim    = `${fim.split('-')[2]}/${fim.split('-')[1]}/${fim.split('-')[0]}`
+    const parts     = mesAno.split('/')
+    const mes       = parts[0]
+    const ano       = parts[1]
+    const inicio    = `${ano}-${mes}-01`
+    const fim       = new Date(parseInt(ano), parseInt(mes), 0).toISOString().split('T')[0]
+    const fmtInicio = `${inicio.split('-')[2]}/${inicio.split('-')[1]}/${inicio.split('-')[0]}`
+    const fmtFim    = `${fim.split('-')[2]}/${fim.split('-')[1]}/${fim.split('-')[0]}`
 
-  const res = await call<any[]>(`/api/pedidos?empresaId=${empresaId}&dataInicio=${fmtInicio}&dataFim=${fmtFim}`)
-  if (res.success) {
-    const meus = res.data.filter((p: any) =>
-      p.colaboradorId === c.id || p.colaboradorNome === c.nome
-    )
-    setPedidos(meus)
+    const res = await call<any[]>(`/api/pedidos?empresaId=${empresaId}&dataInicio=${fmtInicio}&dataFim=${fmtFim}`)
+    if (res.success) {
+      const meus = res.data.filter((p: any) =>
+        (p.colaboradorId === c.id || p.colaboradorNome === c.nome) &&
+        p.itens?.length > 0
+      )
+      setPedidos(meus)
+    }
+    setLoading(false)
   }
-  setLoading(false)
-}
 
   return (
     <>
@@ -147,7 +148,7 @@ async function expandir() {
           <div className="flex items-center gap-1.5">
             <span className="text-sm text-[#ddeaf8]">{c.nome}</span>
             {c.total > 0 && (
-              <span className={`font-[var(--mono)] text-[9px] text-[#3d5875] transition-transform ${expanded ? 'rotate-90' : ''}`}>▶</span>
+              <span className={`font-[var(--mono)] text-[9px] text-[#3d5875] inline-block transition-transform ${expanded ? 'rotate-90' : ''}`}>▶</span>
             )}
           </div>
         </td>
@@ -164,14 +165,30 @@ async function expandir() {
         )}
       </tr>
 
-      {/* Pedidos expandidos */}
       {expanded && (
         <tr className="border-b border-[#1c2e48]">
           <td colSpan={temRateio ? 5 : 4} className="pb-3 pt-1 px-2">
             {loading && <div className="py-2"><Spinner /></div>}
             {!loading && pedidos.length === 0 && (
               <p className="font-[var(--mono)] text-[10px] text-[#3d5875] py-1">Sem pedidos encontrados.</p>
-            )}{!loading && pedidos.length > 0 && (
+            )}
+            {!loading && pedidos.length > 0 && (
+              <div className="flex flex-col gap-1 ml-4 border-l-2 border-[#1c2e48] pl-3">
+                {pedidos
+                  .sort((a, b) => a.data.localeCompare(b.data))
+                  .map((p: any) => (
+                    <div key={p.id} className="flex items-start gap-2 py-1">
+                      <span className="font-[var(--mono)] text-[10px] text-[#3d5875] w-20 flex-shrink-0">
+                        {fmtData(p.data)}
+                      </span>
+                      <span className="font-[var(--mono)] text-[10px] text-[#7a96b8]">
+                        {p.itens.join(', ')}
+                      </span>
+                    </div>
+                  ))
+                }
+              </div>
+            )}
           </td>
         </tr>
       )}
@@ -179,6 +196,7 @@ async function expandir() {
   )
 }
 
+/* ── Main ────────────────────────────────────────────────── */
 export default function RelatorioGestorPane({ empresaId }: { empresaId: string }) {
   const { call } = useApi()
   const toast    = useToast()
@@ -321,85 +339,4 @@ export default function RelatorioGestorPane({ empresaId }: { empresaId: string }
               </>
             ) : (
               <div className="bg-[#0d1525] border border-[#1c2e48] rounded-[11px] p-3 text-center">
-                <div className="text-lg font-black font-[var(--mono)] text-[#00e87a]">
-                  {Number(detalhe.valorTotal).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                </div>
-                <div className="font-[var(--mono)] text-[9px] text-[#3d5875] uppercase mt-0.5">💰 Faturamento</div>
-                <div className="font-[var(--mono)] text-[9px] text-[#3d5875] mt-0.5">R$ {Number(detalhe.preco).toFixed(2)}/ref</div>
-              </div>
-            )}
-          </div>
-
-          {/* Tabela com linhas expansíveis */}
-          <p className="font-[var(--mono)] text-[10px] text-[#3d5875] uppercase tracking-[1px] mb-1">
-            Cobrança por colaborador
-          </p>
-          <p className="font-[var(--mono)] text-[9px] text-[#3d5875] mb-2">
-            Toque num colaborador para ver os pedidos do mês
-          </p>
-          <div className="overflow-x-auto mb-4">
-            <table className="w-full" style={{ minWidth: temRateio ? 380 : 280 }}>
-              <thead>
-                <tr className="border-b border-[#1c2e48]">
-                  <th className="font-[var(--mono)] text-[9px] text-[#3d5875] text-left pb-2 pr-2">#</th>
-                  <th className="font-[var(--mono)] text-[9px] text-[#3d5875] text-left pb-2 pr-2">Colaborador</th>
-                  <th className="font-[var(--mono)] text-[9px] text-[#3d5875] text-right pb-2 pr-2">Ref.</th>
-                  <th className="font-[var(--mono)] text-[9px] text-[#3d5875] text-right pb-2 pr-2">Total</th>
-                  {temRateio && (
-                    <th className="font-[var(--mono)] text-[9px] text-[#4da6ff] text-right pb-2">A cobrar ({pct}%)</th>
-                  )}
-                </tr>
-              </thead>
-              <tbody>
-                {colabs.map((c: any, i: number) => (
-                  <ColabRow
-                    key={c.nome}
-                    c={c}
-                    i={i}
-                    empresaId={empresaId}
-                    mesAno={mesAno}
-                    pct={pct}
-                    temRateio={temRateio}
-                  />
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Botões */}
-          <div className="flex gap-2">
-            <Btn variant="secondary" className="flex-1" onClick={() => abrirPdf(detalhe, mesAno, pct)}>
-              📄 PDF
-            </Btn>
-            <Btn variant="secondary" className="flex-1" onClick={() => setEmailModal(true)}>
-              📧 E-mail
-            </Btn>
-          </div>
-        </>
-      )}
-
-      {/* Modal e-mail */}
-      <Modal open={emailModal} onClose={() => setEmailModal(false)} title="Enviar relatório por e-mail">
-        <div className="flex flex-col gap-3">
-          <div>
-            <p className="font-[var(--mono)] text-[10px] text-[#3d5875] uppercase tracking-[1px] mb-1">Destinatário</p>
-            <input type="email" value={emailDest} onChange={e => setEmailDest(e.target.value)}
-              className="w-full bg-[#080c14] border border-[#1c2e48] rounded-[8px] px-3 py-2 font-[var(--mono)] text-sm text-[#ddeaf8] outline-none" />
-          </div>
-          <div>
-            <p className="font-[var(--mono)] text-[10px] text-[#3d5875] uppercase tracking-[1px] mb-1">Assunto</p>
-            <input type="text" value={emailAssunto} onChange={e => setEmailAssunto(e.target.value)}
-              className="w-full bg-[#080c14] border border-[#1c2e48] rounded-[8px] px-3 py-2 font-[var(--mono)] text-sm text-[#ddeaf8] outline-none" />
-          </div>
-          <div>
-            <p className="font-[var(--mono)] text-[10px] text-[#3d5875] uppercase tracking-[1px] mb-1">Mensagem (opcional)</p>
-            <textarea value={emailMsg} onChange={e => setEmailMsg(e.target.value)}
-              rows={3} placeholder="Segue o relatório do mês..."
-              className="w-full bg-[#080c14] border border-[#1c2e48] rounded-[8px] px-3 py-2 font-[var(--mono)] text-sm text-[#ddeaf8] outline-none resize-none" />
-          </div>
-          <Btn loading={sending} onClick={enviarEmail}>Enviar</Btn>
-        </div>
-      </Modal>
-    </div>
-  )
-}
+                <div className="text-lg fo
