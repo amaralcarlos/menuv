@@ -40,10 +40,17 @@ export async function GET(req: NextRequest) {
   // Se não houver nenhum filtro de data, retorna sem filtrar por data
 
   // Filtro por role
-  if (meta?.app_role === 'colaborador') {
+if (meta?.app_role === 'colaborador') {
+  if (meta?.is_gestor && empresaId && meta?.empresa_id === empresaId) {
+    // Gestor pode ver todos os pedidos da sua empresa
+    query = query.eq('empresa_id', empresaId)
+  } else {
+    // Colaborador normal só vê os seus
     query = query.eq('colaborador_id', meta?.colaborador_id)
     if (empresaId) query = query.eq('empresa_id', empresaId)
-  } else if (empresaId) {
+  }
+} 
+  else if (empresaId) {
     if (meta?.app_role !== 'admin') {
       const { data: emp } = await sb.from('empresas').select('restaurante_id').eq('id', empresaId).single() as any
       if (!emp || emp.restaurante_id !== meta?.restaurante_id) return E.forbidden()
