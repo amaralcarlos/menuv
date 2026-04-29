@@ -20,7 +20,7 @@ export default function ResetSenhaForm() {
     const sb = supabaseBrowser()
 
     // Escuta o evento de recuperação
-    const { data: { subscription } } = sb.auth.onAuthStateChange((event) => {
+    const { data: { subscription } } = sb.auth.onAuthStateChange((event: string) => {
       if (event === 'PASSWORD_RECOVERY') {
         setEtapa('formulario')
       }
