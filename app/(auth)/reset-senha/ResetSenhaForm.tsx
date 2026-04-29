@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabaseBrowser } from '@/lib/supabase-browser'
-import { Btn, Input } from '@/components/ui'
+import { Btn, Input, PasswordInput } from '@/components/ui'
 
 type Etapa = 'verificando' | 'formulario' | 'sucesso' | 'erro'
 
@@ -121,17 +121,15 @@ export default function ResetSenhaForm() {
             </div>
 
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-              <Input
+              <PasswordInput
                 label="Nova senha"
-                type="password"
                 placeholder="••••••••"
                 value={senha}
                 onChange={e => { setSenha(e.target.value); setError('') }}
                 autoComplete="new-password"
               />
-              <Input
+              <PasswordInput
                 label="Confirmar senha"
-                type="password"
                 placeholder="••••••••"
                 value={confirm}
                 onChange={e => { setConfirm(e.target.value); setError('') }}
