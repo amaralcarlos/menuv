@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
     method: 'POST',
     headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      from:    process.env.EMAIL_FROM ?? 'noreply@menuv.app',
+      from:    process.env.EMAIL_FROM ?? 'noreply@menuv.com.br',
       to:      [para],
       subject: assunto,
       text:    corpo,
