@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabaseBrowser } from '@/lib/supabase-browser'
-import { Btn, Input } from '@/components/ui'
+import { Btn, Input, PasswordInput } from '@/components/ui'
 
 const SAVED_EMAIL_KEY = 'menuv_saved_email'
 
@@ -157,9 +157,7 @@ export default function LoginForm() {
               />
 
               <div className="flex flex-col gap-1">
-                <Input
-                  label="Senha"
-                  type="password"
+                <PasswordInput
                   placeholder="••••••••"
                   value={senha}
                   onChange={e => { setSenha(e.target.value); setError('') }}
