@@ -17,7 +17,7 @@ export interface EmpresaStatus {
 }
 
 // ── Calcula o status que a empresa deveria ter hoje ──────────
-export function calcularStatus(trialInicio: string | null, statusAtual: StatusPlano): StatusPlano {
+function calcularStatus(trialInicio: string | null, statusAtual: StatusPlano): StatusPlano {
   // Statuses finais — admin definiu, não alterar automaticamente
   if (statusAtual === 'ativo' || statusAtual === 'gratuito') return statusAtual
 
