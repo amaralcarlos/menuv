@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
 
   const { data: emp, error } = await admin
     .from('empresas')
-    .insert({ nome, restaurante_id: rest.id, horario_limite: hl, preco_por_refeicao: preco, formato })
+    .insert({ nome, restaurante_id: rest.id, horario_limite: hl, preco_por_refeicao: preco, formato, trial_inicio: new Date().toISOString().split('T')[0], status_plano: 'trial' })
     .select('id').single() as any
   if (error) return E.internal(error.message)
 
