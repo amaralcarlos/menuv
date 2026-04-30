@@ -17,7 +17,7 @@ export interface EmpresaStatus {
 }
 
 // ── Calcula o status que a empresa deveria ter hoje ──────────
-export function calcularStatus(trialInicio: string | null, statusAtual: StatusPlano): StatusPlano {
+function calcularStatus(trialInicio: string | null, statusAtual: StatusPlano): StatusPlano {
   // Statuses finais — admin definiu, não alterar automaticamente
   if (statusAtual === 'ativo' || statusAtual === 'gratuito') return statusAtual
 
@@ -50,7 +50,7 @@ export async function syncStatusEmpresas(restauranteId?: string) {
     query = query.eq('restaurante_id', restauranteId)
   }
 
-  const { data: empresas } = await query
+  const { data: empresas }: { data: any } = await query as any
   if (!empresas?.length) return
 
   const atualizacoes: { id: string; status_plano: StatusPlano }[] = []
