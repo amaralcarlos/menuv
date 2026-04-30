@@ -20,7 +20,7 @@ export async function POST(
     .from('restaurantes')
     .select('id, nome, comissionamento_ativo')
     .eq('id', id)
-    .single()
+    .single() as any
 
   if (!rest) return E.notFound('Restaurante não encontrado.')
 
