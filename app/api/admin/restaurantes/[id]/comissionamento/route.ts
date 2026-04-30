@@ -13,10 +13,9 @@ export async function POST(
   if (!id) return E.badRequest()
 
   const body  = await req.json().catch(() => null)
-  // Aceita { ativo: boolean } — se não vier, inverte o atual
   const admin = supabaseAdmin()
 
-  const { data: rest } = await admin
+  const { data: rest }: { data: any } = await admin
     .from('restaurantes')
     .select('id, nome, comissionamento_ativo')
     .eq('id', id)
