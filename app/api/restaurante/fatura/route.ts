@@ -13,29 +13,27 @@ export async function GET(req: NextRequest) {
 
   if (!restId) return E.badRequest('restauranteId é obrigatório.')
 
-  // Sincroniza status antes de calcular
   await syncStatusEmpresas(restId)
 
   const admin = supabaseAdmin()
 
-  const [{ data: rest }, { data: empresas }] = await Promise.all([
+  const [{ data: rest }, { data: empresas }]: [{ data: any }, { data: any }] = await Promise.all([
     admin.from('restaurantes')
       .select('id, nome, comissionamento_ativo')
       .eq('id', restId)
-      .single(),
+      .single() as any,
     admin.from('empresas')
       .select('id, nome, status_plano, trial_inicio')
-      .eq('restaurante_id', restId),
+      .eq('restaurante_id', restId) as any,
   ])
 
   if (!rest) return E.notFound('Restaurante não encontrado.')
 
   const fatura = calcularFatura(empresas ?? [], rest.comissionamento_ativo ?? true)
 
-  // Detalha cada empresa para exibição
-  const empresasDetalhadas = (empresas ?? []).map(e => ({
+  const empresasDetalhadas = (empresas ?? []).map((e: any) => ({
     ...e,
-    ...detalhesStatus(e.trial_inicio, e.status_plano as any),
+    ...detalhesStatus(e.trial_inicio, e.status_plano),
   }))
 
   return ok({ fatura, empresas: empresasDetalhadas })
