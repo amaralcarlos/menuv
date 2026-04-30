@@ -18,7 +18,7 @@ export async function POST(
     .from('empresas')
     .select('id, nome, status_plano')
     .eq('id', id)
-    .single()
+    .single() as any
 
   if (!emp) return E.notFound('Empresa não encontrada.')
   if (emp.status_plano === 'ativo') return E.conflict('Empresa já está ativa.')
