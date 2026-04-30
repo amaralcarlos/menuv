@@ -1,155 +1,73 @@
-// ============================================================
-// MENUV — lib/status-empresa.ts
-// Utilitário de status de empresa — usado pelas rotas de API
-// ============================================================
+import { NextRequest } from 'next/server'
+import { supabaseServer, supabaseAdmin, ok, E, sanitize, log } from '@/lib/api-helpers'
 
-import { supabaseAdmin } from '@/lib/api-helpers'
-
-export type StatusPlano = 'trial' | 'conversao' | 'ativo' | 'bloqueado' | 'gratuito'
-
-export interface EmpresaStatus {
-  id: string
-  status_plano: StatusPlano
-  trial_inicio: string | null
-  diasDecorridos: number
-  diasRestantesTrial: number    // > 0 = ainda em trial
-  diasRestantesConversao: number // > 0 = em período de conversão
+function parseJwt(token: string) {
+  try { return JSON.parse(atob(token.split('.')[1])) } catch { return null }
 }
 
-// ── Calcula o status que a empresa deveria ter hoje ──────────
-function calcularStatus(trialInicio: string | null, statusAtual: StatusPlano): StatusPlano {
-  // Statuses finais — admin definiu, não alterar automaticamente
-  if (statusAtual === 'ativo' || statusAtual === 'gratuito') return statusAtual
+export async function GET(req: NextRequest) {
+  const sb = await supabaseServer()
+  const { data: { session } } = await sb.auth.getSession()
+  if (!session) return E.unauthorized()
 
-  if (!trialInicio) return 'trial'
+  const jwt  = parseJwt(session.access_token)
+  const meta = jwt?.app_metadata as any
 
-  const inicio = new Date(trialInicio)
-  const hoje   = new Date()
-  hoje.setHours(0, 0, 0, 0)
-  inicio.setHours(0, 0, 0, 0)
+  const restId = (req.nextUrl.searchParams.get('restauranteId') ?? meta?.restaurante_id ?? '').trim()
+  if (!restId) return E.badRequest('restauranteId é obrigatório.')
 
-  const dias = Math.floor((hoje.getTime() - inicio.getTime()) / 86_400_000)
+  if (meta?.app_role === 'colaborador') {
+    const { data, error } = await sb
+      .from('empresas')
+      .select('id, nome, horario_limite, preco_por_refeicao, ativa, formato')
+      .eq('id', meta?.empresa_id).eq('ativa', true)
+    if (error) return E.internal(error.message)
+    return ok(data ?? [])
+  }
 
-  if (dias <= 30)  return 'trial'
-  if (dias <= 40)  return 'conversao'
-  return 'bloqueado'
-}
+  if (meta?.app_role !== 'admin' && meta?.restaurante_id !== restId) {
+    return E.forbidden()
+  }
 
-// ── Sincroniza status de empresas em trial/conversao no banco ─
-// Chamado nas rotas de listagem para manter status atualizado
-// sem precisar de cron job externo
-export async function syncStatusEmpresas(restauranteId?: string) {
-  const admin = supabaseAdmin()
-
-  let query = admin
+  const { data, error } = await sb
     .from('empresas')
-    .select('id, trial_inicio, status_plano')
-    .in('status_plano', ['trial', 'conversao']) // só empresas que ainda podem mudar
-
-  if (restauranteId) {
-    query = query.eq('restaurante_id', restauranteId)
-  }
-
-  const { data: empresas } = await query as any
-  if (!empresas?.length) return
-
-  const atualizacoes: { id: string; status_plano: StatusPlano }[] = []
-
-  for (const emp of empresas) {
-    const novoStatus = calcularStatus(emp.trial_inicio, emp.status_plano as StatusPlano)
-    if (novoStatus !== emp.status_plano) {
-      atualizacoes.push({ id: emp.id, status_plano: novoStatus })
-    }
-  }
-
-  if (!atualizacoes.length) return
-
-  // Atualiza em paralelo
-  await Promise.all(
-    atualizacoes.map(({ id, status_plano }) =>
-      admin.from('empresas').update({ status_plano }).eq('id', id)
-    )
-  )
+    .select('id, nome, horario_limite, preco_por_refeicao, ativa, formato')
+    .eq('restaurante_id', restId).eq('ativa', true).order('nome')
+  if (error) return E.internal(error.message)
+  return ok(data)
 }
 
-// ── Monta info detalhada de status para exibição ─────────────
-export function detalhesStatus(trialInicio: string | null, statusPlano: StatusPlano): EmpresaStatus & { label: string; cor: string } {
-  const inicio = trialInicio ? new Date(trialInicio) : new Date()
-  const hoje   = new Date()
-  hoje.setHours(0, 0, 0, 0)
-  inicio.setHours(0, 0, 0, 0)
+export async function POST(req: NextRequest) {
+  const body = await req.json().catch(() => null)
+  if (!body) return E.badRequest()
 
-  const dias = Math.floor((hoje.getTime() - inicio.getTime()) / 86_400_000)
+  const nome           = sanitize(body.nome)
+  const restauranteRef = sanitize(body.restauranteRef ?? '')
+  const hl             = sanitize(body.horarioLimite) || '09:30'
+  const preco          = parseFloat(String(body.preco ?? '15')) || 15
+  const colabId        = sanitize(body.colabId ?? '')
+  const formato        = sanitize(body.formato ?? 'marmita')
 
-  const labels: Record<StatusPlano, string> = {
-    trial:     'Trial',
-    conversao: 'Aguardando conversão',
-    ativo:     'Ativo',
-    bloqueado: 'Bloqueado',
-    gratuito:  'Gratuito',
+  if (!nome)           return E.badRequest('Nome da empresa é obrigatório.')
+  if (!restauranteRef) return E.badRequest('Referência do restaurante é obrigatória.')
+
+  const admin = supabaseAdmin()
+  const { data: rest } = await admin
+    .from('restaurantes').select('id, ativo').eq('id', restauranteRef).maybeSingle() as any
+  if (!rest || !rest.ativo) return E.notFound('Restaurante não encontrado.')
+
+  const { data: emp, error } = await admin
+    .from('empresas')
+    .insert({ nome, restaurante_id: rest.id, horario_limite: hl, preco_por_refeicao: preco, formato, trial_inicio: new Date().toISOString().split('T')[0], status_plano: 'trial' })
+    .select('id').single() as any
+  if (error) return E.internal(error.message)
+
+  if (colabId) {
+    await admin.from('colaboradores')
+      .update({ empresa_id: emp.id })
+      .eq('id', colabId)
   }
-  const cores: Record<StatusPlano, string> = {
-    trial:     'yellow',
-    conversao: 'yellow',
-    ativo:     'green',
-    bloqueado: 'red',
-    gratuito:  'green',
-  }
 
-  return {
-    id: '',
-    status_plano: statusPlano,
-    trial_inicio: trialInicio,
-    diasDecorridos: dias,
-    diasRestantesTrial:     Math.max(0, 30 - dias),
-    diasRestantesConversao: Math.max(0, 40 - dias),
-    label: labels[statusPlano] ?? statusPlano,
-    cor:   cores[statusPlano]  ?? 'gray',
-  }
-}
-
-// ── Calcula a fatura mensal do restaurante ───────────────────
-export interface FaturaRestaurante {
-  mensalidadeBase:     number  // 149.90
-  numEmpresasAtivas:   number  // empresas ativo|gratuito
-  numEmpresasTrial:    number
-  numEmpresasConversao: number
-  numEmpresasBloqueadas: number
-  cashbackPorEmpresa:  number  // 10.00 por empresa (máx 10)
-  cashbackTotal:       number  // min(numAtivas,10) × 10
-  totalAPagar:         number  // max(149.90 - cashback, 49.90)
-  comissionamentoAtivo: boolean
-}
-
-export function calcularFatura(
-  empresas: Array<{ status_plano: string }>,
-  comissionamentoAtivo: boolean
-): FaturaRestaurante {
-  const MENSALIDADE_BASE     = 149.90
-  const CASHBACK_POR_EMPRESA = 10.00
-  const MINIMO               = 49.90
-  const MAX_CASHBACK_EMPS    = 10
-
-  const numAtivas     = empresas.filter(e => e.status_plano === 'ativo' || e.status_plano === 'gratuito').length
-  const numTrial      = empresas.filter(e => e.status_plano === 'trial').length
-  const numConversao  = empresas.filter(e => e.status_plano === 'conversao').length
-  const numBloqueadas = empresas.filter(e => e.status_plano === 'bloqueado').length
-
-  const cashbackTotal = comissionamentoAtivo
-    ? Math.min(numAtivas, MAX_CASHBACK_EMPS) * CASHBACK_POR_EMPRESA
-    : 0
-
-  const totalAPagar = Math.max(MENSALIDADE_BASE - cashbackTotal, MINIMO)
-
-  return {
-    mensalidadeBase:       MENSALIDADE_BASE,
-    numEmpresasAtivas:     numAtivas,
-    numEmpresasTrial:      numTrial,
-    numEmpresasConversao:  numConversao,
-    numEmpresasBloqueadas: numBloqueadas,
-    cashbackPorEmpresa:    CASHBACK_POR_EMPRESA,
-    cashbackTotal,
-    totalAPagar,
-    comissionamentoAtivo,
-  }
+  await log('EMPRESA_CRIADA', `${nome} → ${rest.id}`, emp.id)
+  return ok({ id: emp.id }, 201)
 }
