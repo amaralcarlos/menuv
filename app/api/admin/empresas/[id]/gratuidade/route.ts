@@ -22,7 +22,7 @@ export async function POST(
     .from('empresas')
     .select('id, nome')
     .eq('id', id)
-    .single()
+    .single() as any
 
   if (!emp) return E.notFound('Empresa não encontrada.')
 
