@@ -1,69 +1,168 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useAuth } from '@/lib/auth-context'
 import { useApi } from '@/lib/use-api'
 import { useToast } from '@/components/ui'
 import { AppShell } from '@/components/layout/AppShell'
 import { Card, SectionLabel, Badge, Btn, Spinner, Modal, Input } from '@/components/ui'
 
+const BRL = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+
 const PLANO_LABELS: Record<string, string> = { trial: 'Trial', starter: 'Starter', pro: 'Pro', scale: 'Scale', free: 'Free' }
-const STATUS_COLOR: Record<string, any> = { trial: 'yellow', ativo: 'green', suspenso: 'red', cancelado: 'red' }
+const STATUS_COLOR: Record<string, any>  = { trial: 'yellow', ativo: 'green', suspenso: 'red', cancelado: 'red', conversao: 'yellow', bloqueado: 'red', gratuito: 'green' }
+const STATUS_EMP_LABEL: Record<string, string> = { trial: 'Trial', conversao: 'Conversão', ativo: 'Ativo', bloqueado: 'Bloqueado', gratuito: 'Gratuito' }
 
-/* ── Empresas do restaurante ─────────────────────────────── */
-function EmpresasDoRest({ restId }: { restId: string }) {
-  const { call } = useApi()
-  const [empresas, setEmpresas] = useState<any[]>([])
-  const [loading,  setLoading]  = useState(true)
+// ── Faixa de colaboradores ────────────────────────────────────
+function faixaColabs(n: number): string {
+  if (n <= 20) return `até 20 colabs → ${BRL(49.90)}/mês`
+  if (n <= 50) return `21–50 colabs → ${BRL(79.90)}/mês`
+  return `51+ colabs → ${BRL(119.90)}/mês`
+}
 
-  useEffect(() => {
-    call<any[]>(`/api/empresas?restauranteId=${restId}`).then(r => {
-      if (r.success) setEmpresas(r.data)
+/* ── Empresas do restaurante com controles de plano ──────────── */
+function EmpresasDoRest({ restId, onRefresh }: { restId: string; onRefresh: () => void }) {
+  const { call }  = useApi()
+  const toast     = useToast()
+  const [empresas,        setEmpresas]        = useState<any[]>([])
+  const [loading,         setLoading]         = useState(true)
+  const [acting,          setActing]          = useState('')
+  const [gratuidadeModal, setGratuidadeModal] = useState<any>(null)
+  const [gratuidadeMotivo,setGratuidadeMotivo]= useState('')
+  const [savingGrat,      setSavingGrat]      = useState(false)
+
+  function load() {
+    call<any>(`/api/restaurante/fatura?restauranteId=${restId}`).then(r => {
+      if (r.success) setEmpresas(r.data.empresas ?? [])
       setLoading(false)
     })
-  }, [restId])
+  }
 
-  if (loading) return <Spinner />
+  useEffect(() => { load() }, [restId])
 
-  if (empresas.length === 0) return (
+  async function converter(id: string, nome: string) {
+    if (!confirm(`Converter "${nome}" para ativo (pago)?`)) return
+    setActing(id)
+    const r = await call(`/api/admin/empresas/${id}/converter`, { method: 'POST' })
+    setActing('')
+    if (r.success) { toast(`${nome} convertida para ativa.`); load(); onRefresh() }
+    else toast(r.error, 'error')
+  }
+
+  async function reativar(id: string, nome: string) {
+    if (!confirm(`Reativar acesso de "${nome}"?`)) return
+    setActing(id)
+    const r = await call('/api/admin/reativar', {
+      method: 'POST', body: JSON.stringify({ tipo: 'empresa', titularId: id }),
+    })
+    setActing('')
+    if (r.success) { toast(`${nome} reativada.`); load(); onRefresh() }
+    else toast(r.error, 'error')
+  }
+
+  async function salvarGratuidade() {
+    if (!gratuidadeMotivo.trim()) { toast('Informe o motivo.', 'error'); return }
+    setSavingGrat(true)
+    const r = await call(`/api/admin/empresas/${gratuidadeModal.id}/gratuidade`, {
+      method: 'POST', body: JSON.stringify({ motivo: gratuidadeMotivo }),
+    })
+    setSavingGrat(false)
+    if (r.success) {
+      toast(`Gratuidade concedida para ${gratuidadeModal.nome}.`)
+      setGratuidadeModal(null); setGratuidadeMotivo(''); load(); onRefresh()
+    } else toast(r.error, 'error')
+  }
+
+  if (loading) return <div className="py-2"><Spinner /></div>
+  if (!empresas.length) return (
     <p className="font-[var(--mono)] text-xs text-[#3d5875] py-2">Nenhuma empresa cadastrada.</p>
   )
 
   return (
     <div className="flex flex-col gap-2 mt-2 border-t border-[#1c2e48] pt-2">
-      {empresas.map(e => (
-        <div key={e.id} className="flex items-center justify-between bg-[#080c14] border border-[#1c2e48] rounded-[8px] px-3 py-2">
-          <div>
-            <p className="text-sm text-[#ddeaf8] font-medium">{e.nome}</p>
-            <p className="font-[var(--mono)] text-[10px] text-[#3d5875]">
-              {e.formato === 'buffet' ? '🍽️ Buffet' : '🍱 Marmita'}
-            </p>
+      {empresas.map((e: any) => (
+        <div key={e.id}
+          className="bg-[#080c14] border border-[#1c2e48] rounded-[10px] px-3 py-2.5 flex flex-col gap-2">
+
+          {/* Nome + status */}
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <p className="text-sm text-[#ddeaf8] font-medium">{e.nome}</p>
+              <p className="font-[var(--mono)] text-[10px] text-[#3d5875] mt-0.5">
+                {e.status_plano === 'trial'     && `${e.diasRestantesTrial} dias de trial restantes`}
+                {e.status_plano === 'conversao' && `${e.diasRestantesConversao} dias para converter`}
+                {e.status_plano === 'ativo'     && 'Ativa e pagante'}
+                {e.status_plano === 'gratuito'  && `Gratuidade: ${e.gratuidade_motivo ?? '—'}`}
+                {e.status_plano === 'bloqueado' && 'Acesso bloqueado'}
+              </p>
+            </div>
+            <Badge color={STATUS_COLOR[e.status_plano] ?? 'gray'}>
+              {STATUS_EMP_LABEL[e.status_plano] ?? e.status_plano}
+            </Badge>
           </div>
-          <div className="flex gap-2">
+
+          {/* Botões de ação */}
+          <div className="flex gap-1.5 flex-wrap">
+            {/* Converter para ativo */}
+            {(e.status_plano === 'trial' || e.status_plano === 'conversao' || e.status_plano === 'bloqueado') && (
+              <Btn size="sm" className="w-auto" loading={acting === e.id}
+                onClick={() => converter(e.id, e.nome)}>
+                ✅ Converter
+              </Btn>
+            )}
+
+            {/* Reativar bloqueada */}
+            {e.status_plano === 'bloqueado' && (
+              <Btn size="sm" variant="secondary" className="w-auto" loading={acting === e.id}
+                onClick={() => reativar(e.id, e.nome)}>
+                🔓 Reativar
+              </Btn>
+            )}
+
+            {/* Gratuidade */}
+            {e.status_plano !== 'gratuito' && (
+              <Btn size="sm" variant="secondary" className="w-auto"
+                onClick={() => { setGratuidadeModal(e); setGratuidadeMotivo('') }}>
+                🎁 Gratuidade
+              </Btn>
+            )}
+
+            {/* Link gestor */}
             <button
               onClick={() => window.location.href = `/gestor/${e.id}`}
               className="font-[var(--mono)] text-[10px] text-[#4da6ff] border border-[rgba(77,166,255,.3)] rounded-[6px] px-2.5 py-1 cursor-pointer hover:bg-[rgba(77,166,255,.08)] transition-colors">
               👥 Gestor
             </button>
-            <button
-              onClick={() => {
-                navigator.clipboard.writeText(`${window.location.origin}/cadastro?tipo=colaborador&emp=${e.id}`)
-                alert('Link copiado!')
-              }}
-              className="font-[var(--mono)] text-[10px] text-[#3d5875] border border-[#1c2e48] rounded-[6px] px-2.5 py-1 cursor-pointer hover:border-[#3d5875] transition-colors">
-              🔗 Link
-            </button>
           </div>
         </div>
       ))}
+
+      {/* Modal gratuidade */}
+      <Modal open={!!gratuidadeModal} onClose={() => setGratuidadeModal(null)}
+        title={`Gratuidade: ${gratuidadeModal?.nome}`}>
+        <div className="flex flex-col gap-4">
+          <p className="font-[var(--mono)] text-[11px] text-[#7a96b8] leading-relaxed">
+            A empresa ficará com acesso gratuito indefinidamente.
+            O motivo é obrigatório e fica registrado nos logs.
+          </p>
+          <Input
+            label="Motivo (obrigatório)"
+            value={gratuidadeMotivo}
+            onChange={e => setGratuidadeMotivo(e.target.value)}
+            placeholder="Ex: parceiro estratégico, teste piloto..."
+          />
+          <Btn loading={savingGrat} onClick={salvarGratuidade}>
+            Confirmar gratuidade
+          </Btn>
+        </div>
+      </Modal>
     </div>
   )
 }
 
-/* ── Dashboard pane ──────────────────────────────────────── */
+/* ── Dashboard pane ────────────────────────────────────────── */
 function DashboardPane() {
   const { call } = useApi()
-  const toast = useToast()
+  const toast    = useToast()
   const [dados,        setDados]        = useState<any>(null)
   const [loading,      setLoading]      = useState(true)
   const [planoModal,   setPlanoModal]   = useState<any>(null)
@@ -110,10 +209,23 @@ function DashboardPane() {
     load()
   }
 
+  async function toggleComissionamento(restId: string, nomeRest: string, atual: boolean) {
+    const acao = atual ? 'desativar' : 'ativar'
+    if (!confirm(`${acao.charAt(0).toUpperCase() + acao.slice(1)} o cashback de "${nomeRest}"?`)) return
+    setActing(restId)
+    const r = await call(`/api/admin/restaurantes/${restId}/comissionamento`, {
+      method: 'POST', body: JSON.stringify({ ativo: !atual }),
+    })
+    setActing('')
+    if (r.success) { toast(`Cashback ${!atual ? 'ativado' : 'desativado'}.`); load() }
+    else toast(r.error, 'error')
+  }
+
   if (loading) return <Spinner />
 
   return (
     <div className="px-4 pt-4 pb-24">
+
       {/* Totais */}
       <div className="grid grid-cols-2 gap-2 mb-4">
         {[
@@ -132,6 +244,7 @@ function DashboardPane() {
       <SectionLabel>Restaurantes</SectionLabel>
       {(dados?.restaurantes ?? []).map((r: any) => (
         <Card key={r.id}>
+          {/* Cabeçalho do restaurante */}
           <div className="flex items-start justify-between gap-2 mb-2">
             <div>
               <p className="font-bold text-sm text-[#ddeaf8]">{r.nome}</p>
@@ -146,6 +259,28 @@ function DashboardPane() {
             </div>
           </div>
 
+          {/* Cashback info */}
+          <div className="flex items-center justify-between bg-[#080c14] border border-[#1c2e48] rounded-[8px] px-3 py-2 mb-2">
+            <div>
+              <p className="font-[var(--mono)] text-[10px] text-[#3d5875] uppercase tracking-[1px]">Cashback</p>
+              <p className="font-[var(--mono)] text-xs text-[#ddeaf8] mt-0.5">
+                {r.comissionamentoAtivo !== false
+                  ? `Ativo · R$ 10,00 por empresa ativa`
+                  : 'Desativado pelo admin'}
+              </p>
+            </div>
+            <Btn
+              size="sm"
+              variant={r.comissionamentoAtivo !== false ? 'danger' : 'secondary'}
+              className="w-auto"
+              loading={acting === r.id}
+              onClick={() => toggleComissionamento(r.id, r.nome, r.comissionamentoAtivo !== false)}
+            >
+              {r.comissionamentoAtivo !== false ? 'Desativar' : 'Ativar'}
+            </Btn>
+          </div>
+
+          {/* Botões de ação do restaurante */}
           <div className="flex gap-2 flex-wrap mb-2">
             <Btn size="sm" variant="secondary" className="w-auto"
               onClick={() => { setPlanoModal({ ...r, tipo: 'restaurante' }); setPlanoForm({ plano: r.plano, status: r.statusPlano, trialFim: r.trialFim ?? '', obs: r.obs ?? '' }) }}>
@@ -165,11 +300,12 @@ function DashboardPane() {
             }
           </div>
 
-          {expandedRest === r.id && <EmpresasDoRest restId={r.id} />}
+          {/* Empresas expandidas */}
+          {expandedRest === r.id && <EmpresasDoRest restId={r.id} onRefresh={load} />}
         </Card>
       ))}
 
-      {/* Plano modal */}
+      {/* Modal de plano do restaurante */}
       <Modal open={!!planoModal} onClose={() => setPlanoModal(null)} title={`Plano: ${planoModal?.nome}`}>
         <div className="flex flex-col gap-4">
           <div>
@@ -195,7 +331,7 @@ function DashboardPane() {
   )
 }
 
-/* ── Logs pane ───────────────────────────────────────────── */
+/* ── Logs pane ─────────────────────────────────────────────── */
 function LogsPane() {
   const { call } = useApi()
   const [logs,    setLogs]    = useState<any[]>([])
@@ -220,8 +356,8 @@ function LogsPane() {
             <span className="font-[var(--mono)] text-[10px] text-[#3d5875]">{l.criado_em?.slice(0,16).replace('T',' ')}</span>
           </div>
           <span className="text-xs text-[#7a96b8]">
-  {l.detalhe?.replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, '…') || '—'}
-</span>
+            {l.detalhe?.replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, '…') || '—'}
+          </span>
           {l.email && <span className="font-[var(--mono)] text-[10px] text-[#3d5875]">{l.email}</span>}
         </div>
       ))}
@@ -230,7 +366,7 @@ function LogsPane() {
   )
 }
 
-/* ── Admin page ──────────────────────────────────────────── */
+/* ── Admin page ────────────────────────────────────────────── */
 export default function AdminPage() {
   const tabs = [
     { id: 'dashboard', label: 'Dashboard', icon: 'home'  as const, component: <DashboardPane /> },
