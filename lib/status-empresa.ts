@@ -108,48 +108,87 @@ export function detalhesStatus(trialInicio: string | null, statusPlano: StatusPl
   }
 }
 
+// ── Plano de lançamento ──────────────────────────────────────
+export const PLANO_LANCAMENTO = {
+  valor: 49.90,
+  limiteEmpresas: 25,
+  label: 'Lançamento — até 25 empresas',
+}
+
+// ── Faixas de preço por número de empresas ───────────────────
+export const FAIXAS_RESTAURANTE = [
+  { min: 0,  max: 5,        valor: 99.00,  label: '0 a 5 empresas'       },
+  { min: 6,  max: 10,       valor: 149.00, label: '6 a 10 empresas'      },
+  { min: 11, max: 15,       valor: 249.00, label: '11 a 15 empresas'     },
+  { min: 16, max: Infinity, valor: 349.00, label: 'Acima de 15 empresas' },
+]
+
+export function faixaAtual(numEmpresas: number) {
+  return FAIXAS_RESTAURANTE.find(f => numEmpresas >= f.min && numEmpresas <= f.max)
+    ?? FAIXAS_RESTAURANTE[FAIXAS_RESTAURANTE.length - 1]
+}
+
+export function proximaFaixa(numEmpresas: number) {
+  const idx = FAIXAS_RESTAURANTE.findIndex(f => numEmpresas >= f.min && numEmpresas <= f.max)
+  return FAIXAS_RESTAURANTE[idx + 1] ?? null
+}
+
 // ── Calcula a fatura mensal do restaurante ───────────────────
 export interface FaturaRestaurante {
-  mensalidadeBase:     number  // 149.90
-  numEmpresasAtivas:   number  // empresas ativo|gratuito
-  numEmpresasTrial:    number
-  numEmpresasConversao: number
+  totalEmpresas:         number
+  numEmpresasAtivas:     number
+  numEmpresasTrial:      number
+  numEmpresasConversao:  number
   numEmpresasBloqueadas: number
-  cashbackPorEmpresa:  number  // 10.00 por empresa (máx 10)
-  cashbackTotal:       number  // min(numAtivas,10) × 10
-  totalAPagar:         number  // max(149.90 - cashback, 49.90)
-  comissionamentoAtivo: boolean
+  planoLancamento:       boolean
+  faixaLabel:            string
+  totalAPagar:           number
+  proximaFaixaLabel:     string | null
+  proximaFaixaValor:     number | null
+  empresasParaProxima:   number | null
 }
 
 export function calcularFatura(
   empresas: Array<{ status_plano: string }>,
-  comissionamentoAtivo: boolean
+  planoLancamento = false
 ): FaturaRestaurante {
-  const MENSALIDADE_BASE     = 149.90
-  const CASHBACK_POR_EMPRESA = 10.00
-  const MINIMO               = 49.90
-  const MAX_CASHBACK_EMPS    = 10
-
   const numAtivas     = empresas.filter(e => e.status_plano === 'ativo' || e.status_plano === 'gratuito').length
   const numTrial      = empresas.filter(e => e.status_plano === 'trial').length
   const numConversao  = empresas.filter(e => e.status_plano === 'conversao').length
   const numBloqueadas = empresas.filter(e => e.status_plano === 'bloqueado').length
+  const totalEmpresas = empresas.length
 
-  const cashbackTotal = comissionamentoAtivo
-    ? Math.min(numAtivas, MAX_CASHBACK_EMPS) * CASHBACK_POR_EMPRESA
-    : 0
+  // Plano de lançamento sobrepõe as faixas normais (até o limite de empresas)
+  if (planoLancamento && totalEmpresas <= PLANO_LANCAMENTO.limiteEmpresas) {
+    return {
+      totalEmpresas,
+      numEmpresasAtivas:     numAtivas,
+      numEmpresasTrial:      numTrial,
+      numEmpresasConversao:  numConversao,
+      numEmpresasBloqueadas: numBloqueadas,
+      planoLancamento:       true,
+      faixaLabel:            PLANO_LANCAMENTO.label,
+      totalAPagar:           PLANO_LANCAMENTO.valor,
+      proximaFaixaLabel:     null,
+      proximaFaixaValor:     null,
+      empresasParaProxima:   null,
+    }
+  }
 
-  const totalAPagar = Math.max(MENSALIDADE_BASE - cashbackTotal, MINIMO)
+  const faixa   = faixaAtual(totalEmpresas)
+  const proxima = proximaFaixa(totalEmpresas)
 
   return {
-    mensalidadeBase:       MENSALIDADE_BASE,
+    totalEmpresas,
     numEmpresasAtivas:     numAtivas,
     numEmpresasTrial:      numTrial,
     numEmpresasConversao:  numConversao,
     numEmpresasBloqueadas: numBloqueadas,
-    cashbackPorEmpresa:    CASHBACK_POR_EMPRESA,
-    cashbackTotal,
-    totalAPagar,
-    comissionamentoAtivo,
+    planoLancamento:       false,
+    faixaLabel:            faixa.label,
+    totalAPagar:           faixa.valor,
+    proximaFaixaLabel:     proxima?.label ?? null,
+    proximaFaixaValor:     proxima?.valor ?? null,
+    empresasParaProxima:   proxima ? proxima.min - totalEmpresas : null,
   }
 }
