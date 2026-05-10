@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 import { useApi } from '@/lib/use-api'
 import { Spinner, Badge } from '@/components/ui'
-import { FAIXAS_RESTAURANTE, PLANO_LANCAMENTO } from '@/lib/status-empresa'
+import { FAIXAS_RESTAURANTE, PLANO_LANCAMENTO } from '@/lib/planos-config'
 
 const BRL = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
