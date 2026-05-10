@@ -4,6 +4,7 @@
 // ============================================================
 
 import { supabaseAdmin } from '@/lib/api-helpers'
+import { PLANO_LANCAMENTO, FAIXAS_RESTAURANTE } from '@/lib/planos-config'
 
 export type StatusPlano = 'trial' | 'conversao' | 'ativo' | 'bloqueado' | 'gratuito'
 
@@ -108,20 +109,7 @@ export function detalhesStatus(trialInicio: string | null, statusPlano: StatusPl
   }
 }
 
-// ── Plano de lançamento ──────────────────────────────────────
-export const PLANO_LANCAMENTO = {
-  valor: 49.90,
-  limiteEmpresas: 25,
-  label: 'Lançamento — até 25 empresas',
-}
-
-// ── Faixas de preço por número de empresas ───────────────────
-export const FAIXAS_RESTAURANTE = [
-  { min: 0,  max: 5,        valor: 99.00,  label: '0 a 5 empresas'       },
-  { min: 6,  max: 10,       valor: 149.00, label: '6 a 10 empresas'      },
-  { min: 11, max: 15,       valor: 249.00, label: '11 a 15 empresas'     },
-  { min: 16, max: Infinity, valor: 349.00, label: 'Acima de 15 empresas' },
-]
+// ── Faixas e plano de lançamento → ver lib/planos-config.ts ─
 
 export function faixaAtual(numEmpresas: number) {
   return FAIXAS_RESTAURANTE.find(f => numEmpresas >= f.min && numEmpresas <= f.max)
