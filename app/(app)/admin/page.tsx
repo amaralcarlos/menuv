@@ -242,54 +242,127 @@ function DashboardPane() {
       </div>
 
       <SectionLabel>Restaurantes</SectionLabel>
-      {(dados?.restaurantes ?? []).map((r: any) => (
-        <Card key={r.id}>
-          {/* Cabeçalho do restaurante */}
-          <div className="flex items-start justify-between gap-2 mb-2">
-            <div>
-              <p className="font-bold text-sm text-[#ddeaf8]">{r.nome}</p>
-              <p className="font-[var(--mono)] text-[10px] text-[#3d5875] mt-0.5">{r.email}</p>
-              <p className="font-[var(--mono)] text-[10px] text-[#3d5875]">
-                {r.numEmpresas} emp · {r.numColabs} colabs · {r.numPedidosMes} pedidos/mês
-              </p>
-            </div>
-            <div className="flex flex-col items-end gap-1">
-              <Badge color={STATUS_COLOR[r.statusPlano] ?? 'gray'}>{r.statusPlano}</Badge>
-              <Badge color="gray">{PLANO_LABELS[r.plano] ?? r.plano}</Badge>
-            </div>
-          </div>
+      {(dados?.restaurantes ?? []).map((r: any) => {
+        const expanded = expandedRest === r.id
+        const faturaMes = r.planoLancamento && r.numEmpresas <= 25 ? 49.90
+          : r.numEmpresas <= 5 ? 99.00
+          : r.numEmpresas <= 10 ? 149.00
+          : r.numEmpresas <= 15 ? 249.00
+          : 349.00
+        const suspenso = r.statusPlano === 'suspenso'
 
-          {/* Botões de ação do restaurante */}
-          <div className="flex gap-2 flex-wrap mb-2">
-            <Btn size="sm" variant="secondary" className="w-auto"
-              onClick={() => { setPlanoModal({ ...r, tipo: 'restaurante' }); setPlanoForm({ plano: r.plano, status: r.statusPlano, trialFim: r.trialFim ?? '', obs: r.obs ?? '' }) }}>
-              Plano
-            </Btn>
-            <Btn size="sm" variant="secondary" className="w-auto"
-              onClick={() => window.location.href = `/dashboard?restId=${r.id}`}>
-              👁️ Dashboard
-            </Btn>
-            <Btn size="sm" variant="secondary" className="w-auto"
+        return (
+          <div key={r.id}
+            className={`rounded-[14px] border transition-all overflow-hidden
+              ${suspenso ? 'border-[rgba(255,77,106,.3)] bg-[rgba(255,77,106,.04)]' : 'border-[#1c2e48] bg-[#0d1525]'}
+              ${expanded ? 'shadow-[0_4px_32px_rgba(0,0,0,.4)]' : ''}
+            `}>
+
+            {/* ── Tarja clicável ── */}
+            <div
+              className="flex items-center justify-between px-4 py-3 cursor-pointer select-none"
               onClick={() => setExpandedRest(e => e === r.id ? null : r.id)}>
-              🏢 Empresas {expandedRest === r.id ? '▲' : '▼'}
-            </Btn>
-            <Btn size="sm"
-              variant={r.planoLancamento ? 'danger' : 'secondary'}
-              className="w-auto"
-              loading={acting === r.id}
-              onClick={() => toggleLancamento(r.id, r.nome, !!r.planoLancamento)}>
-              🚀 {r.planoLancamento ? 'Lançamento ON' : 'Lançamento OFF'}
-            </Btn>
-            {r.statusPlano === 'suspenso'
-              ? <Btn size="sm" className="w-auto" loading={acting === r.id} onClick={() => reativar('restaurante', r.id)}>Reativar</Btn>
-              : <Btn size="sm" variant="danger" className="w-auto" loading={acting === r.id} onClick={() => suspender('restaurante', r.id)}>Suspender</Btn>
-            }
-          </div>
+              <div className="flex items-center gap-3">
+                {/* Indicador de status */}
+                <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                  suspenso ? 'bg-[#ff4d6a]' :
+                  r.planoLancamento ? 'bg-[#ffb340]' :
+                  'bg-[#00e87a]'
+                }`} />
+                <div>
+                  <p className="font-bold text-sm text-[#ddeaf8] leading-tight">{r.nome}</p>
+                  <p className="font-[var(--mono)] text-[10px] text-[#3d5875]">
+                    {r.numEmpresas} emp · {r.numColabs} colabs
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {r.planoLancamento && (
+                  <span className="font-[var(--mono)] text-[9px] text-[#ffb340] border border-[rgba(255,179,64,.3)] rounded-full px-1.5 py-0.5">
+                    🚀
+                  </span>
+                )}
+                <Badge color={STATUS_COLOR[r.statusPlano] ?? 'gray'}>{r.statusPlano}</Badge>
+                <span className="text-[#3d5875] text-xs">{expanded ? '▲' : '▼'}</span>
+              </div>
+            </div>
 
-          {/* Empresas expandidas */}
-          {expandedRest === r.id && <EmpresasDoRest restId={r.id} onRefresh={load} />}
-        </Card>
-      ))}
+            {/* ── Painel expandido ── */}
+            {expanded && (
+              <div className="border-t border-[#1c2e48] px-4 pb-4 pt-3 flex flex-col gap-4">
+
+                {/* Info geral */}
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { label: 'Empresas',    value: r.numEmpresas,   color: 'text-[#4da6ff]' },
+                    { label: 'Colabs',      value: r.numColabs,     color: 'text-[#a259ff]' },
+                    { label: 'Pedidos/mês', value: r.numPedidosMes, color: 'text-[#ffb340]' },
+                  ].map(s => (
+                    <div key={s.label} className="bg-[#080c14] border border-[#1c2e48] rounded-[10px] p-2 text-center">
+                      <div className={`text-lg font-black font-[var(--mono)] ${s.color}`}>{s.value}</div>
+                      <div className="font-[var(--mono)] text-[9px] tracking-[1px] text-[#3d5875] uppercase">{s.label}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Fatura estimada */}
+                <div className="flex items-center justify-between bg-[#080c14] border border-[#1c2e48] rounded-[10px] px-3 py-2.5">
+                  <div>
+                    <p className="font-[var(--mono)] text-[9px] tracking-[1.5px] text-[#3d5875] uppercase">Fatura estimada</p>
+                    <p className="font-[var(--mono)] text-[10px] text-[#7a96b8] mt-0.5">
+                      {r.planoLancamento && r.numEmpresas <= 25 ? '🚀 Plano lançamento'
+                        : r.numEmpresas <= 5 ? '0–5 empresas'
+                        : r.numEmpresas <= 10 ? '6–10 empresas'
+                        : r.numEmpresas <= 15 ? '11–15 empresas'
+                        : 'Acima de 15 empresas'}
+                    </p>
+                  </div>
+                  <span className="font-[var(--mono)] text-xl font-black text-[#00e87a]">
+                    {faturaMes.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                  </span>
+                </div>
+
+                {/* Email */}
+                <p className="font-[var(--mono)] text-[10px] text-[#3d5875]">✉️ {r.email}</p>
+
+                {/* Ações */}
+                <div className="grid grid-cols-2 gap-2">
+                  <Btn size="sm" variant="secondary"
+                    onClick={() => { setPlanoModal({ ...r, tipo: 'restaurante' }); setPlanoForm({ plano: r.plano, status: r.statusPlano, trialFim: r.trialFim ?? '', obs: r.obs ?? '' }) }}>
+                    📋 Plano
+                  </Btn>
+                  <Btn size="sm" variant="secondary"
+                    onClick={() => window.location.href = `/dashboard?restId=${r.id}`}>
+                    👁️ Dashboard
+                  </Btn>
+                  <Btn size="sm" variant="secondary"
+                    onClick={() => setExpandedRest(id => { setTimeout(() => setExpandedRest(r.id), 50); return null })}>
+                    🏢 Ver empresas
+                  </Btn>
+                  <Btn size="sm"
+                    variant={r.planoLancamento ? 'danger' : 'secondary'}
+                    loading={acting === r.id}
+                    onClick={() => toggleLancamento(r.id, r.nome, !!r.planoLancamento)}>
+                    🚀 {r.planoLancamento ? 'Lançamento ON' : 'OFF'}
+                  </Btn>
+                </div>
+
+                {suspenso
+                  ? <Btn loading={acting === r.id} onClick={() => reativar('restaurante', r.id)}>
+                      🔓 Reativar restaurante
+                    </Btn>
+                  : <Btn variant="danger" loading={acting === r.id} onClick={() => suspender('restaurante', r.id)}>
+                      Suspender acesso
+                    </Btn>
+                }
+
+                {/* Empresas */}
+                <EmpresasDoRest restId={r.id} onRefresh={load} />
+              </div>
+            )}
+          </div>
+        )
+      })}
 
       {/* Modal de plano do restaurante */}
       <Modal open={!!planoModal} onClose={() => setPlanoModal(null)} title={`Plano: ${planoModal?.nome}`}>
