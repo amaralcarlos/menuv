@@ -19,9 +19,8 @@ export async function GET(req: NextRequest) {
 
   const [{ data: rest }, { data: empresas }]: [{ data: any }, { data: any }] = await Promise.all([
     admin.from('restaurantes')
-      .select('id, nome, comissionamento_ativo')
-      .eq('id', restId)
-      .single() as any,
+      .select('id, nome, plano_lancamento')
+      .eq('id', restId).single() as any,
     admin.from('empresas')
       .select('id, nome, status_plano, trial_inicio')
       .eq('restaurante_id', restId) as any,
@@ -29,7 +28,7 @@ export async function GET(req: NextRequest) {
 
   if (!rest) return E.notFound('Restaurante não encontrado.')
 
-  const fatura = calcularFatura(empresas ?? [], rest.comissionamento_ativo ?? true)
+  const fatura = calcularFatura(empresas ?? [], rest.plano_lancamento ?? false)
 
   const empresasDetalhadas = (empresas ?? []).map((e: any) => ({
     ...e,
