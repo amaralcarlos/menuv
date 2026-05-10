@@ -209,15 +209,15 @@ function DashboardPane() {
     load()
   }
 
-  async function toggleComissionamento(restId: string, nomeRest: string, atual: boolean) {
+  async function toggleLancamento(restId: string, nomeRest: string, atual: boolean) {
     const acao = atual ? 'desativar' : 'ativar'
-    if (!confirm(`${acao.charAt(0).toUpperCase() + acao.slice(1)} o cashback de "${nomeRest}"?`)) return
+    if (!confirm(`${acao.charAt(0).toUpperCase() + acao.slice(1)} o plano de lançamento de "${nomeRest}"?`)) return
     setActing(restId)
-    const r = await call(`/api/admin/restaurantes/${restId}/comissionamento`, {
+    const r = await call(`/api/admin/restaurantes/${restId}/lancamento`, {
       method: 'POST', body: JSON.stringify({ ativo: !atual }),
     })
     setActing('')
-    if (r.success) { toast(`Cashback ${!atual ? 'ativado' : 'desativado'}.`); load() }
+    if (r.success) { toast(`Plano de lançamento ${!atual ? 'ativado' : 'desativado'}.`); load() }
     else toast(r.error, 'error')
   }
 
@@ -259,27 +259,6 @@ function DashboardPane() {
             </div>
           </div>
 
-          {/* Cashback info */}
-          <div className="flex items-center justify-between bg-[#080c14] border border-[#1c2e48] rounded-[8px] px-3 py-2 mb-2">
-            <div>
-              <p className="font-[var(--mono)] text-[10px] text-[#3d5875] uppercase tracking-[1px]">Cashback</p>
-              <p className="font-[var(--mono)] text-xs text-[#ddeaf8] mt-0.5">
-                {r.comissionamentoAtivo !== false
-                  ? `Ativo · R$ 10,00 por empresa ativa`
-                  : 'Desativado pelo admin'}
-              </p>
-            </div>
-            <Btn
-              size="sm"
-              variant={r.comissionamentoAtivo !== false ? 'danger' : 'secondary'}
-              className="w-auto"
-              loading={acting === r.id}
-              onClick={() => toggleComissionamento(r.id, r.nome, r.comissionamentoAtivo !== false)}
-            >
-              {r.comissionamentoAtivo !== false ? 'Desativar' : 'Ativar'}
-            </Btn>
-          </div>
-
           {/* Botões de ação do restaurante */}
           <div className="flex gap-2 flex-wrap mb-2">
             <Btn size="sm" variant="secondary" className="w-auto"
@@ -293,6 +272,13 @@ function DashboardPane() {
             <Btn size="sm" variant="secondary" className="w-auto"
               onClick={() => setExpandedRest(e => e === r.id ? null : r.id)}>
               🏢 Empresas {expandedRest === r.id ? '▲' : '▼'}
+            </Btn>
+            <Btn size="sm"
+              variant={r.planoLancamento ? 'danger' : 'secondary'}
+              className="w-auto"
+              loading={acting === r.id}
+              onClick={() => toggleLancamento(r.id, r.nome, !!r.planoLancamento)}>
+              🚀 {r.planoLancamento ? 'Lançamento ON' : 'Lançamento OFF'}
             </Btn>
             {r.statusPlano === 'suspenso'
               ? <Btn size="sm" className="w-auto" loading={acting === r.id} onClick={() => reativar('restaurante', r.id)}>Reativar</Btn>
