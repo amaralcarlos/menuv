@@ -88,6 +88,7 @@ export function detalhesStatus(trialInicio: string | null, statusPlano: StatusPl
     ativo:     'Ativo',
     bloqueado: 'Bloqueado',
     gratuito:  'Gratuito',
+    free:      'Free',
   }
   const cores: Record<StatusPlano, string> = {
     trial:     'yellow',
@@ -95,6 +96,7 @@ export function detalhesStatus(trialInicio: string | null, statusPlano: StatusPl
     ativo:     'green',
     bloqueado: 'red',
     gratuito:  'green',
+    free:      'green',
   }
 
   return {
