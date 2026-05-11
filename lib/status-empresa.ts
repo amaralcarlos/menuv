@@ -6,7 +6,7 @@
 import { supabaseAdmin } from '@/lib/api-helpers'
 import { PLANO_LANCAMENTO, FAIXAS_RESTAURANTE } from '@/lib/planos-config'
 
-export type StatusPlano = 'trial' | 'conversao' | 'ativo' | 'bloqueado' | 'gratuito'
+export type StatusPlano = 'trial' | 'conversao' | 'ativo' | 'bloqueado' | 'gratuito' | 'free'
 
 export interface EmpresaStatus {
   id: string
