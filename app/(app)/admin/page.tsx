@@ -259,7 +259,12 @@ function DashboardPane() {
         ))}
       </div>
 
-      <SectionLabel>Restaurantes</SectionLabel>
+      <div className="flex items-center justify-between mb-2">
+        <SectionLabel>Restaurantes</SectionLabel>
+        <Btn size="sm" className="w-auto" onClick={() => window.location.href = '/cadastro?tipo=restaurante'}>
+          + Novo restaurante
+        </Btn>
+      </div>
       {(dados?.restaurantes ?? []).map((r: any) => {
         const expanded = expandedRest === r.id
         const faturaMes = r.planoLancamento && r.numEmpresas <= 25 ? 49.90
