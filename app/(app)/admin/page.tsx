@@ -364,26 +364,40 @@ function DashboardPane() {
         )
       })}
 
-      {/* Modal de plano do restaurante */}
-      <Modal open={!!planoModal} onClose={() => setPlanoModal(null)} title={`Plano: ${planoModal?.nome}`}>
+      {/* Modal de status do restaurante */}
+      <Modal open={!!planoModal} onClose={() => setPlanoModal(null)} title={`Status: ${planoModal?.nome}`}>
         <div className="flex flex-col gap-4">
-          <div>
-            <label className="font-[var(--mono)] text-[10px] tracking-[1.5px] text-[#3d5875] uppercase block mb-1.5">Plano</label>
-            <select value={planoForm.plano} onChange={e => setPlanoForm(f => ({ ...f, plano: e.target.value }))}
-              className="w-full bg-[#080c14] border border-[#253d5e] rounded-[11px] px-3 py-2.5 font-[var(--mono)] text-[#ddeaf8] outline-none">
-              {['trial','starter','pro','scale','free'].map(p => <option key={p} value={p}>{PLANO_LABELS[p]}</option>)}
-            </select>
+
+          {/* Plano atual — read-only, calculado pelo sistema */}
+          <div className="bg-[#080c14] border border-[#1c2e48] rounded-[11px] px-4 py-3 flex flex-col gap-1">
+            <p className="font-[var(--mono)] text-[9px] tracking-[1.5px] text-[#3d5875] uppercase">Plano atual (automático)</p>
+            <p className="font-[var(--mono)] text-sm text-[#00e87a] font-bold">
+              {planoModal?.planoLancamento && (planoModal?.numEmpresas ?? 0) <= 25
+                ? '🚀 Lançamento — R$ 49,90/mês'
+                : (planoModal?.numEmpresas ?? 0) <= 5  ? '0–5 empresas — R$ 99,00/mês'
+                : (planoModal?.numEmpresas ?? 0) <= 10 ? '6–10 empresas — R$ 149,00/mês'
+                : (planoModal?.numEmpresas ?? 0) <= 15 ? '11–15 empresas — R$ 249,00/mês'
+                : 'Acima de 15 empresas — R$ 349,00/mês'}
+            </p>
+            <p className="font-[var(--mono)] text-[10px] text-[#3d5875]">
+              {planoModal?.numEmpresas ?? 0} empresa{(planoModal?.numEmpresas ?? 0) !== 1 ? 's' : ''} cadastrada{(planoModal?.numEmpresas ?? 0) !== 1 ? 's' : ''}
+            </p>
           </div>
+
+          {/* Status — o admin ainda pode forçar suspenso/cancelado */}
           <div>
-            <label className="font-[var(--mono)] text-[10px] tracking-[1.5px] text-[#3d5875] uppercase block mb-1.5">Status</label>
+            <label className="font-[var(--mono)] text-[10px] tracking-[1.5px] text-[#3d5875] uppercase block mb-1.5">Status de acesso</label>
             <select value={planoForm.status} onChange={e => setPlanoForm(f => ({ ...f, status: e.target.value }))}
               className="w-full bg-[#080c14] border border-[#253d5e] rounded-[11px] px-3 py-2.5 font-[var(--mono)] text-[#ddeaf8] outline-none">
-              {['trial','ativo','suspenso','cancelado'].map(s => <option key={s} value={s}>{s}</option>)}
+              <option value="trial">Trial</option>
+              <option value="ativo">Ativo</option>
+              <option value="suspenso">Suspenso</option>
+              <option value="cancelado">Cancelado</option>
             </select>
           </div>
-          <Input label="Trial fim (DD/MM/AAAA)" value={planoForm.trialFim} onChange={e => setPlanoForm(f => ({ ...f, trialFim: e.target.value }))} placeholder="30/07/2025" />
-          <Input label="Observação" value={planoForm.obs} onChange={e => setPlanoForm(f => ({ ...f, obs: e.target.value }))} placeholder="Opcional..." />
-          <Btn loading={saving} onClick={savePlano}>Salvar plano</Btn>
+
+          <Input label="Observação interna" value={planoForm.obs} onChange={e => setPlanoForm(f => ({ ...f, obs: e.target.value }))} placeholder="Opcional — visível só pelo admin..." />
+          <Btn loading={saving} onClick={savePlano}>Salvar</Btn>
         </div>
       </Modal>
     </div>
