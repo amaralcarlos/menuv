@@ -20,7 +20,7 @@ export interface EmpresaStatus {
 // ── Calcula o status que a empresa deveria ter hoje ──────────
 function calcularStatus(trialInicio: string | null, statusAtual: StatusPlano): StatusPlano {
   // Statuses finais — admin definiu, não alterar automaticamente
-  if (statusAtual === 'ativo' || statusAtual === 'gratuito') return statusAtual
+  if (statusAtual === 'ativo' || statusAtual === 'gratuito' || statusAtual === 'free') return statusAtual
 
   if (!trialInicio) return 'trial'
 
@@ -140,7 +140,7 @@ export function calcularFatura(
   empresas: Array<{ status_plano: string }>,
   planoLancamento = false
 ): FaturaRestaurante {
-  const numAtivas     = empresas.filter(e => e.status_plano === 'ativo' || e.status_plano === 'gratuito').length
+  const numAtivas     = empresas.filter(e => ['ativo','gratuito','free'].includes(e.status_plano)).length
   const numTrial      = empresas.filter(e => e.status_plano === 'trial').length
   const numConversao  = empresas.filter(e => e.status_plano === 'conversao').length
   const numBloqueadas = empresas.filter(e => e.status_plano === 'bloqueado').length
