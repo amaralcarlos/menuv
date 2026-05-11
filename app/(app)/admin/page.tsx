@@ -9,8 +9,8 @@ import { Card, SectionLabel, Badge, Btn, Spinner, Modal, Input } from '@/compone
 const BRL = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 
 const PLANO_LABELS: Record<string, string> = { trial: 'Trial', starter: 'Starter', pro: 'Pro', scale: 'Scale', free: 'Free' }
-const STATUS_COLOR: Record<string, any>  = { trial: 'yellow', ativo: 'green', suspenso: 'red', cancelado: 'red', conversao: 'yellow', bloqueado: 'red', gratuito: 'green' }
-const STATUS_EMP_LABEL: Record<string, string> = { trial: 'Trial', conversao: 'Conversão', ativo: 'Ativo', bloqueado: 'Bloqueado', gratuito: 'Gratuito' }
+const STATUS_COLOR: Record<string, any>  = { trial: 'yellow', ativo: 'green', suspenso: 'red', cancelado: 'red', conversao: 'yellow', bloqueado: 'red', gratuito: 'green', free: 'green' }
+const STATUS_EMP_LABEL: Record<string, string> = { trial: 'Trial', conversao: 'Conversão', ativo: 'Ativo', bloqueado: 'Bloqueado', gratuito: 'Gratuito', free: 'Free' }
 
 // ── Faixa de colaboradores ────────────────────────────────────
 function faixaColabs(n: number): string {
@@ -59,6 +59,15 @@ function EmpresasDoRest({ restId, onRefresh }: { restId: string; onRefresh: () =
     else toast(r.error, 'error')
   }
 
+  async function ativarFree(id: string, nome: string) {
+    if (!confirm(`Mover "${nome}" para o plano free permanente?`)) return
+    setActing(id)
+    const r = await call(`/api/admin/empresas/${id}/free`, { method: 'POST' })
+    setActing('')
+    if (r.success) { toast(`${nome} agora está no plano free.`); load(); onRefresh() }
+    else toast(r.error, 'error')
+  }
+
   async function salvarGratuidade() {
     if (!gratuidadeMotivo.trim()) { toast('Informe o motivo.', 'error'); return }
     setSavingGrat(true)
@@ -93,6 +102,7 @@ function EmpresasDoRest({ restId, onRefresh }: { restId: string; onRefresh: () =
                 {e.status_plano === 'ativo'     && 'Ativa e pagante'}
                 {e.status_plano === 'gratuito'  && `Gratuidade: ${e.gratuidade_motivo ?? '—'}`}
                 {e.status_plano === 'bloqueado' && 'Acesso bloqueado'}
+                {e.status_plano === 'free'      && 'Plano free — acesso permanente'}
               </p>
             </div>
             <Badge color={STATUS_COLOR[e.status_plano] ?? 'gray'}>
@@ -119,10 +129,18 @@ function EmpresasDoRest({ restId, onRefresh }: { restId: string; onRefresh: () =
             )}
 
             {/* Gratuidade */}
-            {e.status_plano !== 'gratuito' && (
+            {e.status_plano !== 'gratuito' && e.status_plano !== 'free' && (
               <Btn size="sm" variant="secondary" className="w-auto"
                 onClick={() => { setGratuidadeModal(e); setGratuidadeMotivo('') }}>
                 🎁 Gratuidade
+              </Btn>
+            )}
+
+            {/* Plano Free */}
+            {e.status_plano !== 'free' && e.status_plano !== 'gratuito' && (
+              <Btn size="sm" variant="secondary" className="w-auto"
+                onClick={() => ativarFree(e.id, e.nome)}>
+                ⚡ Free
               </Btn>
             )}
 
