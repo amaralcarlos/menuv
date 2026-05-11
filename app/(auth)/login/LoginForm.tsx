@@ -109,7 +109,12 @@ export default function LoginForm() {
     setResetLoading(false)
 
     if (error) {
-      setResetErr('Não foi possível enviar o e-mail. Tente novamente.')
+      console.error('[reset] resetPasswordForEmail:', error.message)
+      const isRateLimit = error.message.toLowerCase().includes('rate') || (error as any).status === 429
+      setResetErr(isRateLimit
+        ? 'Muitas tentativas. Aguarde alguns minutos e tente novamente.'
+        : `Erro: ${error.message}`
+      )
     } else {
       setResetMsg('E-mail enviado! Verifique sua caixa de entrada e siga as instruções.')
     }
@@ -207,17 +212,6 @@ export default function LoginForm() {
               </Btn>
             </form>
 
-            <div className="mt-5 text-center">
-              <p className="font-[var(--mono)] text-[10px] text-[#3d5875] mb-2">
-                É um restaurante?
-              </p>
-              <button
-                onClick={() => router.push('/cadastro?tipo=restaurante')}
-                className="font-[var(--mono)] text-[10px] tracking-[1px] text-[#00e87a] hover:text-[#00c463] transition-colors uppercase cursor-pointer bg-transparent border-none"
-              >
-                Criar conta de restaurante →
-              </button>
-            </div>
           </>
         )}
 
