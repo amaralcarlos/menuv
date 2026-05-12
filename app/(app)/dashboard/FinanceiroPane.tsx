@@ -50,14 +50,19 @@ export default function FinanceiroPane({ restId }: { restId: string }) {
   // Perfil fiscal
   const [documento,       setDocumento]       = useState('')
   const [telefone,        setTelefone]        = useState('')
-  const [temDocumento,    setTemDocumento]    = useState<boolean | null>(false) // false=mostra form, true=tem documento
+  const [temDocumento,    setTemDocumento]    = useState<boolean | null>(null)  // null=carregando, false=sem doc, true=tem doc
   const [salvandoPerfil,  setSalvandoPerfil]  = useState(false)
   const [perfilErro,      setPerfilErro]      = useState('')
 
   function loadFatura() {
     call<any>(`/api/restaurante/fatura?restauranteId=${restId}`).then(r => {
-      if (r.success) setFatura(r.data.fatura)
-      if (!r.success) setTemDocumento(false)
+      if (r.success) {
+        setFatura(r.data.fatura)
+        setEmpresas(r.data.empresas ?? [])
+        setTemDocumento(r.data.temDocumento === true)
+      } else {
+        setTemDocumento(false)
+      }
       setLoadingFatura(false)
     })
   }
@@ -134,7 +139,7 @@ export default function FinanceiroPane({ restId }: { restId: string }) {
     <div className="px-4 pt-4 pb-24 flex flex-col gap-4">
 
       {/* ── Formulário de perfil fiscal (aparece se não tem CPF/CNPJ) ── */}
-      {temDocumento !== true && (
+      {temDocumento === false && (
         <div className="rounded-[14px] border border-[rgba(255,179,64,.3)] bg-[rgba(255,179,64,.04)] p-4 flex flex-col gap-3">
           <div>
             <p className="text-sm font-semibold text-[#ddeaf8] mb-1">Cadastro fiscal necessário</p>
