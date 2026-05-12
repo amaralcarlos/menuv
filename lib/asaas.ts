@@ -33,8 +33,14 @@ export interface AsaasCustomer {
   cpfCnpj?: string
 }
 
-export async function criarCustomer(nome: string, email: string, cpfCnpj?: string): Promise<AsaasCustomer> {
-  return req('POST', '/customers', { name: nome, email, cpfCnpj, notificationDisabled: false })
+export async function criarCustomer(nome: string, email: string, cpfCnpj?: string, telefone?: string): Promise<AsaasCustomer> {
+  return req('POST', '/customers', {
+    name: nome,
+    email,
+    ...(cpfCnpj  ? { cpfCnpj }  : {}),
+    ...(telefone ? { mobilePhone: telefone } : {}),
+    notificationDisabled: false,
+  })
 }
 
 export async function buscarCustomerPorEmail(email: string): Promise<AsaasCustomer | null> {
