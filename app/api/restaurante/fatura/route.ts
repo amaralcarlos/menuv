@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
 
   const [{ data: rest }, { data: empresas }]: [{ data: any }, { data: any }] = await Promise.all([
     admin.from('restaurantes')
-      .select('id, nome, plano_lancamento')
+      .select('id, nome, plano_lancamento, documento_fiscal')
       .eq('id', restId).single() as any,
     admin.from('empresas')
       .select('id, nome, status_plano, trial_inicio')
@@ -35,5 +35,5 @@ export async function GET(req: NextRequest) {
     ...detalhesStatus(e.trial_inicio, e.status_plano),
   }))
 
-  return ok({ fatura, empresas: empresasDetalhadas })
+  return ok({ fatura, empresas: empresasDetalhadas, temDocumento: !!(rest.documento_fiscal) })
 }
