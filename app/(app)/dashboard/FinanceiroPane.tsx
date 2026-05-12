@@ -58,7 +58,6 @@ export default function FinanceiroPane({ restId }: { restId: string }) {
     call<any>(`/api/restaurante/fatura?restauranteId=${restId}`).then(r => {
       if (r.success) {
         setFatura(r.data.fatura)
-        setEmpresas(r.data.empresas ?? [])
         setTemDocumento(r.data.temDocumento === true)
       } else {
         setTemDocumento(false)
