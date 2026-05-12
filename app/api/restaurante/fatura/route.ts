@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
 
   if (!rest) return E.notFound('Restaurante não encontrado.')
 
-  const fatura = calcularFatura(empresas ?? [], rest.plano_lancamento ?? false)
+  const fatura = calcularFatura(empresas ?? [], !!(rest as any).plano_lancamento)
 
   const empresasDetalhadas = (empresas ?? []).map((e: any) => ({
     ...e,
