@@ -15,7 +15,7 @@ export async function GET() {
     .select('id, valor, status, tipo, vencimento, invoice_url, pix_copia_cola, criado_em')
     .eq('restaurante_id', restId)
     .order('criado_em', { ascending: false })
-    .limit(24)
+    .limit(24) as any
 
   if (error) return E.internal(error.message)
 
