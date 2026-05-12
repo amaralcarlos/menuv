@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
 
     const { data: rest }: { data: any } = await admin
       .from('restaurantes')
-      .select('id, nome, email, asaas_customer_id, plano_lancamento')
+      .select('id, nome, email, asaas_customer_id, plano_lancamento, documento_fiscal')
       .eq('id', restId).single() as any
 
     if (!rest) return E.notFound('Restaurante não encontrado.')
@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
     let customerId = rest.asaas_customer_id as string | null
     if (!customerId) {
       let customer = await buscarCustomerPorEmail(rest.email)
-      if (!customer) customer = await criarCustomer(rest.nome, rest.email)
+      if (!customer) customer = await criarCustomer(rest.nome, rest.email, rest.documento_fiscal ?? undefined)
       customerId = customer.id
       await admin.from('restaurantes').update({ asaas_customer_id: customerId }).eq('id', restId)
     }
