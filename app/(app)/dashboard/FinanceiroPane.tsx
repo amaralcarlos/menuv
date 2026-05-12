@@ -47,6 +47,13 @@ export default function FinanceiroPane({ restId }: { restId: string }) {
   const [pixModal,        setPixModal]        = useState<{ qrCode: string; copiaCola: string; valor: number } | null>(null)
   const [copied,          setCopied]          = useState(false)
 
+  // Perfil fiscal
+  const [documento,       setDocumento]       = useState('')
+  const [telefone,        setTelefone]        = useState('')
+  const [temDocumento,    setTemDocumento]    = useState<boolean | null>(null)
+  const [salvandoPerfil,  setSalvandoPerfil]  = useState(false)
+  const [perfilErro,      setPerfilErro]      = useState('')
+
   function loadFatura() {
     call<any>(`/api/restaurante/fatura?restauranteId=${restId}`).then(r => {
       if (r.success) setFatura(r.data.fatura)
@@ -62,6 +69,27 @@ export default function FinanceiroPane({ restId }: { restId: string }) {
       }
       setLoadingHist(false)
     })
+  }
+
+  async function salvarPerfil(e: React.FormEvent) {
+    e.preventDefault()
+    setPerfilErro('')
+    const doc = documento.replace(/\D/g, '')
+    if (doc.length !== 11 && doc.length !== 14) {
+      setPerfilErro('Digite um CPF (11 dígitos) ou CNPJ (14 dígitos) válido.')
+      return
+    }
+    setSalvandoPerfil(true)
+    const r = await call<any>('/api/financeiro/perfil', {
+      method: 'POST',
+      body: JSON.stringify({ documento: doc, telefone, restId }),
+    })
+    setSalvandoPerfil(false)
+    if (r.success) {
+      setTemDocumento(true)
+    } else {
+      setPerfilErro(r.error ?? 'Erro ao salvar.')
+    }
   }
 
   useEffect(() => { loadFatura(); loadHistorico() }, [restId])
@@ -103,6 +131,40 @@ export default function FinanceiroPane({ restId }: { restId: string }) {
 
   return (
     <div className="px-4 pt-4 pb-24 flex flex-col gap-4">
+
+      {/* ── Formulário de perfil fiscal (aparece se não tem CPF/CNPJ) ── */}
+      {temDocumento === false && (
+        <div className="rounded-[14px] border border-[rgba(255,179,64,.3)] bg-[rgba(255,179,64,.04)] p-4 flex flex-col gap-3">
+          <div>
+            <p className="text-sm font-semibold text-[#ddeaf8] mb-1">Cadastro fiscal necessário</p>
+            <p className="font-[var(--mono)] text-[10px] text-[#3d5875] leading-relaxed">
+              Para gerar cobranças é necessário informar o CPF ou CNPJ do restaurante.
+            </p>
+          </div>
+          <form onSubmit={salvarPerfil} className="flex flex-col gap-3">
+            <div className="flex flex-col gap-1.5">
+              <label className="font-[var(--mono)] text-[9px] tracking-[1.5px] text-[#3d5875] uppercase">CPF ou CNPJ *</label>
+              <input
+                value={documento}
+                onChange={e => { setDocumento(e.target.value); setPerfilErro('') }}
+                placeholder="000.000.000-00 ou 00.000.000/0001-00"
+                className="w-full bg-[#080c14] border border-[#253d5e] rounded-[11px] px-3 py-2.5 font-[var(--mono)] text-sm text-[#ddeaf8] outline-none focus:border-[rgba(255,179,64,.5)] placeholder:text-[#3d5875]"
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="font-[var(--mono)] text-[9px] tracking-[1.5px] text-[#3d5875] uppercase">Telefone celular (opcional)</label>
+              <input
+                value={telefone}
+                onChange={e => setTelefone(e.target.value)}
+                placeholder="(00) 00000-0000"
+                className="w-full bg-[#080c14] border border-[#253d5e] rounded-[11px] px-3 py-2.5 font-[var(--mono)] text-sm text-[#ddeaf8] outline-none focus:border-[rgba(255,179,64,.5)] placeholder:text-[#3d5875]"
+              />
+            </div>
+            {perfilErro && <p className="font-[var(--mono)] text-xs text-[#ff4d6a]">{perfilErro}</p>}
+            <Btn type="submit" loading={salvandoPerfil}>Salvar e continuar</Btn>
+          </form>
+        </div>
+      )}
 
       {/* ── Plano atual ── */}
       <div className="rounded-[14px] border border-[rgba(0,232,122,.25)] bg-[rgba(0,232,122,.04)] p-4 flex flex-col gap-3">
