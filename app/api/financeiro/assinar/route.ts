@@ -11,7 +11,7 @@ import { valorMensal, valorAnual } from '@/lib/planos-config'
 export async function POST(req: NextRequest) {
   const meta = await getAppMeta()
   if (!meta) return E.unauthorized()
-  if (meta.app_role !== 'restaurante') return E.forbidden()
+  if (meta.app_role !== 'restaurante' && meta.app_role !== 'admin') return E.forbidden()
 
   const body = await req.json().catch(() => null)
   const tipo  = sanitize(body?.tipo ?? '') as TipoPagamento
@@ -19,7 +19,11 @@ export async function POST(req: NextRequest) {
   if (!['pix_mensal', 'pix_anual', 'cartao_mensal'].includes(tipo))
     return E.badRequest('tipo inválido. Use pix_mensal, pix_anual ou cartao_mensal.')
 
-  const restId = meta.restaurante_id
+  // Admin pode passar restId no body; restaurante usa o próprio id
+  const restId = meta.app_role === 'admin'
+    ? sanitize(body?.restId ?? '')
+    : (meta.restaurante_id ?? '')
+
   if (!restId) return E.forbidden()
 
   const admin = supabaseAdmin()
@@ -67,7 +71,7 @@ export async function POST(req: NextRequest) {
     subscriptionId = sub.id
     await admin.from('restaurantes').update({ asaas_subscription_id: subscriptionId }).eq('id', restId)
     paymentId  = sub.id
-    invoiceUrl = `https://sandbox.asaas.com/c/${sub.id}`
+    invoiceUrl = `https://asaas.com/c/${sub.id}`
   } else {
     // Pix mensal ou anual — cobrança única
     const venc = vencimentoEmDias(tipo === 'pix_anual' ? 3 : 1)
