@@ -44,10 +44,12 @@ export async function POST(req: NextRequest) {
     .eq('id', pag.id)
 
   // Log interno
-  await admin.from('logs').insert({
-    acao:    `WEBHOOK_${event}`,
-    detalhe: `Pagamento ${payment.id} → ${novoStatus}`,
-  }).catch(() => {}) // não falha se log der erro
+  try {
+    await admin.from('logs').insert({
+      acao:    `WEBHOOK_${event}`,
+      detalhe: `Pagamento ${payment.id} → ${novoStatus}`,
+    })
+  } catch (_) {} // não falha se log der erro
 
   return NextResponse.json({ ok: true })
 }
