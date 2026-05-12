@@ -10,7 +10,7 @@ export async function GET() {
 
   const admin = supabaseAdmin()
 
-  const { data: pagamentos, error } = await admin
+  const { data: pagamentos, error }: { data: any; error: any } = await admin
     .from('pagamentos')
     .select('id, valor, status, tipo, vencimento, invoice_url, pix_copia_cola, criado_em')
     .eq('restaurante_id', restId)
