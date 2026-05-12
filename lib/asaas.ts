@@ -1,7 +1,7 @@
 // lib/asaas.ts
 // Cliente HTTP para a API do Asaas (Sandbox)
 
-const BASE_URL = 'https://sandbox.asaas.com/api/v3'
+const BASE_URL = 'https://api.asaas.com/v3'
 
 function headers() {
   return {
