@@ -1,11 +1,15 @@
+import { NextRequest } from 'next/server'
 import { supabaseAdmin, getAppMeta, ok, E } from '@/lib/api-helpers'
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const meta = await getAppMeta()
   if (!meta) return E.unauthorized()
   if (meta.app_role !== 'restaurante' && meta.app_role !== 'admin') return E.forbidden()
 
-  const restId = meta.restaurante_id
+  const restId = meta.app_role === 'admin'
+    ? (req.nextUrl.searchParams.get('restauranteId') ?? '')
+    : (meta.restaurante_id ?? '')
+
   if (!restId) return E.forbidden()
 
   const admin = supabaseAdmin()
@@ -19,7 +23,6 @@ export async function GET() {
 
   if (error) return E.internal(error.message)
 
-  // Busca próximo pagamento pendente
   const proximo = (pagamentos ?? []).find((p: any) => p.status === 'PENDING')
 
   return ok({ pagamentos: pagamentos ?? [], proximo: proximo ?? null })
