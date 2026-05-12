@@ -48,14 +48,14 @@ export default function FinanceiroPane({ restId }: { restId: string }) {
   const [copied,          setCopied]          = useState(false)
 
   function loadFatura() {
-    call<any>('/api/restaurante/fatura').then(r => {
+    call<any>(`/api/restaurante/fatura?restauranteId=${restId}`).then(r => {
       if (r.success) setFatura(r.data.fatura)
       setLoadingFatura(false)
     })
   }
 
   function loadHistorico() {
-    call<any>('/api/financeiro/historico').then(r => {
+    call<any>(`/api/financeiro/historico?restauranteId=${restId}`).then(r => {
       if (r.success) {
         setPagamentos(r.data.pagamentos ?? [])
         setProximo(r.data.proximo ?? null)
