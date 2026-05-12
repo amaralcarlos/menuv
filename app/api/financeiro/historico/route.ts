@@ -20,7 +20,7 @@ export async function GET() {
   if (error) return E.internal(error.message)
 
   // Busca próximo pagamento pendente
-  const proximo = (pagamentos ?? []).find(p => p.status === 'PENDING')
+  const proximo = (pagamentos ?? []).find((p: any) => p.status === 'PENDING')
 
   return ok({ pagamentos: pagamentos ?? [], proximo: proximo ?? null })
 }
