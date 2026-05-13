@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { supabaseAdmin, getAppMeta, ok, E, sanitize } from '@/lib/api-helpers'
 import {
-  criarCustomer, buscarCustomerPorEmail,
+  criarCustomer, buscarCustomerPorEmail, atualizarCustomer,
   criarCobrancaPix, criarAssinaturaCartao,
   buscarPixQr, vencimentoEmDias,
   type TipoPagamento,
@@ -46,13 +46,18 @@ export async function POST(req: NextRequest) {
       ? valorAnual(total, planoLanc)
       : valorMensal(total, planoLanc)
 
-    // Garante cliente no Asaas
+    // Garante cliente no Asaas com CPF/CNPJ sempre sincronizado
     let customerId = rest.asaas_customer_id as string | null
     if (!customerId) {
       let customer = await buscarCustomerPorEmail(rest.email)
       if (!customer) customer = await criarCustomer(rest.nome, rest.email, rest.documento_fiscal ?? undefined)
       customerId = customer.id
       await admin.from('restaurantes').update({ asaas_customer_id: customerId }).eq('id', restId)
+    }
+
+    // Sempre atualiza CPF/CNPJ no Asaas para garantir que está preenchido
+    if (rest.documento_fiscal) {
+      await atualizarCustomer(customerId, { cpfCnpj: rest.documento_fiscal }).catch(() => {})
     }
 
     const descricao = `Menuv — ${rest.nome} — ${
