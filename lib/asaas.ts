@@ -43,6 +43,10 @@ export async function criarCustomer(nome: string, email: string, cpfCnpj?: strin
   })
 }
 
+export async function atualizarCustomer(customerId: string, dados: { cpfCnpj?: string; mobilePhone?: string }): Promise<AsaasCustomer> {
+  return req('POST', `/customers/${customerId}`, dados)
+}
+
 export async function buscarCustomerPorEmail(email: string): Promise<AsaasCustomer | null> {
   const data = await req<{ data: AsaasCustomer[] }>('GET', `/customers?email=${encodeURIComponent(email)}`)
   return data.data?.[0] ?? null
