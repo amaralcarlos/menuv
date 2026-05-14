@@ -108,6 +108,10 @@ export async function criarAssinaturaCartao(
   })
 }
 
+export async function buscarPagamentosAssinatura(subscriptionId: string): Promise<{ data: AsaasPayment[] }> {
+  return req('GET', `/subscriptions/${subscriptionId}/payments`)
+}
+
 export async function buscarPagamento(paymentId: string): Promise<AsaasPayment> {
   return req('GET', `/payments/${paymentId}`)
 }
