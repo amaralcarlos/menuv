@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import { supabaseAdmin, getAppMeta, ok, E, sanitize } from '@/lib/api-helpers'
 import {
   criarCustomer, buscarCustomerPorEmail, atualizarCustomer,
-  criarCobrancaPix, criarAssinaturaCartao,
+  criarCobrancaPix, criarAssinaturaCartao, buscarPagamentosAssinatura,
   buscarPixQr, vencimentoEmDias,
   type TipoPagamento,
 } from '@/lib/asaas'
@@ -72,8 +72,12 @@ export async function POST(req: NextRequest) {
     if (tipo === 'cartao_mensal') {
       const sub = await criarAssinaturaCartao(customerId, valor, descricao, vencimentoEmDias(1))
       await admin.from('restaurantes').update({ asaas_subscription_id: sub.id }).eq('id', restId)
-      paymentId  = sub.id
-      invoiceUrl = `https://asaas.com/c/${sub.id}`
+      paymentId = sub.id
+
+      // Busca o primeiro pagamento da assinatura para obter o link de checkout do cartão
+      const pagsSub = await buscarPagamentosAssinatura(sub.id)
+      const primeiroPag = pagsSub.data?.[0]
+      invoiceUrl = primeiroPag?.invoiceUrl ?? `https://asaas.com/c/${sub.id}`
     } else {
       const venc    = vencimentoEmDias(tipo === 'pix_anual' ? 3 : 1)
       const payment = await criarCobrancaPix(customerId, valor, descricao, venc)
