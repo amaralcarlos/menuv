@@ -15,7 +15,8 @@ export const FAIXAS_RESTAURANTE = [
   { min: 16, max: Infinity, valor: 349.00, label: 'Acima de 15 empresas' },
 ]
 
-const DESCONTO_ANUAL = 0.10 // 10%
+const DESCONTO_ANUAL_PIX    = 0.10 // 10% no Pix anual
+const DESCONTO_ANUAL_CARTAO = 0.05 // 5% no Cartão recorrente anual
 
 export function valorMensal(numEmpresas: number, planoLancamento: boolean): number {
   if (planoLancamento && numEmpresas <= PLANO_LANCAMENTO.limiteEmpresas)
@@ -25,11 +26,23 @@ export function valorMensal(numEmpresas: number, planoLancamento: boolean): numb
   return faixa.valor
 }
 
-export function valorAnual(numEmpresas: number, planoLancamento: boolean): number {
+export function valorPixAnual(numEmpresas: number, planoLancamento: boolean): number {
   const mensal = valorMensal(numEmpresas, planoLancamento)
   if (planoLancamento && numEmpresas <= PLANO_LANCAMENTO.limiteEmpresas)
     return parseFloat((mensal * 12).toFixed(2)) // sem desconto
-  return parseFloat((mensal * 12 * (1 - DESCONTO_ANUAL)).toFixed(2))
+  return parseFloat((mensal * 12 * (1 - DESCONTO_ANUAL_PIX)).toFixed(2))
+}
+
+export function valorCartaoMensal(numEmpresas: number, planoLancamento: boolean): number {
+  const mensal = valorMensal(numEmpresas, planoLancamento)
+  if (planoLancamento && numEmpresas <= PLANO_LANCAMENTO.limiteEmpresas)
+    return parseFloat(mensal.toFixed(2)) // sem desconto
+  return parseFloat((mensal * (1 - DESCONTO_ANUAL_CARTAO)).toFixed(2))
+}
+
+// Mantido para compatibilidade
+export function valorAnual(numEmpresas: number, planoLancamento: boolean): number {
+  return valorPixAnual(numEmpresas, planoLancamento)
 }
 
 export const STATUS_PAGAMENTO: Record<string, { label: string; cor: string }> = {
