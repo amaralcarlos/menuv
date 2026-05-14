@@ -46,6 +46,7 @@ export default function FinanceiroPane({ restId }: { restId: string }) {
   const [tipoSelecionado, setTipoSelecionado] = useState<TipoPag | null>(null)
   const [pixModal,        setPixModal]        = useState<{ qrCode: string; copiaCola: string; valor: number } | null>(null)
   const [copied,          setCopied]          = useState(false)
+  const [cancelando,      setCancelando]      = useState('')
 
   // Perfil fiscal
   const [documento,       setDocumento]       = useState('')
@@ -123,6 +124,19 @@ export default function FinanceiroPane({ restId }: { restId: string }) {
     await navigator.clipboard.writeText(texto)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  async function cancelarPagamento(pagId: string) {
+    if (!confirm('Cancelar este pagamento? A cobrança será removida do Asaas também.')) return
+    setCancelando(pagId)
+    const r = await call<any>(`/api/financeiro/pagamentos/${pagId}`, { method: 'DELETE' })
+    setCancelando('')
+    if (r.success) {
+      toast('Pagamento cancelado.')
+      loadHistorico()
+    } else {
+      toast(r.error ?? 'Erro ao cancelar.', 'error')
+    }
   }
 
   if (loadingFatura) return <div className="flex justify-center py-12"><Spinner /></div>
@@ -352,6 +366,14 @@ export default function FinanceiroPane({ restId }: { restId: string }) {
                     className="font-[var(--mono)] text-[9px] text-[#4da6ff] border border-[rgba(77,166,255,.2)] rounded-[5px] px-2 py-1 hover:bg-[rgba(77,166,255,.08)] transition-colors">
                     Ver
                   </a>
+                )}
+                {['PENDING','OVERDUE'].includes(p.status) && (
+                  <button
+                    onClick={() => cancelarPagamento(p.id)}
+                    disabled={cancelando === p.id}
+                    className="font-[var(--mono)] text-[9px] text-[#ff4d6a] border border-[rgba(255,77,106,.2)] rounded-[5px] px-2 py-1 hover:bg-[rgba(255,77,106,.08)] transition-colors cursor-pointer bg-transparent disabled:opacity-50">
+                    {cancelando === p.id ? '...' : 'Cancelar'}
+                  </button>
                 )}
               </div>
             </div>
