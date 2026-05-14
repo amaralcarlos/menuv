@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 import { useApi } from '@/lib/use-api'
 import { Spinner, Badge, Btn, useToast } from '@/components/ui'
-import { valorMensal, valorAnual, STATUS_PAGAMENTO, PLANO_LANCAMENTO } from '@/lib/planos-config'
+import { valorMensal, valorPixAnual, valorCartaoMensal, STATUS_PAGAMENTO, PLANO_LANCAMENTO } from '@/lib/planos-config'
 
 const BRL = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 const DATA = (s: string) => new Date(s).toLocaleDateString('pt-BR')
@@ -144,9 +144,12 @@ export default function FinanceiroPane({ restId }: { restId: string }) {
   const numEmpresas   = fatura?.totalEmpresas   ?? 0
   const planoLanc     = fatura?.planoLancamento ?? false
   const mensal        = valorMensal(numEmpresas, planoLanc)
-  const anual         = valorAnual(numEmpresas, planoLanc)
-  const temDescAnual  = !planoLanc
-  const economiaAnual = temDescAnual ? parseFloat((mensal * 12 - anual).toFixed(2)) : 0
+  const anual         = valorPixAnual(numEmpresas, planoLanc)
+  const cartao        = valorCartaoMensal(numEmpresas, planoLanc)
+  const temDescPix    = !planoLanc
+  const temDescCartao = !planoLanc
+  const economiaAnual = temDescPix ? parseFloat((mensal * 12 - anual).toFixed(2)) : 0
+  const economiaCartao = temDescCartao ? parseFloat((mensal - cartao).toFixed(2)) : 0
 
   return (
     <div className="px-4 pt-4 pb-24 flex flex-col gap-4">
@@ -248,14 +251,14 @@ export default function FinanceiroPane({ restId }: { restId: string }) {
           <div>
             <p className="text-sm text-[#ddeaf8] font-medium flex items-center gap-1.5">
               Pix Anual
-              {temDescAnual && (
+              {temDescPix && (
                 <span className="font-[var(--mono)] text-[9px] text-[#00e87a] border border-[rgba(0,232,122,.3)] rounded-full px-1.5 py-0.5">
                   −10%
                 </span>
               )}
             </p>
             <p className="font-[var(--mono)] text-[10px] text-[#3d5875] mt-0.5">
-              {temDescAnual ? `Economia de ${BRL(economiaAnual)}/ano` : 'Sem desconto (plano lançamento)'}
+              {temDescPix ? `Economia de ${BRL(economiaAnual)}/ano` : 'Sem desconto (plano lançamento)'}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -267,14 +270,26 @@ export default function FinanceiroPane({ restId }: { restId: string }) {
           </div>
         </div>
 
-        {/* Cartão Mensal */}
+        {/* Cartão Anual Recorrente */}
         <div className="bg-[#0d1525] border border-[#1c2e48] rounded-[12px] p-3 flex items-center justify-between gap-3">
           <div>
-            <p className="text-sm text-[#ddeaf8] font-medium">Cartão de Crédito</p>
-            <p className="font-[var(--mono)] text-[10px] text-[#3d5875] mt-0.5">Recorrente por 12 meses</p>
+            <p className="text-sm text-[#ddeaf8] font-medium flex items-center gap-1.5">
+              Cartão de Crédito
+              {temDescCartao && (
+                <span className="font-[var(--mono)] text-[9px] text-[#a259ff] border border-[rgba(162,89,255,.3)] rounded-full px-1.5 py-0.5">
+                  −5%
+                </span>
+              )}
+            </p>
+            <p className="font-[var(--mono)] text-[10px] text-[#3d5875] mt-0.5">
+              Recorrente · 12 parcelas
+              {temDescCartao && economiaCartao > 0 && (
+                <span className="text-[#a259ff]"> · economia de {BRL(economiaCartao)}/mês</span>
+              )}
+            </p>
           </div>
           <div className="flex items-center gap-2">
-            <span className="font-[var(--mono)] text-sm font-bold text-[#ddeaf8]">{BRL(mensal)}/mês</span>
+            <span className="font-[var(--mono)] text-sm font-bold text-[#a259ff]">{BRL(cartao)}/mês</span>
             <Btn size="sm" variant="secondary" className="w-auto" loading={assinando && tipoSelecionado === 'cartao_mensal'}
               onClick={() => assinar('cartao_mensal')}>
               Assinar
