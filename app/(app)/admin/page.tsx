@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import FinanceiroAdminPane from './FinanceiroAdminPane'
 import { useApi } from '@/lib/use-api'
 import { useToast } from '@/components/ui'
 import { AppShell } from '@/components/layout/AppShell'
@@ -465,8 +466,9 @@ function LogsPane() {
 /* ── Admin page ────────────────────────────────────────────── */
 export default function AdminPage() {
   const tabs = [
-    { id: 'dashboard', label: 'Dashboard', icon: 'home'  as const, component: <DashboardPane /> },
-    { id: 'logs',      label: 'Logs',      icon: 'admin' as const, component: <LogsPane /> },
+    { id: 'dashboard',  label: 'Dashboard',  icon: 'home'     as const, component: <DashboardPane /> },
+    { id: 'financeiro', label: 'Financeiro', icon: 'relatorio' as const, component: <FinanceiroAdminPane /> },
+    { id: 'logs',       label: 'Logs',       icon: 'admin'    as const, component: <LogsPane /> },
   ]
 
   return (
