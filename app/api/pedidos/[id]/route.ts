@@ -8,7 +8,7 @@ function parseJwt(token: string) {
 async function getOwner(pedidoId: string) {
   const sb = await supabaseServer()
   const { data } = await sb.from('pedidos')
-    .select('colaborador_id, empresa_id, empresas(restaurante_id)')
+    .select('colaborador_id, empresa_id, empresas(restaurante_id), colaboradores(nome)')
     .eq('id', pedidoId).single() as any
   return data as any
 }
@@ -44,7 +44,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     )
   }
 
-  await log('PEDIDO_EDITADO', id, owner.colaborador_id)
+  await log('PEDIDO_EDITADO', `${owner?.colaboradores?.nome ?? '—'} editou pedido`, owner.colaborador_id)
   return ok({})
 }
 
@@ -73,10 +73,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if ((owner.empresas as any)?.restaurante_id !== meta?.restaurante_id) return E.forbidden()
   }
 
+  const { data: pedInfo } = await sb.from('pedidos').select('colaborador_id, colaboradores(nome)').eq('id', id).single() as any
   const { error } = await sb.from('pedidos').update({ status }).eq('id', id)
   if (error) return E.internal(error.message)
 
-  await log('PEDIDO_STATUS', `${id} → ${status}`)
+  const nomeColab = (pedInfo as any)?.colaboradores?.nome ?? '—'
+  await log('PEDIDO_STATUS', `${nomeColab} → ${status}`)
   return ok({})
 }
 
@@ -100,6 +102,6 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   const { error } = await sb.from('pedidos').delete().eq('id', id)
   if (error) return E.internal(error.message)
 
-  await log('PEDIDO_EXCLUIDO', id)
+  await log('PEDIDO_EXCLUIDO', `Pedido de ${id.slice(0,8)}… excluído`)
   return ok({})
 }
