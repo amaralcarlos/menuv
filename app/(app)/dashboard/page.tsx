@@ -180,10 +180,24 @@ function EmpresaTarja({ empresa, dataStr }: { empresa: any; dataStr: string }) {
 
   const isMarmita = empresa.formato !== 'buffet'
 
+  // Calcula se pedidos estão encerrados para esta empresa
+  const agora = new Date()
+  const [hlH2, hlM2] = (empresa.horario_limite ?? '09:30').split(':').map(Number)
+  const limite2 = new Date(agora); limite2.setHours(hlH2, hlM2, 0, 0)
+  const extAte2 = empresa.extensao_ate ? new Date(empresa.extensao_ate) : null
+  const encerrado = agora > limite2 && (!extAte2 || agora > extAte2)
+
   return (
     <div className="mb-3">
+      {encerrado && (
+        <div className="rounded-t-[12px] border border-b-0 border-[rgba(255,77,106,.3)] bg-[rgba(255,77,106,.08)] px-3 py-2 flex items-center gap-2">
+          <span className="font-[var(--mono)] text-[10px] font-bold text-[#ff4d6a] tracking-[1px] uppercase">
+            🔴 Pedidos do dia encerrados
+          </span>
+        </div>
+      )}
       <button onClick={expandir} className="w-full text-left">
-        <Card>
+        <Card className={encerrado ? 'rounded-t-none border-t-0' : ''}>
           <div className="flex items-center justify-between">
             <div>
               <p className="font-bold text-sm text-[#ddeaf8]">{empresa.nome}</p>
@@ -314,7 +328,7 @@ function PedidosPane({ restId }: { restId: string }) {
       setSelectedDate(hoje)
 
       const [empRes, pedRes] = await Promise.all([
-        call<any[]>(`/api/empresas?restauranteId=${restId}`),
+        call<any[]>(`/api/empresas?restauranteId=${restId}&includeHorario=true`),
         call<any[]>(`/api/pedidos?restauranteId=${restId}&data=${hoje}`),
       ])
 
@@ -334,7 +348,7 @@ function PedidosPane({ restId }: { restId: string }) {
   async function mudarDia(data: string) {
     setSelectedDate(data)
     const [empRes, pedRes] = await Promise.all([
-      call<any[]>(`/api/empresas?restauranteId=${restId}`),
+      call<any[]>(`/api/empresas?restauranteId=${restId}&includeHorario=true`),
       call<any[]>(`/api/pedidos?restauranteId=${restId}&data=${data}`),
     ])
     if (empRes.success) {
