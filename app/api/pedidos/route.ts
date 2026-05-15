@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { supabaseServer, ok, E, sanitize, toIsoDate, log } from '@/lib/api-helpers'
+import { supabaseServer, supabaseAdmin, ok, E, sanitize, toIsoDate, log } from '@/lib/api-helpers'
 
 function parseJwt(token: string) {
   try { return JSON.parse(atob(token.split('.')[1])) } catch { return null }
@@ -116,8 +116,8 @@ export async function POST(req: NextRequest) {
   })
   if (error) return E.internal(error.message)
 
-  // Busca nome do colaborador para o log
-  const { data: colab } = await sb.from('colaboradores').select('nome').eq('id', colaboradorId).single() as any
+  // Busca nome do colaborador para o log (admin para garantir acesso)
+  const { data: colab } = await supabaseAdmin().from('colaboradores').select('nome').eq('id', colaboradorId).single() as any
   const nomeColab = colab?.nome ?? meta?.nome ?? colaboradorId
   await log('PEDIDO_SALVO', `${nomeColab} — ${itens.join(', ')}`, colaboradorId)
   return ok({ id: pedidoId })
