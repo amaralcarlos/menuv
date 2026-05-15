@@ -10,6 +10,7 @@ import GradesPane from '@/components/grade/GradesPane'
 import EmpresasPane from '../empresas/EmpresasPane'
 import RelatorioPane from '../relatorio/RelatorioPane'
 import FinanceiroPane from './FinanceiroPane'
+import { useRouter } from 'next/navigation'
 
 const DIAS_PT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
 
@@ -392,6 +393,37 @@ export default function DashboardPage() {
     </div>
   )
 
+  const [alerta, setAlerta] = useState<{ tipo: string; mensagem: string; valor: number } | null>(null)
+
+  useEffect(() => {
+    if (!restId) return
+    fetch(`/api/financeiro/alerta?restauranteId=${restId}`)
+      .then(r => r.json())
+      .then(r => { if (r.success) setAlerta(r.data.alerta) })
+      .catch(() => {})
+  }, [restId])
+
+  const bannerAlerta = alerta ? (
+    <div className={`flex items-center justify-between gap-3 px-4 py-2.5 text-sm
+      ${alerta.tipo === 'vencido'
+        ? 'bg-[rgba(255,77,106,.12)] border-b border-[rgba(255,77,106,.3)]'
+        : 'bg-[rgba(255,179,64,.1)] border-b border-[rgba(255,179,64,.25)]'
+      }`}>
+      <span className={`font-[var(--mono)] text-[11px] ${alerta.tipo === 'vencido' ? 'text-[#ff4d6a]' : 'text-[#ffb340]'}`}>
+        {alerta.tipo === 'vencido' ? '🔴' : '⚠️'} {alerta.mensagem}
+      </span>
+      <button
+        onClick={() => {/* navega para aba financeiro */}}
+        className={`font-[var(--mono)] text-[10px] border rounded-full px-2.5 py-1 flex-shrink-0 cursor-pointer bg-transparent transition-colors
+          ${alerta.tipo === 'vencido'
+            ? 'text-[#ff4d6a] border-[rgba(255,77,106,.3)] hover:bg-[rgba(255,77,106,.12)]'
+            : 'text-[#ffb340] border-[rgba(255,179,64,.3)] hover:bg-[rgba(255,179,64,.1)]'
+          }`}>
+        Ver Financeiro →
+      </button>
+    </div>
+  ) : undefined
+
   const tabs = [
     { id: 'pedidos',   label: 'Pedidos',         icon: 'pedido'    as const, component: <PedidosPane restId={restId} /> },
     { id: 'cardapio',  label: 'Cardápio Semanal', icon: 'grade'     as const, component: <GradesPane restId={restId} /> },
@@ -404,5 +436,5 @@ export default function DashboardPage() {
     ? (meta.perfil === 'admin' ? 'admin' : 'equipe')
     : 'restaurante'
 
-  return <AppShell tabs={tabs} nome={meta?.nome ?? 'Menuv'} badge={badge} role="Restaurante" />
+  return <AppShell tabs={tabs} nome={meta?.nome ?? 'Menuv'} badge={badge} role="Restaurante" banner={bannerAlerta} />
 }
