@@ -453,7 +453,7 @@ function LogsPane() {
             <span className="font-[var(--mono)] text-[10px] text-[#3d5875]">{l.criado_em?.slice(0,16).replace('T',' ')}</span>
           </div>
           <span className="text-xs text-[#7a96b8]">
-            {l.detalhe?.replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, '…') || '—'}
+            {l.detalhe || '—'}
           </span>
           {l.email && <span className="font-[var(--mono)] text-[10px] text-[#3d5875]">{l.email}</span>}
         </div>
