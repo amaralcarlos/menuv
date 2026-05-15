@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
 
   const { data, error } = await sb
     .from('empresas')
-    .select('id, nome, horario_limite, preco_por_refeicao, ativa, formato')
+    .select('id, nome, horario_limite, extensao_ate, preco_por_refeicao, ativa, formato, status_plano')
     .eq('restaurante_id', restId).eq('ativa', true).order('nome')
   if (error) return E.internal(error.message)
   return ok(data)
@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
 
   const { data: emp, error } = await admin
     .from('empresas')
-    .insert({ nome, restaurante_id: rest.id, horario_limite: hl, preco_por_refeicao: preco, formato, trial_inicio: new Date().toISOString().split('T')[0], status_plano: 'free' })
+    .insert({ nome, restaurante_id: rest.id, horario_limite: hl, preco_por_refeicao: preco, formato })
     .select('id').single() as any
   if (error) return E.internal(error.message)
 
