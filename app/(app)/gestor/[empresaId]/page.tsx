@@ -12,10 +12,20 @@ import PedidoGestorPane from './PedidoGestorPane'
 /* ── Início ──────────────────────────────────────────────── */
 function InicioPane({ empresaId }: { empresaId: string }) {
   const { call } = useApi()
+  const toast    = useToast()
   const [colabs,        setColabs]        = useState<any[]>([])
   const [pedidos,       setPedidos]       = useState<any[]>([])
+  const [empresa,       setEmpresa]       = useState<any>(null)
   const [loading,       setLoading]       = useState(true)
   const [expandPedidos, setExpandPedidos] = useState(false)
+  const [extLoading,    setExtLoading]    = useState(false)
+  const [extensaoAte,   setExtensaoAte]   = useState<Date | null>(null)
+  const [agora,         setAgora]         = useState(new Date())
+
+  useEffect(() => {
+    const id = setInterval(() => setAgora(new Date()), 10_000)
+    return () => clearInterval(id)
+  }, [])
 
   useEffect(() => {
     const hoje    = new Date()
@@ -23,23 +33,88 @@ function InicioPane({ empresaId }: { empresaId: string }) {
     Promise.all([
       call<any[]>(`/api/colaboradores?empresaId=${empresaId}`),
       call<any[]>(`/api/pedidos?empresaId=${empresaId}&data=${dataStr}`),
-    ]).then(([colabsRes, pedidosRes]) => {
+      call<any>(`/api/empresas/${empresaId}`),
+    ]).then(([colabsRes, pedidosRes, empRes]) => {
       setColabs(colabsRes.success ? colabsRes.data : [])
       setPedidos(pedidosRes.success ? pedidosRes.data : [])
+      if (empRes.success) {
+        const emp = empRes.data?.[0] ?? empRes.data
+        setEmpresa(emp)
+        if (emp?.extensao_ate) setExtensaoAte(new Date(emp.extensao_ate))
+      }
       setLoading(false)
     })
   }, [empresaId])
+
+  async function liberarExtensao() {
+    setExtLoading(true)
+    const r = await call<any>(`/api/empresas/${empresaId}/extensao`, { method: 'POST' })
+    setExtLoading(false)
+    if (r.success) {
+      setExtensaoAte(new Date(r.data.extensao_ate))
+      toast('Pedidos liberados por mais 5 minutos!')
+    } else {
+      toast(r.error ?? 'Erro ao liberar extensão.', 'error')
+    }
+  }
+
+  // Lógica de horário
+  const horarioLimite = empresa?.horario_limite ?? '09:30'
+  const [hlH, hlM] = horarioLimite.split(':').map(Number)
+  const limite = new Date(agora); limite.setHours(hlH, hlM, 0, 0)
+  const limite5min = new Date(limite.getTime() + 5 * 60_000)  // +5min para liberar
+  const limite10min = new Date(limite.getTime() + 10 * 60_000) // +10min bloqueio total
+
+  const passou        = agora > limite
+  const apos5min      = agora > limite5min
+  const extensaoAtiva = extensaoAte !== null && agora < extensaoAte
+  const definitBloq   = agora > limite10min || (extensaoAte !== null && agora > extensaoAte)
+  // Gestor pode liberar somente depois dos 5min de espera, e se extensão ainda não foi usada
+  const podeLiberarExt = apos5min && extensaoAte === null
 
   if (loading) return <Spinner />
 
   return (
     <div className="px-4 pt-4 pb-24">
+
+      {/* Banner de horário */}
+      {passou && (
+        <div className={`rounded-[11px] border px-4 py-3 mb-4 flex flex-col gap-2
+          ${definitBloq
+            ? 'border-[rgba(255,77,106,.3)] bg-[rgba(255,77,106,.06)]'
+            : extensaoAtiva
+              ? 'border-[rgba(255,179,64,.3)] bg-[rgba(255,179,64,.06)]'
+              : 'border-[#1c2e48] bg-[#0d1525]'
+          }`}>
+          <div className="flex items-center justify-between gap-2">
+            <p className={`font-[var(--mono)] text-[11px] font-bold
+              ${definitBloq ? 'text-[#ff4d6a]' : extensaoAtiva ? 'text-[#ffb340]' : 'text-[#7a96b8]'}`}>
+              {definitBloq
+                ? '🔴 Pedidos encerrados definitivamente'
+                : extensaoAtiva
+                  ? `⏳ Extensão ativa até ${extensaoAte?.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
+                  : `⏸️ Pedidos encerrados às ${horarioLimite}`}
+            </p>
+            {podeLiberarExt && (
+              <Btn size="sm" className="w-auto flex-shrink-0" loading={extLoading}
+                onClick={liberarExtensao}>
+                +5 min
+              </Btn>
+            )}
+          </div>
+          {!apos5min && !extensaoAtiva && !definitBloq && (
+            <p className="font-[var(--mono)] text-[10px] text-[#3d5875]">
+              Você poderá liberar +5 min às {limite5min.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+            </p>
+          )}
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-2.5 mb-4">
         <div className="bg-[#0d1525] border border-[#1c2e48] rounded-[11px] p-3 text-center">
           <div className="text-2xl font-black font-[var(--mono)] text-[#00e87a]">{colabs.length}</div>
           <div className="font-[var(--mono)] text-[10px] tracking-[1px] text-[#3d5875] uppercase mt-0.5">Colaboradores</div>
         </div>
-
         <button
           onClick={() => pedidos.length > 0 && setExpandPedidos(e => !e)}
           className={`bg-[#0d1525] border rounded-[11px] p-3 text-center transition-all
