@@ -16,8 +16,9 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null)
   if (!body) return E.badRequest()
 
-  const nome  = sanitize(body.nome)
-  const email = sanitizeEmail(body.email)
+  const nome     = sanitize(body.nome)
+  const email    = sanitizeEmail(body.email)
+  const telefone = sanitize(body.telefone ?? '')
   const senha = sanitize(body.senha)
 
   if (!nome)  return E.badRequest('Nome do restaurante é obrigatório.')
@@ -37,7 +38,7 @@ export async function POST(req: NextRequest) {
 
   const { data: rest, error: dbError } = await admin
     .from('restaurantes')
-    .insert({ nome, email, auth_user_id: authData.user.id, ativo: true })
+    .insert({ nome, email, telefone: telefone || null, auth_user_id: authData.user.id, ativo: true })
     .select('id, nome, email').single() as any
 
   if (dbError) {
