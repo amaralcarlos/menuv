@@ -116,6 +116,9 @@ export async function POST(req: NextRequest) {
   })
   if (error) return E.internal(error.message)
 
-  await log('PEDIDO_SALVO', `${colaboradorId} — ${itens.join(', ')}`, colaboradorId)
+  // Busca nome do colaborador para o log
+  const { data: colab } = await sb.from('colaboradores').select('nome').eq('id', colaboradorId).single() as any
+  const nomeColab = colab?.nome ?? meta?.nome ?? colaboradorId
+  await log('PEDIDO_SALVO', `${nomeColab} — ${itens.join(', ')}`, colaboradorId)
   return ok({ id: pedidoId })
 }
