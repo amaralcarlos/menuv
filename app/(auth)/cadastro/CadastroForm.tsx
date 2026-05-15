@@ -30,7 +30,8 @@ export default function CadastroForm() {
   const [empPreco,  setEmpPreco]  = useState('15.00')
   const [empFormato, setEmpFormato] = useState<'marmita' | 'buffet'>('marmita')
 
-  const [colabId, setColabId] = useState('')
+  const [telefone, setTelefone] = useState('')
+  const [colabId,  setColabId]  = useState('')
 
   async function handleConta(e: React.FormEvent) {
     e.preventDefault()
@@ -46,7 +47,7 @@ export default function CadastroForm() {
       const res  = await fetch('/api/restaurantes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nome, email, senha }),
+        body: JSON.stringify({ nome, email, senha, telefone }),
       })
       const data = await res.json()
       setLoading(false)
@@ -166,6 +167,8 @@ export default function CadastroForm() {
               onChange={e => setNome(e.target.value)} placeholder={isRest ? 'Restaurante Bom Sabor' : 'João Silva'} />
             <Input label="E-mail" type="email" value={email}
               onChange={e => setEmail(e.target.value)} placeholder="seu@email.com" autoComplete="email" />
+            <Input label="Telefone (WhatsApp)" type="tel" value={telefone}
+              onChange={e => setTelefone(e.target.value)} placeholder="(00) 00000-0000" autoComplete="tel" />
             <Input label="Senha" type="password" value={senha}
               onChange={e => setSenha(e.target.value)} placeholder="Mínimo 4 caracteres" autoComplete="new-password" />
             <Input label="Confirmar senha" type="password" value={conf}
@@ -181,10 +184,6 @@ export default function CadastroForm() {
           <form onSubmit={handleEmpresa} className="flex flex-col gap-4">
             <Input label="Nome da empresa" value={empNome}
               onChange={e => setEmpNome(e.target.value)} placeholder="Empresa Ltda." />
-            <Input label="Horário limite pedidos" value={empHl}
-              onChange={e => setEmpHl(e.target.value)} placeholder="09:30" />
-            <Input label="Preço por refeição (R$)" type="number" step="0.01"
-              value={empPreco} onChange={e => setEmpPreco(e.target.value)} placeholder="15.00" />
 
             {/* Formato de entrega */}
             <div>
