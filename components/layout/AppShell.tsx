@@ -87,9 +87,10 @@ interface AppShellProps {
   badge: string
   role: string
   subInfo?: string
+  banner?: React.ReactNode
 }
 
-export function AppShell({ tabs, nome, badge, role, subInfo }: AppShellProps) {
+export function AppShell({ tabs, nome, badge, role, subInfo, banner }: AppShellProps) {
   const [active, setActive] = useState(tabs[0]?.id ?? '')
 
   return (
@@ -141,6 +142,9 @@ export function AppShell({ tabs, nome, badge, role, subInfo }: AppShellProps) {
           </button>
         ))}
       </nav>
+
+      {/* Banner de alerta */}
+      {banner && <div className="sticky top-[105px] z-[98]">{banner}</div>}
 
       {/* Panes */}
       <div className="flex-1">
