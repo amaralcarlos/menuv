@@ -11,6 +11,7 @@ export async function POST(req: NextRequest) {
   const restauranteRef = sanitize(body.restauranteRef ?? '')
   const empresaId      = sanitize(body.empresaId ?? '')
   const isGestor       = Boolean(body.isGestor)
+  const telefone       = sanitize(body.telefone ?? '')
 
   if (!nome)  return E.badRequest('Nome é obrigatório.')
   if (!email) return E.badRequest('E-mail é obrigatório.')
@@ -50,6 +51,7 @@ export async function POST(req: NextRequest) {
     .from('colaboradores')
     .insert({
       nome, email,
+      telefone:     telefone || null,
       empresa_id:   isGestor ? null : empresaId,
       is_gestor:    isGestor,
       ativo:        true,
