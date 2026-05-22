@@ -208,10 +208,11 @@ function OrderForm({ dia, colabId, empId, restId, onSaved }: {
     })
   }
 
-  const [selected,  setSelected]  = useState<ItemSel[]>(parseExisting())
-  const [obs,       setObs]       = useState<string>(existingPedido?.obs ?? '')
-  const [saving,    setSaving]    = useState(false)
-  const [empConfig, setEmpConfig] = useState<any>(null)
+  const [selected,   setSelected]  = useState<ItemSel[]>(parseExisting())
+  const [obs,        setObs]       = useState<string>(existingPedido?.obs ?? '')
+  const [saving,     setSaving]    = useState(false)
+  const [canceling,  setCanceling] = useState(false)
+  const [empConfig,  setEmpConfig] = useState<any>(null)
 
   useEffect(() => {
     setSelected(parseExisting())
@@ -293,6 +294,28 @@ function OrderForm({ dia, colabId, empId, restId, onSaved }: {
     if (res.success) { toast('Pedido salvo!'); onSaved() }
     else toast(res.error ?? 'Erro ao salvar pedido.', 'error')
   }
+
+  async function cancelar() {
+    if (!existingPedido?.id) return
+    if (!confirm('Cancelar pedido?')) return
+    setCanceling(true)
+    const res = await call(`/api/pedidos/${existingPedido.id}`, { method: 'DELETE' })
+    setCanceling(false)
+    if (res.success) { toast('Pedido cancelado.'); onSaved() }
+    else toast(res.error ?? 'Erro ao cancelar.', 'error')
+  }
+
+  // Cancelar é permitido enquanto não passou do horário limite (incluindo extensão)
+  const podeCancelar = !!existingPedido && !isPast && (() => {
+    if (!empConfig?.horario_limite) return true
+    const [h, m] = empConfig.horario_limite.split(':').map(Number)
+    const cutoff = new Date(); cutoff.setHours(h, m, 0, 0)
+    const agora  = new Date()
+    if (agora < cutoff) return true // antes do limite, pode sempre
+    // Após limite: só pode se extensão ainda ativa
+    if (empConfig?.extensao_ate) return agora < new Date(empConfig.extensao_ate)
+    return false
+  })()
 
   const tipoBadge: Record<string, string> = {
     prato:     'bg-[rgba(0,232,122,.08)] text-[#00e87a]',
@@ -391,10 +414,19 @@ function OrderForm({ dia, colabId, empId, restId, onSaved }: {
         })}
       </div>
 
-      {!isPast && !bloqueado && allItems.length > 0 && (
-        <Btn onClick={salvar} loading={saving}>
-          {existingPedido ? 'Atualizar pedido' : 'Confirmar pedido'}
-        </Btn>
+      {!isPast && allItems.length > 0 && (
+        <div className="flex flex-col gap-2">
+          {!bloqueado && (
+            <Btn onClick={salvar} loading={saving}>
+              {existingPedido ? 'Atualizar pedido' : 'Confirmar pedido'}
+            </Btn>
+          )}
+          {podeCancelar && (
+            <Btn variant="danger" onClick={cancelar} loading={canceling}>
+              ✕ Cancelar pedido
+            </Btn>
+          )}
+        </div>
       )}
     </div>
   )
