@@ -107,6 +107,17 @@ export default function PedidoGestorPane({ empresaId }: { empresaId: string }) {
   const isPast   = selectedDate ? isPassado(selectedDate) : false
   const isBuffet = empConfig?.formato === 'buffet'
 
+  // Verifica se cancelamento ainda é permitido (antes do horário limite, incluindo extensão)
+  const podeCancelar = !!existingPedido && !isPast && (() => {
+    if (!empConfig?.horario_limite) return true
+    const [h, m] = empConfig.horario_limite.split(':').map(Number)
+    const cutoff = new Date(); cutoff.setHours(h, m, 0, 0)
+    const agora  = new Date()
+    if (agora < cutoff) return true
+    if (empConfig?.extensao_ate) return agora < new Date(empConfig.extensao_ate)
+    return false
+  })()
+
   const allItems = diaSelected ? [
     ...(diaSelected.pratos     ?? []).map((p: any) => ({ nome: p.nome, tipo: 'prato'     })),
     ...(diaSelected.guarnicoes ?? []).map((g: any) => ({ nome: g.nome, tipo: 'guarnicao' })),
@@ -239,7 +250,9 @@ export default function PedidoGestorPane({ empresaId }: { empresaId: string }) {
               </div>
               {!isPast && (
                 existingPedido
-                  ? <Btn variant="danger" onClick={cancelar} loading={canceling}>✕ Cancelar reserva</Btn>
+                  ? podeCancelar
+                    ? <Btn variant="danger" onClick={cancelar} loading={canceling}>✕ Cancelar reserva</Btn>
+                    : <div className="rounded-[8px] border border-[rgba(255,77,106,.2)] bg-[rgba(255,77,106,.05)] px-3 py-2"><p className="font-[var(--mono)] text-[10px] text-[#ff4d6a]">🔴 Cancelamento encerrado após o horário limite.</p></div>
                   : <Btn onClick={reservar} loading={saving}>✅ Confirmar reserva</Btn>
               )}
             </>
@@ -297,7 +310,9 @@ export default function PedidoGestorPane({ empresaId }: { empresaId: string }) {
 
               {!isPast && (
                 existingPedido
-                  ? <Btn variant="danger" onClick={cancelar} loading={canceling}>✕ Cancelar pedido</Btn>
+                  ? podeCancelar
+                    ? <Btn variant="danger" onClick={cancelar} loading={canceling}>✕ Cancelar pedido</Btn>
+                    : <div className="rounded-[8px] border border-[rgba(255,77,106,.2)] bg-[rgba(255,77,106,.05)] px-3 py-2"><p className="font-[var(--mono)] text-[10px] text-[#ff4d6a]">🔴 Cancelamento encerrado após o horário limite.</p></div>
                   : allItems.length > 0 && <Btn onClick={salvar} loading={saving}>Confirmar pedido</Btn>
               )}
             </>
