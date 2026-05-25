@@ -88,10 +88,16 @@ interface AppShellProps {
   role: string
   subInfo?: string
   banner?: React.ReactNode
+  defaultTab?: string
+  onTabReady?: (setTab: (id: string) => void) => void
 }
 
-export function AppShell({ tabs, nome, badge, role, subInfo, banner }: AppShellProps) {
-  const [active, setActive] = useState(tabs[0]?.id ?? '')
+export function AppShell({ tabs, nome, badge, role, subInfo, banner, defaultTab, onTabReady }: AppShellProps) {
+  const [active, setActive] = useState(defaultTab ?? tabs[0]?.id ?? '')
+
+  useEffect(() => {
+    if (onTabReady) onTabReady(setActive)
+  }, [])
 
   return (
     <div className="min-h-screen flex flex-col relative z-[1]">
