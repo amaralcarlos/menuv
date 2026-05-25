@@ -13,54 +13,94 @@ export async function GET(req: NextRequest) {
   if (!restId) return E.forbidden()
 
   const admin = supabaseAdmin()
-
   const hoje  = new Date()
-  const em5   = new Date(); em5.setDate(em5.getDate() + 5)
-  const hojeStr = hoje.toISOString().split('T')[0]
-  const em5Str  = em5.toISOString().split('T')[0]
 
+  const { data: rest }: { data: any } = await admin
+    .from('restaurantes')
+    .select('id, dia_vencimento')
+    .eq('id', restId).single() as any
+
+  if (!rest) return ok({ alerta: null })
+
+  // Busca todos os pagamentos do restaurante
   const { data: pagamentos }: { data: any } = await admin
     .from('pagamentos')
-    .select('id, valor, status, tipo, vencimento')
+    .select('id, valor, status, tipo, vencimento, criado_em')
     .eq('restaurante_id', restId)
-    .in('status', ['PENDING', 'OVERDUE'])
-    .order('vencimento', { ascending: true })
-    .limit(5) as any
+    .order('vencimento', { ascending: false }) as any
 
-  if (!pagamentos?.length) return ok({ alerta: null })
+  const pags = pagamentos ?? []
 
-  // Vencido
-  const vencido = pagamentos.find((p: any) => p.status === 'OVERDUE')
-  if (vencido) {
-    const diasAtraso = Math.floor(
-      (hoje.getTime() - new Date(vencido.vencimento).getTime()) / 86_400_000
-    )
+  // ── 1. Planos longos (pix_anual ou cartao_mensal ativo) ──────
+  // Verifica se há pagamento pendente com data futura de plano longo
+  const planosLongos = pags.filter((p: any) =>
+    ['pix_anual', 'cartao_mensal'].includes(p.tipo) &&
+    p.status === 'PENDING' &&
+    p.vencimento >= hoje.toISOString().split('T')[0]
+  )
+
+  if (planosLongos.length > 0) {
+    const proximo = planosLongos[0]
+    const diasAte = Math.floor((new Date(proximo.vencimento).getTime() - hoje.getTime()) / 86_400_000)
+    if (diasAte <= 5) {
+      return ok({
+        alerta: {
+          tipo:     'proximo',
+          mensagem: diasAte === 0 ? 'Seu plano vence hoje!' : `Seu plano vence em ${diasAte} dia${diasAte !== 1 ? 's' : ''}.`,
+          valor:    proximo.valor,
+        }
+      })
+    }
+    return ok({ alerta: null }) // plano longo OK, vence em mais de 5 dias
+  }
+
+  // ── 2. Plano mensal — usa dia_vencimento definido pelo admin ─
+  const diaVenc = rest.dia_vencimento
+  if (!diaVenc) return ok({ alerta: null }) // admin ainda não definiu o dia
+
+  // Calcula data de vencimento do mês atual
+  const anoAtual = hoje.getFullYear()
+  const mesAtual = hoje.getMonth() // 0-indexed
+  // Garante que o dia não ultrapasse o último dia do mês
+  const ultimoDia = new Date(anoAtual, mesAtual + 1, 0).getDate()
+  const diaReal   = Math.min(diaVenc, ultimoDia)
+  const vencMes   = new Date(anoAtual, mesAtual, diaReal)
+
+  // Verifica se o mês atual já foi pago
+  const inicioPeriodo = new Date(anoAtual, mesAtual, 1).toISOString()
+  const fimPeriodo    = new Date(anoAtual, mesAtual + 1, 0, 23, 59, 59).toISOString()
+
+  const pageMes = pags.find((p: any) =>
+    ['RECEIVED', 'CONFIRMED'].includes(p.status) &&
+    p.criado_em >= inicioPeriodo &&
+    p.criado_em <= fimPeriodo
+  )
+
+  if (pageMes) return ok({ alerta: null }) // mês já pago, sem alerta
+
+  const diasAteVenc = Math.floor((vencMes.getTime() - hoje.getTime()) / 86_400_000)
+
+  // Vencido (passou do dia)
+  if (hoje > vencMes) {
+    const diasAtraso = Math.abs(diasAteVenc)
     return ok({
       alerta: {
-        tipo:       'vencido',
-        mensagem:   `Pagamento vencido há ${diasAtraso} dia${diasAtraso !== 1 ? 's' : ''}. Regularize para evitar suspensão.`,
-        pagamentoId: vencido.id,
-        valor:       vencido.valor,
+        tipo:     'vencido',
+        mensagem: `Mantenha o seu acesso ao sistema — pagamento vencido há ${diasAtraso} dia${diasAtraso !== 1 ? 's' : ''}.`,
+        valor:    null,
       }
     })
   }
 
   // Vence em até 5 dias
-  const proximo = pagamentos.find((p: any) =>
-    p.status === 'PENDING' && p.vencimento >= hojeStr && p.vencimento <= em5Str
-  )
-  if (proximo) {
-    const diasRestantes = Math.floor(
-      (new Date(proximo.vencimento).getTime() - hoje.getTime()) / 86_400_000
-    )
+  if (diasAteVenc <= 5) {
     return ok({
       alerta: {
-        tipo:       'proximo',
-        mensagem:   diasRestantes === 0
-          ? `Pagamento vence hoje!`
-          : `Pagamento vence em ${diasRestantes} dia${diasRestantes !== 1 ? 's' : ''}.`,
-        pagamentoId: proximo.id,
-        valor:       proximo.valor,
+        tipo:     'proximo',
+        mensagem: diasAteVenc === 0
+          ? `Seu pagamento vence hoje (dia ${diaReal})!`
+          : `Seu pagamento vence em ${diasAteVenc} dia${diasAteVenc !== 1 ? 's' : ''} (dia ${diaReal}).`,
+        valor:    null,
       }
     })
   }
