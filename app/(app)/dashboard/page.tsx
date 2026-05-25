@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useAuth } from '@/lib/auth-context'
 import { useApi } from '@/lib/use-api'
 import { useToast } from '@/components/ui'
@@ -408,6 +408,7 @@ export default function DashboardPage() {
   )
 
   const [alerta, setAlerta] = useState<{ tipo: string; mensagem: string; valor: number } | null>(null)
+  const setTabRef = useRef<((id: string) => void) | null>(null)
 
   useEffect(() => {
     if (!restId) return
@@ -427,7 +428,7 @@ export default function DashboardPage() {
         {alerta.tipo === 'vencido' ? '🔴' : '⚠️'} {alerta.mensagem}
       </span>
       <button
-        onClick={() => {/* navega para aba financeiro */}}
+        onClick={() => setTabRef.current?.('financeiro')}
         className={`font-[var(--mono)] text-[10px] border rounded-full px-2.5 py-1 flex-shrink-0 cursor-pointer bg-transparent transition-colors
           ${alerta.tipo === 'vencido'
             ? 'text-[#ff4d6a] border-[rgba(255,77,106,.3)] hover:bg-[rgba(255,77,106,.12)]'
@@ -450,5 +451,5 @@ export default function DashboardPage() {
     ? (meta.perfil === 'admin' ? 'admin' : 'equipe')
     : 'restaurante'
 
-  return <AppShell tabs={tabs} nome={meta?.nome ?? 'Menuv'} badge={badge} role="Restaurante" banner={bannerAlerta} />
+  return <AppShell tabs={tabs} nome={meta?.nome ?? 'Menuv'} badge={badge} role="Restaurante" banner={bannerAlerta} onTabReady={fn => { setTabRef.current = fn }} />
 }
