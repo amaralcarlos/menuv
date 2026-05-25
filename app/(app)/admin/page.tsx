@@ -240,6 +240,15 @@ function DashboardPane() {
     else toast(r.error, 'error')
   }
 
+  async function salvarVencimento(restId: string, nomeRest: string, dia: number) {
+    if (dia < 1 || dia > 31) { toast('Dia inválido.', 'error'); return }
+    const r = await call(`/api/admin/restaurantes/${restId}/vencimento`, {
+      method: 'POST', body: JSON.stringify({ dia }),
+    })
+    if (r.success) { toast(`Vencimento do ${nomeRest} definido para dia ${dia}.`); load() }
+    else toast(r.error, 'error')
+  }
+
   if (loading) return <Spinner />
 
   return (
@@ -348,6 +357,33 @@ function DashboardPane() {
 
                 {/* Email */}
                 <p className="font-[var(--mono)] text-[10px] text-[#3d5875]">✉️ {r.email}</p>
+
+                {/* Dia de vencimento */}
+                <div className="bg-[#080c14] border border-[#1c2e48] rounded-[10px] px-3 py-2.5 flex items-center justify-between gap-2">
+                  <div>
+                    <p className="font-[var(--mono)] text-[9px] tracking-[1.5px] text-[#3d5875] uppercase">Dia de vencimento</p>
+                    <p className="font-[var(--mono)] text-xs text-[#ddeaf8] mt-0.5">
+                      {r.dia_vencimento ? `Todo dia ${r.dia_vencimento} do mês` : 'Não definido'}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="number" min="1" max="31"
+                      defaultValue={r.dia_vencimento ?? ''}
+                      placeholder="dia"
+                      id={`venc-${r.id}`}
+                      className="w-14 bg-[#0d1525] border border-[#253d5e] rounded-[8px] px-2 py-1.5 font-[var(--mono)] text-xs text-[#ddeaf8] outline-none text-center"
+                    />
+                    <button
+                      onClick={() => {
+                        const el = document.getElementById(`venc-${r.id}`) as HTMLInputElement
+                        salvarVencimento(r.id, r.nome, parseInt(el?.value ?? '0', 10))
+                      }}
+                      className="font-[var(--mono)] text-[10px] text-[#00e87a] border border-[rgba(0,232,122,.3)] rounded-[6px] px-2.5 py-1.5 cursor-pointer hover:bg-[rgba(0,232,122,.08)] transition-colors bg-transparent">
+                      Salvar
+                    </button>
+                  </div>
+                </div>
 
                 {/* Ações */}
                 <div className="grid grid-cols-2 gap-2">
