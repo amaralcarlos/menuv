@@ -307,7 +307,7 @@ function OrderForm({ dia, colabId, empId, restId, onSaved }: {
 
   // Para dias futuros: sempre pode cancelar (horário limite não se aplica)
   // Para hoje: só pode cancelar antes do horário limite (ou dentro da extensão)
-  const isToday = (() => {
+  const isDiaHoje = (() => {
     if (!dia?.data) return false
     const hoje = new Date()
     const [d, m, y] = (dia.data as string).split('/').map(Number)
@@ -315,7 +315,7 @@ function OrderForm({ dia, colabId, empId, restId, onSaved }: {
   })()
 
   const podeCancelar = !!existingPedido && !isPast && (() => {
-    if (!isToday) return true // dia futuro: sempre pode cancelar
+    if (!isDiaHoje) return true // dia futuro: sempre pode cancelar
     if (!empConfig?.horario_limite) return true
     const [h, m] = empConfig.horario_limite.split(':').map(Number)
     const cutoff = new Date(); cutoff.setHours(h, m, 0, 0)
