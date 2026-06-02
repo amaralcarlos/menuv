@@ -32,14 +32,20 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(new URL('/', req.url))
   }
 
-  // Autenticado na raiz → redireciona para o painel correcto
+  // Autenticado na raiz → força refresh do JWT e redireciona para o painel correto
   if (session && isRoot) {
-    const role     = session.user.app_metadata?.app_role
-    const isGestor = session.user.app_metadata?.is_gestor
-    const dest     = role === 'admin'       ? '/admin'
-                   : role === 'restaurante' ? '/dashboard'
-                   : role === 'colaborador' && isGestor ? '/gestor'
-                   : '/pedidos'
+    // refreshSession garante que o role no JWT está atualizado
+    const { data: refreshed } = await sb.auth.refreshSession()
+    const user = refreshed.session?.user ?? session.user
+
+    const appRole  = user.app_metadata?.app_role
+    const isGestor = user.app_metadata?.is_gestor
+
+    const dest = appRole === 'admin'                   ? '/admin'
+               : appRole === 'restaurante'             ? '/dashboard'
+               : appRole === 'colaborador' && isGestor ? '/gestor'
+               : '/pedidos'
+
     return NextResponse.redirect(new URL(dest, req.url))
   }
 
