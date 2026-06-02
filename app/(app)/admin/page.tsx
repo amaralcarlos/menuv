@@ -338,6 +338,19 @@ function DashboardPane() {
           : r.numEmpresas <= 10 ? 149.00
           : r.numEmpresas <= 15 ? 249.00
           : 349.00
+
+        // Status de pagamento do mês
+        const hoje = new Date()
+        const diaVenc = r.dia_vencimento
+        const ultimoDia = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).getDate()
+        const diaReal = diaVenc ? Math.min(diaVenc, ultimoDia) : null
+        const vencMes = diaReal ? new Date(hoje.getFullYear(), hoje.getMonth(), diaReal) : null
+        const diasAteVenc = vencMes ? Math.floor((vencMes.getTime() - hoje.getTime()) / 86_400_000) : null
+        const statusPag = !diaVenc ? 'sem_config'
+          : diasAteVenc === null ? 'sem_config'
+          : diasAteVenc < 0 ? 'vencido'
+          : diasAteVenc <= 5 ? 'proximo'
+          : 'ok'
         const suspenso = r.statusPlano === 'suspenso'
 
         return (
@@ -369,6 +382,16 @@ function DashboardPane() {
                 {r.planoLancamento && (
                   <span className="font-[var(--mono)] text-[9px] text-[#ffb340] border border-[rgba(255,179,64,.3)] rounded-full px-1.5 py-0.5">
                     🚀
+                  </span>
+                )}
+                {statusPag === 'vencido' && (
+                  <span className="font-[var(--mono)] text-[9px] text-[#ff4d6a] border border-[rgba(255,77,106,.3)] rounded-full px-1.5 py-0.5">
+                    🔴 Vencido
+                  </span>
+                )}
+                {statusPag === 'proximo' && (
+                  <span className="font-[var(--mono)] text-[9px] text-[#ffb340] border border-[rgba(255,179,64,.3)] rounded-full px-1.5 py-0.5">
+                    ⚠️ Vence dia {diaReal}
                   </span>
                 )}
                 <Badge color={STATUS_COLOR[r.statusPlano] ?? 'gray'}>{r.statusPlano}</Badge>
@@ -413,6 +436,29 @@ function DashboardPane() {
 
                 {/* Email */}
                 <p className="font-[var(--mono)] text-[10px] text-[#3d5875]">✉️ {r.email}</p>
+
+                {/* Status de pagamento do mês */}
+                {diaVenc && (
+                  <div className={`rounded-[10px] border px-3 py-2.5 flex items-center justify-between
+                    ${statusPag === 'vencido' ? 'border-[rgba(255,77,106,.3)] bg-[rgba(255,77,106,.05)]'
+                    : statusPag === 'proximo' ? 'border-[rgba(255,179,64,.3)] bg-[rgba(255,179,64,.05)]'
+                    : 'border-[#1c2e48] bg-[#080c14]'}`}>
+                    <div>
+                      <p className="font-[var(--mono)] text-[9px] tracking-[1.5px] text-[#3d5875] uppercase">Pagamento do mês</p>
+                      <p className={`font-[var(--mono)] text-xs mt-0.5 font-bold
+                        ${statusPag === 'vencido' ? 'text-[#ff4d6a]'
+                        : statusPag === 'proximo' ? 'text-[#ffb340]'
+                        : 'text-[#00e87a]'}`}>
+                        {statusPag === 'vencido'
+                          ? `🔴 Vencido há ${Math.abs(diasAteVenc!)} dia${Math.abs(diasAteVenc!) !== 1 ? 's' : ''}`
+                          : statusPag === 'proximo'
+                            ? diasAteVenc === 0 ? `⚠️ Vence hoje (dia ${diaReal})`
+                            : `⚠️ Vence em ${diasAteVenc} dia${diasAteVenc !== 1 ? 's' : ''} (dia ${diaReal})`
+                          : `✅ Em dia (vence dia ${diaReal})`}
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 {/* Dia de vencimento */}
                 <VencimentoEditor
