@@ -244,7 +244,10 @@ function DashboardPane() {
   const [planoForm,    setPlanoForm]    = useState({ plano: 'trial', status: 'trial', trialFim: '', obs: '' })
   const [saving,       setSaving]       = useState(false)
   const [acting,       setActing]       = useState('')
-  const [expandedRest, setExpandedRest] = useState<string | null>(null)
+  const [expandedRest,    setExpandedRest]    = useState<string | null>(null)
+  const [vencModal,        setVencModal]        = useState<any>(null)
+  const [vencForm,         setVencForm]         = useState({ dia: '30', inicio: '', meses: '12', valor: '' })
+  const [vencSaving,       setVencSaving]       = useState(false)
 
   async function load() {
     const res = await call<any>('/api/admin/dashboard')
@@ -303,6 +306,27 @@ function DashboardPane() {
     })
     if (r.success) { toast(`Vencimento do ${nomeRest} definido para dia ${dia}.`); load() }
     else toast(r.error, 'error')
+  }
+
+  async function gerarVencimentos() {
+    if (!vencModal) return
+    const r = await call(`/api/admin/restaurantes/${vencModal.id}/vencimentos`, {
+      method: 'POST',
+      body: JSON.stringify({
+        dia:    parseInt(vencForm.dia),
+        inicio: vencForm.inicio,
+        meses:  parseInt(vencForm.meses),
+        valor:  parseFloat(vencForm.valor),
+      }),
+    })
+    setVencSaving(false)
+    if (r.success) {
+      toast(`${r.data.gerados} vencimentos gerados (${r.data.primeiro} → ${r.data.ultimo}).`)
+      setVencModal(null)
+      load()
+    } else {
+      toast(r.error ?? 'Erro ao gerar vencimentos.', 'error')
+    }
   }
 
   if (loading) return <Spinner />
@@ -482,6 +506,15 @@ function DashboardPane() {
                     onClick={() => setExpandedRest(id => { setTimeout(() => setExpandedRest(r.id), 50); return null })}>
                     🏢 Ver empresas
                   </Btn>
+                  <Btn size="sm" variant="secondary"
+                    onClick={() => {
+                      const hoje = new Date()
+                      const inicioDefault = `${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}-01`
+                      setVencForm({ dia: r.dia_vencimento?.toString() ?? '30', inicio: inicioDefault, meses: '12', valor: String(faturaMes) })
+                      setVencModal(r)
+                    }}>
+                    📅 Vencimentos
+                  </Btn>
                   <Btn size="sm"
                     variant={r.planoLancamento ? 'danger' : 'secondary'}
                     loading={acting === r.id}
@@ -543,6 +576,48 @@ function DashboardPane() {
           <Btn loading={saving} onClick={savePlano}>Salvar</Btn>
         </div>
       </Modal>
+      {/* Modal de vencimentos */}
+      <Modal open={!!vencModal} onClose={() => setVencModal(null)} title={`Vencimentos: ${vencModal?.nome}`}>
+        <div className="flex flex-col gap-4">
+          <p className="font-[var(--mono)] text-[10px] text-[#7a96b8] leading-relaxed">
+            Gera cobranças mensais para o restaurante. Útil para registrar um contrato anual ou semestral.
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-1.5">
+              <label className="font-[var(--mono)] text-[9px] tracking-[1.5px] text-[#3d5875] uppercase">Dia do mês</label>
+              <input type="number" min="1" max="31"
+                value={vencForm.dia}
+                onChange={e => setVencForm(f => ({ ...f, dia: e.target.value }))}
+                className="bg-[#080c14] border border-[#253d5e] rounded-[10px] px-3 py-2 font-[var(--mono)] text-sm text-[#ddeaf8] outline-none text-center" />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="font-[var(--mono)] text-[9px] tracking-[1.5px] text-[#3d5875] uppercase">Nº de meses</label>
+              <input type="number" min="1" max="24"
+                value={vencForm.meses}
+                onChange={e => setVencForm(f => ({ ...f, meses: e.target.value }))}
+                className="bg-[#080c14] border border-[#253d5e] rounded-[10px] px-3 py-2 font-[var(--mono)] text-sm text-[#ddeaf8] outline-none text-center" />
+            </div>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="font-[var(--mono)] text-[9px] tracking-[1.5px] text-[#3d5875] uppercase">Data de início (AAAA-MM-DD)</label>
+            <input type="date"
+              value={vencForm.inicio}
+              onChange={e => setVencForm(f => ({ ...f, inicio: e.target.value }))}
+              className="bg-[#080c14] border border-[#253d5e] rounded-[10px] px-3 py-2 font-[var(--mono)] text-sm text-[#ddeaf8] outline-none" />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="font-[var(--mono)] text-[9px] tracking-[1.5px] text-[#3d5875] uppercase">Valor mensal (R$)</label>
+            <input type="number" step="0.01"
+              value={vencForm.valor}
+              onChange={e => setVencForm(f => ({ ...f, valor: e.target.value }))}
+              className="bg-[#080c14] border border-[#253d5e] rounded-[10px] px-3 py-2 font-[var(--mono)] text-sm text-[#ddeaf8] outline-none" />
+          </div>
+          <Btn loading={vencSaving} onClick={() => { setVencSaving(true); gerarVencimentos() }}>
+            Gerar {vencForm.meses} vencimento{parseInt(vencForm.meses) !== 1 ? 's' : ''}
+          </Btn>
+        </div>
+      </Modal>
+
     </div>
   )
 }
