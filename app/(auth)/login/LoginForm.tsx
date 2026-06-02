@@ -9,6 +9,8 @@ function parseJwt(token: string) {
   try { return JSON.parse(atob(token.split('.')[1])) } catch { return null }
 }
 
+const SAVED_EMAIL_KEY = 'menuv_saved_email'
+
 export default function LoginForm() {
   const router = useRouter()
   const [email,   setEmail]   = useState('')
