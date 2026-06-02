@@ -14,6 +14,7 @@ export async function GET(req: NextRequest) {
 
   const admin = supabaseAdmin()
   const hoje  = new Date()
+  const hojeStr = hoje.toISOString().split('T')[0]
 
   const { data: rest }: { data: any } = await admin
     .from('restaurantes')
@@ -22,7 +23,6 @@ export async function GET(req: NextRequest) {
 
   if (!rest) return ok({ alerta: null })
 
-  // Busca todos os pagamentos do restaurante
   const { data: pagamentos }: { data: any } = await admin
     .from('pagamentos')
     .select('id, valor, status, tipo, vencimento, criado_em')
@@ -31,56 +31,67 @@ export async function GET(req: NextRequest) {
 
   const pags = pagamentos ?? []
 
-  // ── 1. Planos longos (pix_anual ou cartao_mensal ativo) ──────
-  // Verifica se há pagamento pendente com data futura de plano longo
-  const planosLongos = pags.filter((p: any) =>
+  const anoAtual  = hoje.getFullYear()
+  const mesAtual  = hoje.getMonth()
+  const ultimoDia = new Date(anoAtual, mesAtual + 1, 0).getDate()
+  const inicioPeriodo = new Date(anoAtual, mesAtual, 1).toISOString()
+  const fimPeriodo    = new Date(anoAtual, mesAtual + 1, 0, 23, 59, 59).toISOString()
+
+  // Mês atual já tem pagamento confirmado?
+  const pagoMes = pags.find((p: any) =>
+    ['RECEIVED', 'CONFIRMED'].includes(p.status) &&
+    p.criado_em >= inicioPeriodo &&
+    p.criado_em <= fimPeriodo
+  )
+  if (pagoMes) return ok({ alerta: null })
+
+  // ── Planos longos (anual ou cartão recorrente) ───────────────
+  // Verifica pagamento pendente com vencimento FUTURO (ainda não venceu)
+  const planoLongoFuturo = pags.find((p: any) =>
     ['pix_anual', 'cartao_mensal'].includes(p.tipo) &&
     p.status === 'PENDING' &&
-    p.vencimento >= hoje.toISOString().split('T')[0]
+    p.vencimento > hojeStr
   )
-
-  if (planosLongos.length > 0) {
-    const proximo = planosLongos[0]
-    const diasAte = Math.floor((new Date(proximo.vencimento).getTime() - hoje.getTime()) / 86_400_000)
+  if (planoLongoFuturo) {
+    const diasAte = Math.floor((new Date(planoLongoFuturo.vencimento).getTime() - hoje.getTime()) / 86_400_000)
     if (diasAte <= 5) {
       return ok({
         alerta: {
           tipo:     'proximo',
           mensagem: diasAte === 0 ? 'Seu plano vence hoje!' : `Seu plano vence em ${diasAte} dia${diasAte !== 1 ? 's' : ''}.`,
-          valor:    proximo.valor,
+          valor:    planoLongoFuturo.valor,
         }
       })
     }
-    return ok({ alerta: null }) // plano longo OK, vence em mais de 5 dias
+    return ok({ alerta: null })
   }
 
-  // ── 2. Plano mensal — usa dia_vencimento definido pelo admin ─
-  const diaVenc = rest.dia_vencimento
-  if (!diaVenc) return ok({ alerta: null }) // admin ainda não definiu o dia
-
-  // Calcula data de vencimento do mês atual
-  const anoAtual = hoje.getFullYear()
-  const mesAtual = hoje.getMonth() // 0-indexed
-  // Garante que o dia não ultrapasse o último dia do mês
-  const ultimoDia = new Date(anoAtual, mesAtual + 1, 0).getDate()
-  const diaReal   = Math.min(diaVenc, ultimoDia)
-  const vencMes   = new Date(anoAtual, mesAtual, diaReal)
-
-  // Verifica se o mês atual já foi pago
-  const inicioPeriodo = new Date(anoAtual, mesAtual, 1).toISOString()
-  const fimPeriodo    = new Date(anoAtual, mesAtual + 1, 0, 23, 59, 59).toISOString()
-
-  const pageMes = pags.find((p: any) =>
-    ['RECEIVED', 'CONFIRMED'].includes(p.status) &&
-    p.criado_em >= inicioPeriodo &&
-    p.criado_em <= fimPeriodo
+  // Plano longo vencido (PENDING com data passada = não pago)
+  const planoLongoVencido = pags.find((p: any) =>
+    ['pix_anual', 'cartao_mensal'].includes(p.tipo) &&
+    p.status === 'PENDING' &&
+    p.vencimento <= hojeStr
   )
+  if (planoLongoVencido) {
+    const diasAtraso = Math.floor((hoje.getTime() - new Date(planoLongoVencido.vencimento).getTime()) / 86_400_000)
+    return ok({
+      alerta: {
+        tipo:     'vencido',
+        mensagem: `Mantenha o seu acesso ao sistema — pagamento vencido há ${diasAtraso} dia${diasAtraso !== 1 ? 's' : ''}.`,
+        valor:    planoLongoVencido.valor,
+      }
+    })
+  }
 
-  if (pageMes) return ok({ alerta: null }) // mês já pago, sem alerta
+  // ── Plano mensal (dia_vencimento) ────────────────────────────
+  const diaVenc = rest.dia_vencimento
+  if (!diaVenc) return ok({ alerta: null })
 
+  const diaReal = Math.min(diaVenc, ultimoDia)
+  const vencMes = new Date(anoAtual, mesAtual, diaReal)
   const diasAteVenc = Math.floor((vencMes.getTime() - hoje.getTime()) / 86_400_000)
 
-  // Vencido (passou do dia)
+  // Vencido
   if (hoje > vencMes) {
     const diasAtraso = Math.abs(diasAteVenc)
     return ok({
