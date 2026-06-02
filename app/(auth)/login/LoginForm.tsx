@@ -23,25 +23,24 @@ export default function LoginForm() {
     sb.auth.getSession().then(async ({ data }: { data: any }) => {
       if (!data.session) return
 
-      const savedEmail = localStorage.getItem(SAVED_EMAIL_KEY)
+      const savedEmail   = localStorage.getItem(SAVED_EMAIL_KEY)
       const sessionEmail = data.session.user?.email ?? ''
 
-      // Se o e-mail da sessão não bate com o e-mail salvo no "lembrar de mim",
-      // faz logout para evitar redirecionar com o perfil errado
       if (savedEmail && sessionEmail && savedEmail !== sessionEmail) {
-        await sb.auth.signOut()
-        return
+        await sb.auth.signOut(); return
       }
-
-      // Se não tem "lembrar de mim" ativo, não redireciona automaticamente
-      // — usuário precisa fazer login manualmente
       if (!savedEmail) {
-        await sb.auth.signOut()
-        return
+        await sb.auth.signOut(); return
       }
 
-      const jwt = parseJwt(data.session.access_token)
+      // Força refresh para garantir JWT com role atualizado
+      const { data: refreshed } = await sb.auth.refreshSession()
+      if (!refreshed.session) { await sb.auth.signOut(); return }
+
+      const jwt     = parseJwt(refreshed.session.access_token)
       const appRole = jwt?.app_metadata?.app_role
+      if (appRole === 'suspenso') { await sb.auth.signOut(); return }
+
       redirect(appRole, jwt?.app_metadata?.is_gestor)
     })
   }, [])
