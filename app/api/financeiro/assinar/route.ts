@@ -6,7 +6,7 @@ import {
   buscarPixQr, vencimentoEmDias,
   type TipoPagamento,
 } from '@/lib/asaas'
-import { valorMensal, valorAnual } from '@/lib/planos-config'
+import { valorMensal, valorPixAnual, valorCartaoMensal } from '@/lib/planos-config'
 
 export async function POST(req: NextRequest) {
   try {
@@ -15,7 +15,8 @@ export async function POST(req: NextRequest) {
     if (meta.app_role !== 'restaurante' && meta.app_role !== 'admin') return E.forbidden()
 
     const body = await req.json().catch(() => null)
-    const tipo  = sanitize(body?.tipo ?? '') as TipoPagamento
+    const tipo        = sanitize(body?.tipo ?? '') as TipoPagamento
+    const pagamentoId = sanitize(body?.pagamentoId ?? '') || null
 
     if (!['pix_mensal', 'pix_anual', 'cartao_mensal'].includes(tipo))
       return E.badRequest('tipo inválido.')
@@ -43,8 +44,10 @@ export async function POST(req: NextRequest) {
     const total     = numEmpresas ?? 0
 
     const valor = tipo === 'pix_anual'
-      ? valorAnual(total, planoLanc)
-      : valorMensal(total, planoLanc)
+      ? valorPixAnual(total, planoLanc)
+      : tipo === 'cartao_mensal'
+        ? valorCartaoMensal(total, planoLanc)
+        : valorMensal(total, planoLanc)
 
     // Garante cliente no Asaas com CPF/CNPJ sempre sincronizado
     let customerId = rest.asaas_customer_id as string | null
@@ -89,17 +92,29 @@ export async function POST(req: NextRequest) {
       pixCopaCola = pix.payload ?? ''
     }
 
-    await admin.from('pagamentos').insert({
-      restaurante_id:   restId,
-      asaas_payment_id: paymentId,
-      valor,
-      status:           'PENDING',
-      tipo,
-      vencimento:       vencimentoEmDias(tipo === 'pix_anual' ? 3 : 1),
-      pix_qr_code:      pixQrCode   || null,
-      pix_copia_cola:   pixCopaCola || null,
-      invoice_url:      invoiceUrl   || null,
-    })
+    if (pagamentoId) {
+      // Vincula ao vencimento agendado existente
+      await admin.from('pagamentos').update({
+        asaas_payment_id: paymentId,
+        tipo,
+        pix_qr_code:    pixQrCode   || null,
+        pix_copia_cola: pixCopaCola || null,
+        invoice_url:    invoiceUrl   || null,
+      }).eq('id', pagamentoId)
+    } else {
+      // Cria novo registro de pagamento
+      await admin.from('pagamentos').insert({
+        restaurante_id:   restId,
+        asaas_payment_id: paymentId,
+        valor,
+        status:           'PENDING',
+        tipo,
+        vencimento:       vencimentoEmDias(tipo === 'pix_anual' ? 3 : 1),
+        pix_qr_code:      pixQrCode   || null,
+        pix_copia_cola:   pixCopaCola || null,
+        invoice_url:      invoiceUrl   || null,
+      })
+    }
 
     return ok({
       tipo,
