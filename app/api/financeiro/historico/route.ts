@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
 
   const { data: pagamentos, error }: { data: any; error: any } = await admin
     .from('pagamentos')
-    .select('id, valor, status, tipo, vencimento, invoice_url, pix_copia_cola, criado_em')
+    .select('id, valor, status, tipo, vencimento, invoice_url, pix_copia_cola, asaas_payment_id, criado_em')
     .eq('restaurante_id', restId)
     .order('criado_em', { ascending: false })
     .limit(24) as any
