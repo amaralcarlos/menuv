@@ -47,6 +47,7 @@ export default function FinanceiroPane({ restId }: { restId: string }) {
   const [pixModal,        setPixModal]        = useState<{ qrCode: string; copiaCola: string; valor: number } | null>(null)
   const [copied,          setCopied]          = useState(false)
   const [cancelando,      setCancelando]      = useState('')
+  const [pagandoId,       setPagandoId]       = useState<string | null>(null)
 
   // Perfil fiscal
   const [documento,       setDocumento]       = useState('')
@@ -105,12 +106,13 @@ export default function FinanceiroPane({ restId }: { restId: string }) {
     setTipoSelecionado(tipo)
     const r = await call<any>('/api/financeiro/assinar', {
       method: 'POST',
-      body: JSON.stringify({ tipo }),
+      body: JSON.stringify({ tipo, pagamentoId }),
     })
     setAssinando(false)
     setTipoSelecionado(null)
 
     if (!r.success) { toast(r.error ?? 'Erro ao gerar cobrança.', 'error'); return }
+    setPagandoId(null)
 
     if (tipo !== 'cartao_mensal' && r.data.pix) {
       setPixModal({ qrCode: r.data.pix.qrCode, copiaCola: r.data.pix.copiaCola, valor: r.data.valor })
@@ -225,78 +227,62 @@ export default function FinanceiroPane({ restId }: { restId: string }) {
         )}
       </div>
 
-      {/* ── Opções de pagamento ── */}
-      <div className="flex flex-col gap-2">
-        <p className="font-[var(--mono)] text-[10px] tracking-[2px] text-[#3d5875] uppercase">
-          Efetuar pagamento
-        </p>
+      {/* ── Modal de forma de pagamento ── */}
+      {pagandoId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
+          <div className="w-full max-w-[340px] rounded-[16px] border border-[#1c2e48] bg-[#0d1525] p-5 flex flex-col gap-3">
+            <div className="flex items-center justify-between mb-1">
+              <p className="font-bold text-[#ddeaf8]">Escolha a forma de pagamento</p>
+              <button onClick={() => setPagandoId(null)}
+                className="text-[#3d5875] hover:text-[#ddeaf8] text-xl bg-transparent border-none cursor-pointer">×</button>
+            </div>
 
-        {/* Pix Mensal */}
-        <div className="bg-[#0d1525] border border-[#1c2e48] rounded-[12px] p-3 flex items-center justify-between gap-3">
-          <div>
-            <p className="text-sm text-[#ddeaf8] font-medium">Pix Mensal</p>
-            <p className="font-[var(--mono)] text-[10px] text-[#3d5875] mt-0.5">Vence em 1 dia</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="font-[var(--mono)] text-sm font-bold text-[#ddeaf8]">{BRL(mensal)}</span>
-            <Btn size="sm" className="w-auto" loading={assinando && tipoSelecionado === 'pix_mensal'}
-              onClick={() => assinar('pix_mensal')}>
-              Gerar Pix
-            </Btn>
+            {/* Pix Mensal */}
+            <div className="bg-[#080c14] border border-[#1c2e48] rounded-[12px] p-3 flex items-center justify-between gap-2">
+              <div>
+                <p className="text-sm text-[#ddeaf8] font-medium">Pix Mensal</p>
+                <p className="font-[var(--mono)] text-[10px] text-[#3d5875]">Vence em 1 dia</p>
+              </div>
+              <Btn size="sm" className="w-auto" loading={assinando && tipoSelecionado === 'pix_mensal'}
+                onClick={() => assinar('pix_mensal', pagandoId!)}>
+                {BRL(mensal)}
+              </Btn>
+            </div>
+
+            {/* Pix Anual */}
+            <div className="bg-[#080c14] border border-[rgba(0,232,122,.15)] rounded-[12px] p-3 flex items-center justify-between gap-2">
+              <div>
+                <p className="text-sm text-[#ddeaf8] font-medium flex items-center gap-1.5">
+                  Pix Anual
+                  {temDescPix && <span className="font-[var(--mono)] text-[9px] text-[#00e87a] border border-[rgba(0,232,122,.3)] rounded-full px-1.5 py-0.5">−10%</span>}
+                </p>
+                <p className="font-[var(--mono)] text-[10px] text-[#3d5875]">
+                  {temDescPix ? `Economia ${BRL(economiaAnual)}/ano` : 'Sem desconto'}
+                </p>
+              </div>
+              <Btn size="sm" className="w-auto" loading={assinando && tipoSelecionado === 'pix_anual'}
+                onClick={() => assinar('pix_anual', pagandoId!)}>
+                {BRL(anual)}
+              </Btn>
+            </div>
+
+            {/* Cartão */}
+            <div className="bg-[#080c14] border border-[#1c2e48] rounded-[12px] p-3 flex items-center justify-between gap-2">
+              <div>
+                <p className="text-sm text-[#ddeaf8] font-medium flex items-center gap-1.5">
+                  Cartão de Crédito
+                  {temDescCartao && <span className="font-[var(--mono)] text-[9px] text-[#a259ff] border border-[rgba(162,89,255,.3)] rounded-full px-1.5 py-0.5">−5%</span>}
+                </p>
+                <p className="font-[var(--mono)] text-[10px] text-[#3d5875]">Recorrente · 12 parcelas</p>
+              </div>
+              <Btn size="sm" variant="secondary" className="w-auto" loading={assinando && tipoSelecionado === 'cartao_mensal'}
+                onClick={() => assinar('cartao_mensal', pagandoId!)}>
+                {BRL(cartao)}/mês
+              </Btn>
+            </div>
           </div>
         </div>
-
-        {/* Pix Anual */}
-        <div className="bg-[#0d1525] border border-[rgba(0,232,122,.2)] rounded-[12px] p-3 flex items-center justify-between gap-3">
-          <div>
-            <p className="text-sm text-[#ddeaf8] font-medium flex items-center gap-1.5">
-              Pix Anual
-              {temDescPix && (
-                <span className="font-[var(--mono)] text-[9px] text-[#00e87a] border border-[rgba(0,232,122,.3)] rounded-full px-1.5 py-0.5">
-                  −10%
-                </span>
-              )}
-            </p>
-            <p className="font-[var(--mono)] text-[10px] text-[#3d5875] mt-0.5">
-              {temDescPix ? `Economia de ${BRL(economiaAnual)}/ano` : 'Sem desconto (plano lançamento)'}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="font-[var(--mono)] text-sm font-bold text-[#00e87a]">{BRL(anual)}</span>
-            <Btn size="sm" className="w-auto" loading={assinando && tipoSelecionado === 'pix_anual'}
-              onClick={() => assinar('pix_anual')}>
-              Gerar Pix
-            </Btn>
-          </div>
-        </div>
-
-        {/* Cartão Anual Recorrente */}
-        <div className="bg-[#0d1525] border border-[#1c2e48] rounded-[12px] p-3 flex items-center justify-between gap-3">
-          <div>
-            <p className="text-sm text-[#ddeaf8] font-medium flex items-center gap-1.5">
-              Cartão de Crédito
-              {temDescCartao && (
-                <span className="font-[var(--mono)] text-[9px] text-[#a259ff] border border-[rgba(162,89,255,.3)] rounded-full px-1.5 py-0.5">
-                  −5%
-                </span>
-              )}
-            </p>
-            <p className="font-[var(--mono)] text-[10px] text-[#3d5875] mt-0.5">
-              Recorrente · 12 parcelas
-              {temDescCartao && economiaCartao > 0 && (
-                <span className="text-[#a259ff]"> · economia de {BRL(economiaCartao)}/mês</span>
-              )}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="font-[var(--mono)] text-sm font-bold text-[#a259ff]">{BRL(cartao)}/mês</span>
-            <Btn size="sm" variant="secondary" className="w-auto" loading={assinando && tipoSelecionado === 'cartao_mensal'}
-              onClick={() => assinar('cartao_mensal')}>
-              Assinar
-            </Btn>
-          </div>
-        </div>
-      </div>
+      )}
 
       {/* ── Modal Pix ── */}
       {pixModal && (
@@ -367,22 +353,36 @@ export default function FinanceiroPane({ restId }: { restId: string }) {
           const st = STATUS_PAGAMENTO[p.status] ?? { label: p.status, cor: 'gray' }
           return (
             <div key={p.id}
-              className="bg-[#0d1525] border border-[#1c2e48] rounded-[11px] px-3 py-2.5 flex items-center justify-between gap-2">
+              className={`border rounded-[11px] px-3 py-2.5 flex items-center justify-between gap-2
+                ${p.status === 'OVERDUE' ? 'bg-[rgba(255,77,106,.04)] border-[rgba(255,77,106,.2)]'
+                : p.status === 'PENDING' && !p.asaas_payment_id ? 'bg-[#0d1525] border-[#253d5e]'
+                : 'bg-[#0d1525] border-[#1c2e48]'}`}>
               <div>
                 <p className="text-sm text-[#ddeaf8] font-medium">{BRL(p.valor)}</p>
                 <p className="font-[var(--mono)] text-[10px] text-[#3d5875] mt-0.5">
-                  {TIPO_LABEL[p.tipo] ?? p.tipo} · venc. {DATA(p.vencimento)}
+                  venc. {DATA(p.vencimento)}
+                  {p.tipo && p.asaas_payment_id && ` · ${TIPO_LABEL[p.tipo] ?? p.tipo}`}
                 </p>
               </div>
               <div className="flex items-center gap-2">
                 <Badge color={st.cor as any}>{st.label}</Badge>
+
+                {/* Pagar — só quando não tem cobrança gerada ainda */}
+                {p.status === 'PENDING' && !p.asaas_payment_id && (
+                  <button
+                    onClick={() => setPagandoId(p.id)}
+                    className="font-[var(--mono)] text-[9px] text-[#00e87a] border border-[rgba(0,232,122,.3)] rounded-[5px] px-2 py-1 hover:bg-[rgba(0,232,122,.08)] transition-colors cursor-pointer bg-transparent">
+                    Pagar
+                  </button>
+                )}
+
                 {p.invoice_url && (
                   <a href={p.invoice_url} target="_blank" rel="noreferrer"
                     className="font-[var(--mono)] text-[9px] text-[#4da6ff] border border-[rgba(77,166,255,.2)] rounded-[5px] px-2 py-1 hover:bg-[rgba(77,166,255,.08)] transition-colors">
                     Ver
                   </a>
                 )}
-                {['PENDING','OVERDUE'].includes(p.status) && (
+                {['PENDING','OVERDUE'].includes(p.status) && p.asaas_payment_id && (
                   <button
                     onClick={() => cancelarPagamento(p.id)}
                     disabled={cancelando === p.id}
