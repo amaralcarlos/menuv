@@ -17,6 +17,7 @@ interface Pagamento {
   vencimento: string
   invoice_url: string
   pix_copia_cola: string
+  asaas_payment_id: string | null
   criado_em: string
 }
 
