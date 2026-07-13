@@ -101,12 +101,12 @@ export default function FinanceiroPane({ restId }: { restId: string }) {
 
   useEffect(() => { loadFatura(); loadHistorico() }, [restId])
 
-  async function assinar(tipo: TipoPag) {
+  async function assinar(tipo: TipoPag, agendadoId?: string) {
     setAssinando(true)
     setTipoSelecionado(tipo)
     const r = await call<any>('/api/financeiro/assinar', {
       method: 'POST',
-      body: JSON.stringify({ tipo, pagamentoId: pagId }),
+      body: JSON.stringify({ tipo, pagamentoId: agendadoId }),
     })
     setAssinando(false)
     setTipoSelecionado(null)
