@@ -106,7 +106,7 @@ export default function FinanceiroPane({ restId }: { restId: string }) {
     setTipoSelecionado(tipo)
     const r = await call<any>('/api/financeiro/assinar', {
       method: 'POST',
-      body: JSON.stringify({ tipo, pagamentoId }),
+      body: JSON.stringify({ tipo, pagamentoId: pagId }),
     })
     setAssinando(false)
     setTipoSelecionado(null)
@@ -244,7 +244,7 @@ export default function FinanceiroPane({ restId }: { restId: string }) {
                 <p className="font-[var(--mono)] text-[10px] text-[#3d5875]">Vence em 1 dia</p>
               </div>
               <Btn size="sm" className="w-auto" loading={assinando && tipoSelecionado === 'pix_mensal'}
-                onClick={() => assinar('pix_mensal', pagandoId!)}>
+                onClick={() => assinar('pix_mensal', pagandoId ?? undefined)}>
                 {BRL(mensal)}
               </Btn>
             </div>
@@ -261,7 +261,7 @@ export default function FinanceiroPane({ restId }: { restId: string }) {
                 </p>
               </div>
               <Btn size="sm" className="w-auto" loading={assinando && tipoSelecionado === 'pix_anual'}
-                onClick={() => assinar('pix_anual', pagandoId!)}>
+                onClick={() => assinar('pix_anual', pagandoId ?? undefined)}>
                 {BRL(anual)}
               </Btn>
             </div>
@@ -276,7 +276,7 @@ export default function FinanceiroPane({ restId }: { restId: string }) {
                 <p className="font-[var(--mono)] text-[10px] text-[#3d5875]">Recorrente · 12 parcelas</p>
               </div>
               <Btn size="sm" variant="secondary" className="w-auto" loading={assinando && tipoSelecionado === 'cartao_mensal'}
-                onClick={() => assinar('cartao_mensal', pagandoId!)}>
+                onClick={() => assinar('cartao_mensal', pagandoId ?? undefined)}>
                 {BRL(cartao)}/mês
               </Btn>
             </div>
