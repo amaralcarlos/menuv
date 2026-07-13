@@ -310,7 +310,7 @@ function DashboardPane() {
 
   async function gerarVencimentos() {
     if (!vencModal) return
-    const r = await call(`/api/admin/restaurantes/${vencModal.id}/vencimentos`, {
+    const r = await call<any>(`/api/admin/restaurantes/${vencModal.id}/vencimentos`, {
       method: 'POST',
       body: JSON.stringify({
         dia:    parseInt(vencForm.dia),
