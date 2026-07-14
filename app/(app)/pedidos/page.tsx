@@ -503,15 +503,18 @@ function PedidosContent() {
   const empId   = meta?.empresa_id     ?? ''
 
   async function load() {
-    if (!meta?.restaurante_id) return
+    if (!empId) { setLoading(false); return }
 
-    const empRes = await call<any[]>(`/api/empresas?restauranteId=${meta.restaurante_id}`)
-    if (empRes.success) {
-      const emp = empRes.data.find((e: any) => e.id === empId)
-      setEmpConfig(emp)
-    }
+    // Busca a empresa para obter o restaurante_id (colaborador não tem no metadata)
+    const empRes = await call<any>(`/api/empresas/${empId}`)
+    if (!empRes.success) { setLoading(false); return }
+    const emp = empRes.data
+    setEmpConfig(emp)
 
-    const res = await call<any[]>(`/api/cardapio/semana?restauranteId=${meta.restaurante_id}`)
+    const restId = meta?.restaurante_id ?? emp?.restaurante_id
+    if (!restId) { setLoading(false); return }
+
+    const res = await call<any[]>(`/api/cardapio/semana?restauranteId=${restId}`)
     if (res.success && res.data.length > 0) {
       const pedRes = await call<any[]>(`/api/pedidos?empresaId=${empId}&dataInicio=${res.data[0].data}&dataFim=${res.data[res.data.length-1].data}`)
       const pedMap: Record<string, any> = {}
