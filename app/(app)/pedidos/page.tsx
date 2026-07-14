@@ -193,13 +193,12 @@ function BuffetForm({ dia, colabId, empId, onSaved }: {
   )
 }
 
-/* ── Marmita form ────────────────────────────────────────── */
-function OrderForm({ dia, colabId, empId, restId, onSaved }: {
-  dia: any; colabId: string; empId: string; restId: string; onSaved: () => void
+/* ── Marmita form (formulário de novo pedido) ───────────── */
+function NovoPedidoForm({ dia, colabId, empId, empConfig, onSaved, onCancel }: {
+  dia: any; colabId: string; empId: string; empConfig: any; onSaved: () => void; onCancel: () => void
 }) {
   const { call } = useApi()
   const toast    = useToast()
-  const existingPedido = dia.pedido
 
   const allItems = [
     ...(dia.pratos     ?? []).map((p: any) => ({ nome: p.nome, tipo: 'prato'     })),
@@ -207,36 +206,179 @@ function OrderForm({ dia, colabId, empId, restId, onSaved }: {
     ...(dia.outros     ?? []).map((o: any) => ({ nome: o.nome, tipo: 'outro'     })),
   ]
 
-  function parseExisting(): ItemSel[] {
-    if (!existingPedido?.itens) return []
-    if (existingPedido.itens.length === 1 && existingPedido.itens[0] === 'Refeição completa') {
-      return allItems.map(i => ({ nome: i.nome, ajuste: 'normal' as const }))
-    }
-    return existingPedido.itens.map((s: string) => {
-      if (s.endsWith(' [extra]'))    return { nome: s.replace(' [extra]', ''),    ajuste: 'extra'    as const }
-      if (s.endsWith(' [reduzido]')) return { nome: s.replace(' [reduzido]', ''), ajuste: 'reduzido' as const }
-      return { nome: s, ajuste: 'normal' as const }
-    })
+  const [selected, setSelected] = useState<ItemSel[]>([])
+  const [obs,      setObs]      = useState('')
+  const [saving,   setSaving]   = useState(false)
+
+  const parts = dia.data.split('/')
+
+  function isItemSelected(nome: string) { return selected.some(s => s.nome === nome) }
+  function getAjuste(nome: string): 'normal' | 'extra' | 'reduzido' {
+    return selected.find(s => s.nome === nome)?.ajuste ?? 'normal'
+  }
+  function toggleItem(nome: string) {
+    setSelected(s => s.some(i => i.nome === nome)
+      ? s.filter(i => i.nome !== nome)
+      : [...s, { nome, ajuste: 'normal' }]
+    )
+  }
+  function toggleAjuste(nome: string, ajuste: 'extra' | 'reduzido') {
+    setSelected(s => s.map(i => i.nome === nome
+      ? { ...i, ajuste: i.ajuste === ajuste ? 'normal' : ajuste } : i
+    ))
+  }
+  function pedidoCompleto() {
+    setSelected(allItems.map(i => ({ nome: i.nome, ajuste: 'normal' as const })))
   }
 
-  const [selected,   setSelected]  = useState<ItemSel[]>(parseExisting())
-  const [obs,        setObs]       = useState<string>(existingPedido?.obs ?? '')
-  const [quantidade, setQuantidade] = useState<number>(existingPedido?.quantidade ?? 1)
-  const [saving,     setSaving]    = useState(false)
-  const [canceling,  setCanceling] = useState(false)
-  const [empConfig,  setEmpConfig] = useState<any>(null)
-
-  useEffect(() => {
-    setSelected(parseExisting())
-    setObs(existingPedido?.obs ?? '')
-    setQuantidade(existingPedido?.quantidade ?? 1)
-  }, [dia.data])
-
-  useEffect(() => {
-    call<any[]>(`/api/empresas?restauranteId=${restId}`).then(r => {
-      if (r.success) setEmpConfig(r.data.find((e: any) => e.id === empId))
+  async function salvar() {
+    if (selected.length === 0) { toast('Selecione ao menos um item.', 'error'); return }
+    setSaving(true)
+    const todosItens = allItems.map(i => i.nome)
+    const isCompleto = todosItens.length > 0 &&
+      selected.length === todosItens.length &&
+      todosItens.every(nome => selected.some(s => s.nome === nome && s.ajuste === 'normal'))
+    const itens = isCompleto
+      ? ['Refeição completa']
+      : selected.map(s => s.ajuste === 'normal' ? s.nome : `${s.nome} [${s.ajuste}]`)
+    const res = await call('/api/pedidos', {
+      method: 'POST',
+      body: JSON.stringify({ colaboradorId: colabId, empresaId: empId,
+        data: `${parts[2]}-${parts[1]}-${parts[0]}`, itens, obs }),
     })
-  }, [empId])
+    setSaving(false)
+    if (res.success) { toast('Pedido enviado!'); onSaved() }
+    else toast(res.error ?? 'Erro ao salvar pedido.', 'error')
+  }
+
+  const SECOES = [
+    { label: '🍽️ Pratos',     items: dia.pratos     ?? [] },
+    { label: '🥗 Guarnição',  items: dia.guarnicoes ?? [] },
+    { label: '➕ Outros',     items: dia.outros     ?? [] },
+  ]
+
+  return (
+    <div className="flex flex-col gap-3 mt-3 border-t border-[#1c2e48] pt-3">
+      {/* Botão refeição completa */}
+      <button
+        onClick={pedidoCompleto}
+        className="w-full py-2 rounded-[10px] border border-[rgba(0,232,122,.25)] bg-[rgba(0,232,122,.04)] font-[var(--mono)] text-[11px] text-[#00e87a] cursor-pointer hover:bg-[rgba(0,232,122,.08)] transition-colors">
+        ✅ Selecionar refeição completa
+      </button>
+
+      {SECOES.map(sec => sec.items.length > 0 && (
+        <div key={sec.label}>
+          <p className="font-[var(--mono)] text-[10px] text-[#3d5875] uppercase tracking-[1px] mb-1.5">{sec.label}</p>
+          <div className="flex flex-col gap-1.5">
+            {sec.items.map((item: any) => {
+              const sel = isItemSelected(item.nome)
+              const aj  = getAjuste(item.nome)
+              return (
+                <div key={item.nome} className={`rounded-[10px] border px-3 py-2 transition-all
+                  ${sel ? 'border-[rgba(0,232,122,.4)] bg-[rgba(0,232,122,.05)]' : 'border-[#1c2e48] bg-[#0d1525]'}`}>
+                  <div className="flex items-center gap-2 cursor-pointer" onClick={() => toggleItem(item.nome)}>
+                    <div className={`w-4 h-4 rounded-[4px] border flex items-center justify-center flex-shrink-0 transition-all
+                      ${sel ? 'bg-[#00e87a] border-[#00e87a]' : 'border-[#2a4060]'}`}>
+                      {sel && <span className="text-black text-[10px] font-bold">✓</span>}
+                    </div>
+                    <span className="text-sm text-[#ddeaf8]">{item.nome}</span>
+                  </div>
+                  {sel && (
+                    <div className="flex gap-2 mt-2 ml-6">
+                      {(['extra','reduzido'] as const).map(a => (
+                        <button key={a} onClick={() => toggleAjuste(item.nome, a)}
+                          className={`font-[var(--mono)] text-[9px] px-2 py-1 rounded-full border transition-all cursor-pointer
+                            ${aj === a ? 'border-[#ffb340] bg-[rgba(255,179,64,.15)] text-[#ffb340]' : 'border-[#1c2e48] text-[#3d5875] bg-transparent'}`}>
+                          {a}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      ))}
+
+      {/* Observação */}
+      <div className="flex flex-col gap-1.5">
+        <label className="font-[var(--mono)] text-[10px] tracking-[1.5px] text-[#3d5875] uppercase">Observação (opcional)</label>
+        <textarea value={obs} onChange={e => setObs(e.target.value)}
+          placeholder="Ex: sem pimenta, sem cebola..." rows={2}
+          className="w-full bg-[#080c14] border border-[#253d5e] rounded-[11px] px-3 py-2.5 font-[var(--mono)] text-sm text-[#ddeaf8] outline-none focus:border-[rgba(0,232,122,.5)] placeholder:text-[#3d5875] resize-none" />
+      </div>
+
+      <div className="flex gap-2">
+        <Btn variant="secondary" onClick={onCancel} className="flex-1">Cancelar</Btn>
+        <Btn onClick={salvar} loading={saving} className="flex-1">Enviar pedido</Btn>
+      </div>
+    </div>
+  )
+}
+
+/* ── Pedido item (consulta/edição) ───────────────────────── */
+function PedidoItem({ pedido, podeCancelar, podeCancelarFuturo, onSaved }: {
+  pedido: any; podeCancelar: boolean; podeCancelarFuturo: boolean; onSaved: () => void
+}) {
+  const { call } = useApi()
+  const toast    = useToast()
+  const [expanded,  setExpanded]  = useState(false)
+  const [canceling, setCanceling] = useState(false)
+
+  async function cancelar() {
+    if (!confirm('Cancelar este pedido?')) return
+    setCanceling(true)
+    const res = await call(`/api/pedidos/${pedido.id}`, { method: 'DELETE' })
+    setCanceling(false)
+    if (res.success) { toast('Pedido cancelado.'); onSaved() }
+    else toast(res.error ?? 'Erro ao cancelar.', 'error')
+  }
+
+  const podeCanc = podeCancelar || podeCancelarFuturo
+
+  return (
+    <div className="bg-[#0d1525] border border-[#1c2e48] rounded-[11px] overflow-hidden">
+      <button
+        onClick={() => setExpanded(e => !e)}
+        className="w-full px-3 py-2.5 flex items-center justify-between cursor-pointer bg-transparent border-none text-left">
+        <div>
+          <p className="text-sm text-[#ddeaf8] font-medium">
+            {pedido.itens?.[0] === 'Refeição completa' ? '✅ Refeição completa' : pedido.itens?.join(', ').slice(0, 40) + (pedido.itens?.join(', ').length > 40 ? '...' : '')}
+          </p>
+          {pedido.obs && <p className="font-[var(--mono)] text-[10px] text-[#3d5875] mt-0.5">Obs: {pedido.obs}</p>}
+        </div>
+        <span className="text-[#3d5875] text-xs ml-2">{expanded ? '▲' : '▼'}</span>
+      </button>
+
+      {expanded && (
+        <div className="border-t border-[#1c2e48] px-3 py-3 flex flex-col gap-2">
+          <div className="flex flex-col gap-1">
+            {pedido.itens?.map((item: string, i: number) => (
+              <p key={i} className="font-[var(--mono)] text-xs text-[#7a96b8]">• {item}</p>
+            ))}
+          </div>
+          {pedido.obs && (
+            <p className="font-[var(--mono)] text-[10px] text-[#3d5875]">Obs: {pedido.obs}</p>
+          )}
+          {podeCanc && (
+            <Btn variant="danger" onClick={cancelar} loading={canceling}>
+              ✕ Cancelar este pedido
+            </Btn>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ── OrderForm (orquestrador) ────────────────────────────── */
+function OrderForm({ dia, colabId, empId, restId, onSaved }: {
+  dia: any; colabId: string; empId: string; restId: string; onSaved: () => void
+}) {
+  const empConfig  = dia._empConfig
+  const pedidos    = dia.pedidos ?? []
+  const [fazendo, setFazendo] = useState(pedidos.length === 0)
 
   const parts   = dia.data.split('/')
   const date    = new Date(+parts[2], +parts[1] - 1, +parts[0])
@@ -250,104 +392,27 @@ function OrderForm({ dia, colabId, empId, restId, onSaved }: {
   if (isToday && empConfig?.horario_limite) {
     const [h, m] = empConfig.horario_limite.split(':').map(Number)
     const cutoff = new Date(); cutoff.setHours(h, m, 0, 0)
-    if (hoje >= cutoff) { bloqueado = true; motivoBloqueio = `Pedidos encerrados às ${empConfig.horario_limite}` }
+    if (hoje >= cutoff) {
+      if (empConfig?.extensao_ate) {
+        if (hoje < new Date(empConfig.extensao_ate)) {
+          motivoBloqueio = ''
+        } else {
+          bloqueado = true; motivoBloqueio = `Pedidos encerrados`
+        }
+      } else {
+        bloqueado = true; motivoBloqueio = `Pedidos encerrados às ${empConfig.horario_limite}`
+      }
+    }
   }
 
-  function isItemSelected(nome: string) {
-    return selected.some(s => s.nome === nome)
-  }
+  const podeCancelar = isToday && !bloqueado
+  const podeCancelarFuturo = !isToday && !isPast
 
-  function getAjuste(nome: string): 'normal' | 'extra' | 'reduzido' {
-    return selected.find(s => s.nome === nome)?.ajuste ?? 'normal'
-  }
-
-  function toggleItem(nome: string) {
-    setSelected(s => s.some(i => i.nome === nome)
-      ? s.filter(i => i.nome !== nome)
-      : [...s, { nome, ajuste: 'normal' }]
-    )
-  }
-
-  function toggleAjuste(nome: string, ajuste: 'extra' | 'reduzido') {
-    setSelected(s => s.map(i => i.nome === nome
-      ? { ...i, ajuste: i.ajuste === ajuste ? 'normal' : ajuste }
-      : i
-    ))
-  }
-
-  function pedidoCompleto() {
-    setSelected(allItems.map(i => ({ nome: i.nome, ajuste: 'normal' as const })))
-  }
-
-  async function salvar() {
-    if (selected.length === 0) { toast('Selecione ao menos um item.', 'error'); return }
-    if (!colabId) { toast('Erro: faça logout e login novamente.', 'error'); return }
-    setSaving(true)
-
-    const todosItens = allItems.map(i => i.nome)
-    const isCompleto = todosItens.length > 0 &&
-      selected.length === todosItens.length &&
-      todosItens.every(nome => selected.some(s => s.nome === nome && s.ajuste === 'normal'))
-
-    const itensSingle = isCompleto
-      ? ['Refeição completa']
-      : selected.map(s => s.ajuste === 'normal' ? s.nome : `${s.nome} [${s.ajuste}]`)
-
-    // Multiplica os itens pela quantidade de marmitas
-    const itens = quantidade > 1
-      ? [`${quantidade}x marmita`, ...itensSingle]
-      : itensSingle
-
-    const res = await call('/api/pedidos', {
-      method: 'POST',
-      body: JSON.stringify({
-        colaboradorId: colabId,
-        empresaId:     empId,
-        data:          `${parts[2]}-${parts[1]}-${parts[0]}`,
-        itens,
-        obs,
-      }),
-    })
-    setSaving(false)
-    if (res.success) { toast('Pedido salvo!'); onSaved() }
-    else toast(res.error ?? 'Erro ao salvar pedido.', 'error')
-  }
-
-  async function cancelar() {
-    if (!existingPedido?.id) return
-    if (!confirm('Cancelar pedido?')) return
-    setCanceling(true)
-    const res = await call(`/api/pedidos/${existingPedido.id}`, { method: 'DELETE' })
-    setCanceling(false)
-    if (res.success) { toast('Pedido cancelado.'); onSaved() }
-    else toast(res.error ?? 'Erro ao cancelar.', 'error')
-  }
-
-  // Para dias futuros: sempre pode cancelar (horário limite não se aplica)
-  // Para hoje: só pode cancelar antes do horário limite (ou dentro da extensão)
-  const isDiaHoje = (() => {
-    if (!dia?.data) return false
-    const hoje = new Date()
-    const [d, m, y] = (dia.data as string).split('/').map(Number)
-    return d === hoje.getDate() && m === (hoje.getMonth() + 1) && y === hoje.getFullYear()
-  })()
-
-  const podeCancelar = !!existingPedido && !isPast && (() => {
-    if (!isDiaHoje) return true // dia futuro: sempre pode cancelar
-    if (!empConfig?.horario_limite) return true
-    const [h, m] = empConfig.horario_limite.split(':').map(Number)
-    const cutoff = new Date(); cutoff.setHours(h, m, 0, 0)
-    const agora  = new Date()
-    if (agora < cutoff) return true
-    if (empConfig?.extensao_ate) return agora < new Date(empConfig.extensao_ate)
-    return false
-  })()
-
-  const tipoBadge: Record<string, string> = {
-    prato:     'bg-[rgba(0,232,122,.08)] text-[#00e87a]',
-    guarnicao: 'bg-[rgba(77,166,255,.1)] text-[#4da6ff]',
-    outro:     'bg-[rgba(122,150,184,.08)] text-[#7a96b8]',
-  }
+  const allItems = [
+    ...(dia.pratos     ?? []).map((p: any) => ({ nome: p.nome })),
+    ...(dia.guarnicoes ?? []).map((g: any) => ({ nome: g.nome })),
+    ...(dia.outros     ?? []).map((o: any) => ({ nome: o.nome })),
+  ]
 
   return (
     <div>
@@ -355,7 +420,10 @@ function OrderForm({ dia, colabId, empId, restId, onSaved }: {
         <p className="text-sm font-bold text-[#ddeaf8]">
           {dow}, {String(date.getDate()).padStart(2,'0')} {MESES_PT[date.getMonth()]}
         </p>
-        {existingPedido && <Badge color="green">Pedido feito</Badge>}
+        <span className={`font-[var(--mono)] text-[10px] px-2 py-1 rounded-full border
+          ${pedidos.length > 0 ? 'text-[#00e87a] border-[rgba(0,232,122,.3)]' : 'text-[#3d5875] border-[#1c2e48]'}`}>
+          {pedidos.length > 0 ? `${pedidos.length} pedido${pedidos.length > 1 ? 's' : ''}` : 'Sem pedido'}
+        </span>
       </div>
 
       {isPast && (
@@ -364,127 +432,46 @@ function OrderForm({ dia, colabId, empId, restId, onSaved }: {
         </div>
       )}
 
-      {!isPast && bloqueado && (
+      {bloqueado && (
         <div className="bg-[rgba(255,179,64,.07)] border border-[rgba(255,179,64,.2)] rounded-[11px] px-3 py-2 mb-3">
           <p className="font-[var(--mono)] text-xs text-[#ffb340]">⏰ {motivoBloqueio}</p>
         </div>
       )}
 
       {allItems.length === 0 && (
-        <p className="font-[var(--mono)] text-xs text-[#3d5875] py-4 text-center">
-          Sem cardápio para este dia.
-        </p>
+        <p className="font-[var(--mono)] text-xs text-[#3d5875] py-4 text-center">Sem cardápio para este dia.</p>
       )}
 
-      {!isPast && !bloqueado && !existingPedido && allItems.length > 0 && (
-        <button onClick={pedidoCompleto}
-          className="w-full mb-3 py-2 rounded-[8px] border border-dashed border-[rgba(0,232,122,.3)] font-[var(--mono)] text-xs text-[#00e87a] hover:bg-[rgba(0,232,122,.05)] transition-colors cursor-pointer">
-          🍽️ Pedir refeição completa
-        </button>
-      )}
-
-      <div className="flex flex-col gap-2 mb-4">
-        {allItems.map((item, idx) => {
-          const sel    = isItemSelected(item.nome)
-          const ajuste = getAjuste(item.nome)
-          return (
-            <div key={`${item.nome}-${idx}`}
-              className={`rounded-[11px] border transition-all
-                ${sel
-                  ? 'border-[rgba(0,232,122,.4)] bg-[rgba(0,232,122,.06)]'
-                  : 'border-[#1c2e48] bg-[#0d1525]'}`}>
-              <button
-                onClick={() => !bloqueado && !isPast && toggleItem(item.nome)}
-                disabled={bloqueado || isPast}
-                className="w-full flex items-center gap-2.5 p-3 text-left cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
-                <div className={`w-4 h-4 rounded-[4px] border flex items-center justify-center flex-shrink-0 transition-all
-                  ${sel ? 'bg-[#00e87a] border-[#00e87a]' : 'border-[#253d5e]'}`}>
-                  {sel && (
-                    <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
-                      <path d="M1 4l3 3 5-6" stroke="#003320" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  )}
-                </div>
-                <span className="flex-1 text-sm font-medium text-[#ddeaf8]">{item.nome}</span>
-                <span className={`font-[var(--mono)] text-[9px] tracking-[.5px] px-1.5 py-0.5 rounded-full ${tipoBadge[item.tipo]}`}>
-                  {item.tipo === 'prato' ? 'prato' : item.tipo === 'guarnicao' ? 'guarnicao' : 'outro'}
-                </span>
-              </button>
-
-              {sel && !bloqueado && !isPast && (
-                <div className="flex gap-2 px-3 pb-3">
-                  {(['extra', 'reduzido'] as const).map(a => (
-                    <button
-                      key={a}
-                      onClick={() => toggleAjuste(item.nome, a)}
-                      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-[6px] border font-[var(--mono)] text-[10px] uppercase tracking-[.5px] transition-all cursor-pointer
-                        ${ajuste === a
-                          ? 'bg-[rgba(0,232,122,.12)] border-[rgba(0,232,122,.4)] text-[#00e87a]'
-                          : 'bg-transparent border-[#253d5e] text-[#3d5875] hover:border-[#3d5875]'
-                        }`}>
-                      <div className={`w-3 h-3 rounded-[3px] border flex items-center justify-center flex-shrink-0
-                        ${ajuste === a ? 'bg-[#00e87a] border-[#00e87a]' : 'border-[#3d5875]'}`}>
-                        {ajuste === a && (
-                          <svg width="7" height="6" viewBox="0 0 10 8" fill="none">
-                            <path d="M1 4l3 3 5-6" stroke="#003320" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          </svg>
-                        )}
-                      </div>
-                      {a === 'extra' ? 'Extra' : 'Reduzido'}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )
-        })}
-      </div>
-
-      {!isPast && allItems.length > 0 && (
-        <div className="flex flex-col gap-3">
-          {/* Quantidade de marmitas */}
-          {!bloqueado && (
-            <div className="flex items-center justify-between bg-[#0d1525] border border-[#1c2e48] rounded-[11px] px-3 py-2.5">
-              <span className="font-[var(--mono)] text-[10px] text-[#3d5875] uppercase tracking-[1px]">Quantidade de marmitas</span>
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => setQuantidade(q => Math.max(1, q - 1))}
-                  className="w-7 h-7 rounded-full border border-[#253d5e] text-[#ddeaf8] font-bold bg-transparent cursor-pointer hover:border-[#00e87a] hover:text-[#00e87a] transition-colors flex items-center justify-center">
-                  −
-                </button>
-                <span className="font-[var(--mono)] text-lg font-black text-[#00e87a] w-5 text-center">{quantidade}</span>
-                <button
-                  onClick={() => setQuantidade(q => Math.min(10, q + 1))}
-                  className="w-7 h-7 rounded-full border border-[#253d5e] text-[#ddeaf8] font-bold bg-transparent cursor-pointer hover:border-[#00e87a] hover:text-[#00e87a] transition-colors flex items-center justify-center">
-                  +
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Observação */}
-          <div className="flex flex-col gap-1.5">
-            <label className="font-[var(--mono)] text-[10px] tracking-[1.5px] text-[#3d5875] uppercase">Observação (opcional)</label>
-            <textarea
-              value={obs}
-              onChange={e => setObs(e.target.value)}
-              placeholder="Ex: sem pimenta, sem cebola..."
-              rows={2}
-              className="w-full bg-[#080c14] border border-[#253d5e] rounded-[11px] px-3 py-2.5 font-[var(--mono)] text-sm text-[#ddeaf8] outline-none focus:border-[rgba(0,232,122,.5)] placeholder:text-[#3d5875] resize-none"
-            />
-          </div>
-
-          {!bloqueado && (
-            <Btn onClick={salvar} loading={saving}>
-              {existingPedido ? 'Atualizar pedido' : 'Confirmar pedido'}
-            </Btn>
-          )}
-          {podeCancelar && (
-            <Btn variant="danger" onClick={cancelar} loading={canceling}>
-              ✕ Cancelar pedido
-            </Btn>
-          )}
+      {/* Meus pedidos do dia */}
+      {pedidos.length > 0 && (
+        <div className="flex flex-col gap-2 mb-3">
+          <p className="font-[var(--mono)] text-[10px] text-[#3d5875] uppercase tracking-[1px]">
+            Meus pedidos do dia
+          </p>
+          {pedidos.map((p: any) => (
+            <PedidoItem key={p.id} pedido={p}
+              podeCancelar={podeCancelar}
+              podeCancelarFuturo={podeCancelarFuturo}
+              onSaved={onSaved} />
+          ))}
         </div>
+      )}
+
+      {/* Botão novo pedido ou formulário */}
+      {!isPast && !bloqueado && allItems.length > 0 && (
+        <>
+          {!fazendo ? (
+            <Btn onClick={() => setFazendo(true)}>
+              + Fazer novo pedido
+            </Btn>
+          ) : (
+            <NovoPedidoForm
+              dia={dia} colabId={colabId} empId={empId} empConfig={empConfig}
+              onSaved={() => { setFazendo(false); onSaved() }}
+              onCancel={() => setFazendo(false)}
+            />
+          )}
+        </>
       )}
     </div>
   )
@@ -517,15 +504,16 @@ function PedidosContent() {
     const res = await call<any[]>(`/api/cardapio/semana?restauranteId=${restId}`)
     if (res.success && res.data.length > 0) {
       const pedRes = await call<any[]>(`/api/pedidos?empresaId=${empId}&dataInicio=${res.data[0].data}&dataFim=${res.data[res.data.length-1].data}`)
-      const pedMap: Record<string, any> = {}
+      const pedMap: Record<string, any[]> = {}
       if (pedRes.success) {
         pedRes.data.forEach((p: any) => {
           const parts = p.data.split('-')
           const key   = `${parts[2]}/${parts[1]}/${parts[0]}`
-          pedMap[key] = p
+          if (!pedMap[key]) pedMap[key] = []
+          pedMap[key].push(p)
         })
       }
-      const merged = res.data.map(d => ({ ...d, pedido: pedMap[d.data] ?? null }))
+      const merged = res.data.map(d => ({ ...d, pedidos: pedMap[d.data] ?? [], pedido: pedMap[d.data]?.[0] ?? null, _empConfig: emp }))
       setSemana(merged)
 
       const n       = new Date()
@@ -580,7 +568,7 @@ function PedidosContent() {
               dia={diaSelected}
               colabId={colabId}
               empId={empId}
-              restId={meta?.restaurante_id ?? ''}
+              restId={meta?.restaurante_id ?? diaSelected?._empConfig?.restaurante_id ?? ''}
               onSaved={load}
             />
           )}
