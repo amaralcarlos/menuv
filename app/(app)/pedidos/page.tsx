@@ -67,6 +67,7 @@ function BuffetForm({ dia, colabId, empId, onSaved }: {
   const [saving,    setSaving]    = useState(false)
   const [canceling, setCanceling] = useState(false)
   const [empConfig, setEmpConfig] = useState<any>(null)
+  const [obs,       setObs]       = useState<string>(existingPedido?.obs ?? '')
 
   useEffect(() => {
     call<any[]>(`/api/empresas?empresaId=${empId}`).then(r => {
@@ -106,7 +107,7 @@ function BuffetForm({ dia, colabId, empId, onSaved }: {
         empresaId:     empId,
         data:          `${parts[2]}-${parts[1]}-${parts[0]}`,
         itens:         ['reserva'],
-        obs:           '',
+        obs,
       }),
     })
     setSaving(false)
@@ -171,6 +172,16 @@ function BuffetForm({ dia, colabId, empId, onSaved }: {
 
       {!isPast && !bloqueado && allItems.length > 0 && (
         <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-1.5">
+            <label className="font-[var(--mono)] text-[10px] tracking-[1.5px] text-[#3d5875] uppercase">Observação (opcional)</label>
+            <textarea
+              value={obs}
+              onChange={e => setObs(e.target.value)}
+              placeholder="Ex: sem cebola, alergia a glúten..."
+              rows={2}
+              className="w-full bg-[#080c14] border border-[#253d5e] rounded-[11px] px-3 py-2.5 font-[var(--mono)] text-sm text-[#ddeaf8] outline-none focus:border-[rgba(0,232,122,.5)] placeholder:text-[#3d5875] resize-none"
+            />
+          </div>
           {!existingPedido ? (
             <Btn onClick={reservar} loading={saving}>✅ Confirmar reserva</Btn>
           ) : (
@@ -210,6 +221,7 @@ function OrderForm({ dia, colabId, empId, restId, onSaved }: {
 
   const [selected,   setSelected]  = useState<ItemSel[]>(parseExisting())
   const [obs,        setObs]       = useState<string>(existingPedido?.obs ?? '')
+  const [quantidade, setQuantidade] = useState<number>(existingPedido?.quantidade ?? 1)
   const [saving,     setSaving]    = useState(false)
   const [canceling,  setCanceling] = useState(false)
   const [empConfig,  setEmpConfig] = useState<any>(null)
@@ -217,6 +229,7 @@ function OrderForm({ dia, colabId, empId, restId, onSaved }: {
   useEffect(() => {
     setSelected(parseExisting())
     setObs(existingPedido?.obs ?? '')
+    setQuantidade(existingPedido?.quantidade ?? 1)
   }, [dia.data])
 
   useEffect(() => {
@@ -276,9 +289,14 @@ function OrderForm({ dia, colabId, empId, restId, onSaved }: {
       selected.length === todosItens.length &&
       todosItens.every(nome => selected.some(s => s.nome === nome && s.ajuste === 'normal'))
 
-    const itens = isCompleto
+    const itensSingle = isCompleto
       ? ['Refeição completa']
       : selected.map(s => s.ajuste === 'normal' ? s.nome : `${s.nome} [${s.ajuste}]`)
+
+    // Multiplica os itens pela quantidade de marmitas
+    const itens = quantidade > 1
+      ? [`${quantidade}x marmita`, ...itensSingle]
+      : itensSingle
 
     const res = await call('/api/pedidos', {
       method: 'POST',
@@ -423,7 +441,39 @@ function OrderForm({ dia, colabId, empId, restId, onSaved }: {
       </div>
 
       {!isPast && allItems.length > 0 && (
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-3">
+          {/* Quantidade de marmitas */}
+          {!bloqueado && (
+            <div className="flex items-center justify-between bg-[#0d1525] border border-[#1c2e48] rounded-[11px] px-3 py-2.5">
+              <span className="font-[var(--mono)] text-[10px] text-[#3d5875] uppercase tracking-[1px]">Quantidade de marmitas</span>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setQuantidade(q => Math.max(1, q - 1))}
+                  className="w-7 h-7 rounded-full border border-[#253d5e] text-[#ddeaf8] font-bold bg-transparent cursor-pointer hover:border-[#00e87a] hover:text-[#00e87a] transition-colors flex items-center justify-center">
+                  −
+                </button>
+                <span className="font-[var(--mono)] text-lg font-black text-[#00e87a] w-5 text-center">{quantidade}</span>
+                <button
+                  onClick={() => setQuantidade(q => Math.min(10, q + 1))}
+                  className="w-7 h-7 rounded-full border border-[#253d5e] text-[#ddeaf8] font-bold bg-transparent cursor-pointer hover:border-[#00e87a] hover:text-[#00e87a] transition-colors flex items-center justify-center">
+                  +
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Observação */}
+          <div className="flex flex-col gap-1.5">
+            <label className="font-[var(--mono)] text-[10px] tracking-[1.5px] text-[#3d5875] uppercase">Observação (opcional)</label>
+            <textarea
+              value={obs}
+              onChange={e => setObs(e.target.value)}
+              placeholder="Ex: sem pimenta, sem cebola..."
+              rows={2}
+              className="w-full bg-[#080c14] border border-[#253d5e] rounded-[11px] px-3 py-2.5 font-[var(--mono)] text-sm text-[#ddeaf8] outline-none focus:border-[rgba(0,232,122,.5)] placeholder:text-[#3d5875] resize-none"
+            />
+          </div>
+
           {!bloqueado && (
             <Btn onClick={salvar} loading={saving}>
               {existingPedido ? 'Atualizar pedido' : 'Confirmar pedido'}
