@@ -478,7 +478,7 @@ function OrderForm({ dia, colabId, empId, restId, onSaved }: {
 }
 
 /* ── Main pedidos page ───────────────────────────────────── */
-function PedidosContent() {
+export function PedidosContent() {
   const { meta }  = useAuth()
   const { call }  = useApi()
   const [semana,       setSemana]       = useState<any[]>([])
