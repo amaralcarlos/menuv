@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { useApi } from '@/lib/use-api'
 import { useToast } from '@/components/ui'
 import { Card, SectionLabel, Badge, Btn, Modal, Input, Spinner } from '@/components/ui'
-import EmpresaProdutosManager from './EmpresaProdutosManager'
+import EmpresaProdutosManager from '../dashboard/EmpresaProdutosManager'
 
 interface Empresa {
   id: string
