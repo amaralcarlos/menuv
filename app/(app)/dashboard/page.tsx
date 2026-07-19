@@ -10,6 +10,7 @@ import GradesPane from '@/components/grade/GradesPane'
 import EmpresasPane from '../empresas/EmpresasPane'
 import RelatorioPane from '../relatorio/RelatorioPane'
 import FinanceiroPane from './FinanceiroPane'
+import ProdutosPane from './ProdutosPane'
 import { useRouter } from 'next/navigation'
 
 const DIAS_PT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
@@ -445,6 +446,7 @@ export default function DashboardPage() {
     { id: 'empresas',  label: 'Empresas',         icon: 'empresas'  as const, component: <EmpresasPane restId={restId} /> },
     { id: 'relatorio', label: 'Relatório',        icon: 'relatorio' as const, component: <RelatorioPane restId={restId} /> },
     { id: 'financeiro', label: 'Financeiro', icon: 'admin' as const, component: <FinanceiroPane restId={restId} /> },
+    { id: 'produtos',   label: 'Produtos',   icon: 'grade' as const, component: <ProdutosPane restId={restId} /> },
   ]
 
   const badge = meta?.app_role === 'rest_usuario'
