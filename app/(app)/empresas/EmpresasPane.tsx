@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useApi } from '@/lib/use-api'
 import { useToast } from '@/components/ui'
 import { Card, SectionLabel, Badge, Btn, Modal, Input, Spinner } from '@/components/ui'
+import EmpresaProdutosManager from './EmpresaProdutosManager'
 
 interface Empresa {
   id: string
@@ -61,11 +62,9 @@ function EmpresaForm({ empresa, restId, onSave, onCancel }: {
 }) {
   const { call } = useApi()
   const toast = useToast()
-  const [nome,    setNome]    = useState(empresa?.nome ?? '')
-  const [hl,      setHl]      = useState(empresa?.horario_limite ?? '09:30')
-  const [preco,   setPreco]   = useState(String(empresa?.preco_por_refeicao ?? '15.00'))
-  const [formato, setFormato] = useState<'marmita' | 'buffet'>(empresa?.formato ?? 'marmita')
-  const [saving,  setSaving]  = useState(false)
+  const [nome,   setNome]   = useState(empresa?.nome ?? '')
+  const [hl,     setHl]     = useState(empresa?.horario_limite ?? '09:30')
+  const [saving, setSaving] = useState(false)
 
   async function save() {
     if (!nome.trim()) { toast('Nome é obrigatório.', 'error'); return }
@@ -73,7 +72,7 @@ function EmpresaForm({ empresa, restId, onSave, onCancel }: {
     const isEdit = !!empresa?.id
     const res = await call(isEdit ? `/api/empresas/${empresa!.id}` : '/api/empresas', {
       method: isEdit ? 'PUT' : 'POST',
-      body: JSON.stringify({ nome, horarioLimite: hl, preco: parseFloat(preco) || 15, restauranteId: restId, formato }),
+      body: JSON.stringify({ nome, horarioLimite: hl, restauranteId: restId }),
     })
     setSaving(false)
     if (res.success) { toast(isEdit ? 'Empresa atualizada.' : 'Empresa criada.'); onSave() }
@@ -84,30 +83,6 @@ function EmpresaForm({ empresa, restId, onSave, onCancel }: {
     <div className="flex flex-col gap-4">
       <Input label="Nome da empresa" value={nome} onChange={e => setNome(e.target.value)} placeholder="Empresa Ltda." />
       <Input label="Horário limite (HH:MM)" value={hl} onChange={e => setHl(e.target.value)} placeholder="09:30" />
-      <Input label="Preço por refeição (R$)" value={preco} onChange={e => setPreco(e.target.value)} placeholder="15.00" type="number" step="0.01" />
-
-      {/* Formato de entrega */}
-      <div>
-        <p className="font-[var(--mono)] text-[10px] text-[#3d5875] uppercase tracking-[1px] mb-2">
-          Formato de entrega
-        </p>
-        <div className="grid grid-cols-2 gap-2">
-          {(['marmita', 'buffet'] as const).map(f => (
-            <button
-              key={f}
-              type="button"
-              onClick={() => setFormato(f)}
-              className={`py-2.5 rounded-[8px] font-[var(--mono)] text-xs uppercase tracking-[1px] border transition-all
-                ${formato === f
-                  ? 'bg-[rgba(0,232,122,.1)] border-[rgba(0,232,122,.4)] text-[#00e87a]'
-                  : 'bg-transparent border-[#253d5e] text-[#3d5875] hover:border-[#3d5875]'
-                }`}>
-              {f === 'marmita' ? '🍱 Marmita' : '🍽️ Buffet'}
-            </button>
-          ))}
-        </div>
-      </div>
-
       <div className="flex gap-2">
         <Btn variant="secondary" onClick={onCancel}>Cancelar</Btn>
         <Btn loading={saving} onClick={save}>Salvar</Btn>
@@ -120,9 +95,10 @@ function EmpresaForm({ empresa, restId, onSave, onCancel }: {
 export default function EmpresasPane({ restId }: { restId: string }) {
   const { call } = useApi()
   const toast = useToast()
-  const [empresas, setEmpresas] = useState<Empresa[]>([])
-  const [loading, setLoading]   = useState(true)
-  const [modal, setModal]       = useState<Empresa | null>(null)
+  const [empresas,  setEmpresas]  = useState<Empresa[]>([])
+  const [loading,   setLoading]   = useState(true)
+  const [modal,     setModal]     = useState<Empresa | null>(null)
+  const [expanded,  setExpanded]  = useState<string | null>(null)
 
   async function load() {
     const res = await call<Empresa[]>(`/api/empresas?restauranteId=${restId}`)
@@ -156,26 +132,44 @@ export default function EmpresasPane({ restId }: { restId: string }) {
       )}
 
       {empresas.map(e => (
-        <Card key={e.id}>
-          <div className="flex items-start justify-between gap-2 mb-2">
+        <div key={e.id}
+          className="rounded-[14px] border border-[#1c2e48] bg-[#0d1525] mb-3 overflow-hidden">
+
+          {/* Tarja clicável */}
+          <button
+            onClick={() => setExpanded(x => x === e.id ? null : e.id)}
+            className="w-full px-4 py-3 flex items-center justify-between cursor-pointer bg-transparent border-none text-left">
             <div>
               <p className="font-bold text-sm text-[#ddeaf8]">{e.nome}</p>
               <p className="font-[var(--mono)] text-[10px] text-[#3d5875] mt-0.5">
-                Limite: {e.horario_limite} · R$ {Number(e.preco_por_refeicao).toFixed(2)}/refeição
+                Limite: {e.horario_limite}
               </p>
             </div>
-            <div className="flex flex-col items-end gap-1">
+            <div className="flex items-center gap-2">
               <Badge color="green">Ativa</Badge>
-              <Badge color={e.formato === 'buffet' ? 'blue' : 'gray'}>
-                {e.formato === 'buffet' ? '🍽️ Buffet' : '🍱 Marmita'}
-              </Badge>
+              <span className="text-[#3d5875] text-xs">{expanded === e.id ? '▲' : '▼'}</span>
             </div>
-          </div>
-          <div className="flex gap-2">
-            <Btn size="sm" variant="secondary" className="w-auto" onClick={() => setModal(e)}>Editar</Btn>
-            <Btn size="sm" variant="danger" className="w-auto" onClick={() => desativar(e.id)}>Desativar</Btn>
-          </div>
-        </Card>
+          </button>
+
+          {/* Painel expandido */}
+          {expanded === e.id && (
+            <div className="border-t border-[#1c2e48] px-4 pb-4 pt-3 flex flex-col gap-3">
+
+              {/* Ações */}
+              <div className="flex gap-2">
+                <Btn size="sm" variant="secondary" className="w-auto" onClick={() => setModal(e)}>
+                  Editar
+                </Btn>
+                <Btn size="sm" variant="danger" className="w-auto" onClick={() => desativar(e.id)}>
+                  Desativar
+                </Btn>
+              </div>
+
+              {/* Produtos liberados */}
+              <EmpresaProdutosManager empresaId={e.id} restId={restId} />
+            </div>
+          )}
+        </div>
       ))}
 
       <Modal open={!!modal} onClose={() => setModal(null)} title={`Editar: ${modal?.nome}`}>
