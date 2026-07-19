@@ -194,6 +194,106 @@ function BuffetForm({ dia, colabId, empId, onSaved }: {
   )
 }
 
+
+/* ── Avulso form ─────────────────────────────────────────── */
+function AvulsoForm({ dia, colabId, empId, produto, onSaved, onCancel }: {
+  dia: any; colabId: string; empId: string
+  produto: any; onSaved: () => void; onCancel: () => void
+}) {
+  const { call } = useApi()
+  const toast    = useToast()
+  const [qtd,     setQtd]     = useState(1)
+  const [obs,     setObs]     = useState('')
+  const [saving,  setSaving]  = useState(false)
+
+  const parts   = dia.data.split('/')
+  const isPast  = isPassado(dia.data)
+
+  async function salvar() {
+    setSaving(true)
+    const itens = [`${qtd}x ${produto.produto.nome}`]
+    const res = await call('/api/pedidos', {
+      method: 'POST',
+      body: JSON.stringify({
+        colaboradorId: colabId,
+        empresaId:     empId,
+        data:          `${parts[2]}-${parts[1]}-${parts[0]}`,
+        itens,
+        obs,
+        produto_id:    produto.produto.id,
+      }),
+    })
+    setSaving(false)
+    if (res.success) { toast('Reserva enviada!'); onSaved() }
+    else toast(res.error ?? 'Erro ao reservar.', 'error')
+  }
+
+  const preco = (produto.preco ?? produto.produto.preco_base) ?? 0
+  const total = preco * qtd
+
+  return (
+    <div className="flex flex-col gap-4">
+      {isPast && (
+        <p className="font-[var(--mono)] text-xs text-[#7a96b8]">📅 Consulta apenas.</p>
+      )}
+
+      {!isPast && (
+        <>
+          {/* Produto info */}
+          <div className="bg-[#0d1525] border border-[#1c2e48] rounded-[11px] px-3 py-2.5">
+            <p className="text-sm font-medium text-[#ddeaf8]">{produto.produto.nome}</p>
+            {produto.produto.descricao && (
+              <p className="font-[var(--mono)] text-[10px] text-[#3d5875] mt-0.5">{produto.produto.descricao}</p>
+            )}
+          </div>
+
+          {/* Quantidade */}
+          <div className="flex items-center justify-between bg-[#0d1525] border border-[#1c2e48] rounded-[11px] px-3 py-2.5">
+            <span className="font-[var(--mono)] text-[10px] text-[#3d5875] uppercase tracking-[1px]">Quantidade</span>
+            <div className="flex items-center gap-3">
+              <button onClick={() => setQtd(q => Math.max(1, q - 1))}
+                className="w-7 h-7 rounded-full border border-[#253d5e] text-[#ddeaf8] font-bold bg-transparent cursor-pointer hover:border-[#00e87a] hover:text-[#00e87a] transition-colors flex items-center justify-center">
+                −
+              </button>
+              <span className="font-[var(--mono)] text-lg font-black text-[#00e87a] w-5 text-center">{qtd}</span>
+              <button onClick={() => setQtd(q => Math.min(20, q + 1))}
+                className="w-7 h-7 rounded-full border border-[#253d5e] text-[#ddeaf8] font-bold bg-transparent cursor-pointer hover:border-[#00e87a] hover:text-[#00e87a] transition-colors flex items-center justify-center">
+                +
+              </button>
+            </div>
+          </div>
+
+          {/* Total */}
+          {preco > 0 && (
+            <div className="flex items-center justify-between px-1">
+              <span className="font-[var(--mono)] text-[10px] text-[#3d5875]">Total estimado</span>
+              <span className="font-[var(--mono)] text-sm font-bold text-[#00e87a]">
+                {total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              </span>
+            </div>
+          )}
+
+          {/* Observação */}
+          <div className="flex flex-col gap-1.5">
+            <label className="font-[var(--mono)] text-[10px] tracking-[1.5px] text-[#3d5875] uppercase">
+              Observação (opcional)
+            </label>
+            <textarea value={obs} onChange={e => setObs(e.target.value)}
+              placeholder="Alguma observação sobre este pedido..."
+              rows={2}
+              className="w-full bg-[#080c14] border border-[#253d5e] rounded-[11px] px-3 py-2.5 font-[var(--mono)] text-sm text-[#ddeaf8] outline-none focus:border-[rgba(0,232,122,.5)] placeholder:text-[#3d5875] resize-none" />
+          </div>
+
+          <div className="flex gap-2">
+            <Btn variant="secondary" onClick={onCancel} className="flex-1">Cancelar</Btn>
+            <Btn onClick={salvar} loading={saving} className="flex-1">Confirmar reserva</Btn>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
 /* ── Marmita form (formulário de novo pedido) ───────────── */
 function NovoPedidoForm({ dia, colabId, empId, empConfig, onSaved, onCancel }: {
   dia: any; colabId: string; empId: string; empConfig: any; onSaved: () => void; onCancel: () => void
@@ -484,7 +584,9 @@ function PedidosContent() {
   const { meta }  = useAuth()
   const { call }  = useApi()
   const [semana,       setSemana]       = useState<any[]>([])
-  const [empConfig,    setEmpConfig]    = useState<any>(null)
+  const [empConfig,      setEmpConfig]      = useState<any>(null)
+  const [produtosEmpresa, setProdutosEmpresa] = useState<any[]>([])
+  const [produtoAtual,    setProdutoAtual]    = useState<any | null>(null)
   const [loading,      setLoading]      = useState(true)
   const [selectedDate, setSelectedDate] = useState('')
 
@@ -497,8 +599,12 @@ function PedidosContent() {
     // Busca a empresa para obter o restaurante_id (colaborador não tem no metadata)
     const empRes = await call<any>(`/api/empresas/${empId}`)
     if (!empRes.success) { setLoading(false); return }
-    const emp = empRes.data
+    const emp = Array.isArray(empRes.data) ? empRes.data[0] : empRes.data
     setEmpConfig(emp)
+
+    // Busca produtos liberados para a empresa
+    const prodRes = await call<any>(`/api/empresas/${empId}/produtos`)
+    if (prodRes.success) setProdutosEmpresa(prodRes.data.filter((ep: any) => ep.ativo))
 
     const restId = meta?.restaurante_id ?? emp?.restaurante_id
     if (!restId) { setLoading(false); return }
