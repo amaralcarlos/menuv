@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
 
   const { data, error } = await sb
     .from('empresas')
-    .select('id, nome, horario_limite, extensao_ate, preco_por_refeicao, ativa, formato, status_plano')
+    .select('id, nome, horario_limite, extensao_ate, preco_por_refeicao, ativa, formato, status_plano, dia_ciclo')
     .eq('restaurante_id', restId).eq('ativa', true).order('nome')
   if (error) return E.internal(error.message)
   return ok(data)
