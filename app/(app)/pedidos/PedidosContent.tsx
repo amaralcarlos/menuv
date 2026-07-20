@@ -752,7 +752,6 @@ function PedidosContent() {
             dia={diaSelected}
             colabId={colabId}
             empId={empId}
-            restId={meta?.restaurante_id ?? diaSelected?._empConfig?.restaurante_id ?? ''}
             produtosEmpresa={produtosEmpresa}
             onSaved={load}
           />
