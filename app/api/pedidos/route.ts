@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { supabaseServer, supabaseAdmin, ok, E, sanitize, toIsoDate, log } from '@/lib/api-helpers'
+import { supabaseServer, ok, E, sanitize, toIsoDate, log } from '@/lib/api-helpers'
 
 function parseJwt(token: string) {
   try { return JSON.parse(atob(token.split('.')[1])) } catch { return null }
@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
   const restId     = req.nextUrl.searchParams.get('restauranteId')
 
   let query = sb.from('pedidos')
-    .select('id, data_pedido, obs, status, criado_em, colaborador_id, colaboradores(id,nome), empresas(id,nome), pedido_itens(item,ordem)')
+    .select('id, data_pedido, obs, status, criado_em, colaborador_id, produto_id, colaboradores(id,nome), empresas(id,nome), pedido_itens(item,ordem)')
     .order('criado_em')
 
   // Filtro de data
@@ -116,9 +116,6 @@ export async function POST(req: NextRequest) {
   })
   if (error) return E.internal(error.message)
 
-  // Busca nome do colaborador para o log (admin para garantir acesso)
-  const { data: colab } = await supabaseAdmin().from('colaboradores').select('nome').eq('id', colaboradorId).single() as any
-  const nomeColab = colab?.nome ?? meta?.nome ?? colaboradorId
-  await log('PEDIDO_SALVO', `${nomeColab} — ${itens.join(', ')}`, colaboradorId)
+  await log('PEDIDO_SALVO', `${colaboradorId} — ${itens.join(', ')}`, colaboradorId)
   return ok({ id: pedidoId })
 }
