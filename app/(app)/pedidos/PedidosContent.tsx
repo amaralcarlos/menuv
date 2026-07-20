@@ -1002,6 +1002,7 @@ function FacaSeuPedido({ dia, colabId, empId, restId, produtosEmpresa, onSaved }
               placeholder="Observação da marmita (opcional)" rows={1}
               className="w-full bg-[#080c14] border border-[#253d5e] rounded-[11px] px-3 py-1.5 font-[var(--mono)] text-xs text-[#ddeaf8] outline-none placeholder:text-[#3d5875] resize-none" />
           )}
+          )}
 
           {/* Buffet */}
           {temBuffet && (
