@@ -295,8 +295,8 @@ function AvulsoForm({ dia, colabId, empId, produto, onSaved, onCancel }: {
 }
 
 /* ── Marmita form (formulário de novo pedido) ───────────── */
-function NovoPedidoForm({ dia, colabId, empId, empConfig, onSaved, onCancel }: {
-  dia: any; colabId: string; empId: string; empConfig: any; onSaved: () => void; onCancel: () => void
+function NovoPedidoForm({ dia, colabId, empId, empConfig, produtoId, onSaved, onCancel }: {
+  dia: any; colabId: string; empId: string; empConfig: any; produtoId?: string; onSaved: () => void; onCancel: () => void
 }) {
   const { call } = useApi()
   const toast    = useToast()
@@ -568,6 +568,7 @@ function OrderForm({ dia, colabId, empId, restId, onSaved }: {
           ) : (
             <NovoPedidoForm
               dia={dia} colabId={colabId} empId={empId} empConfig={empConfig}
+              produtoId={dia._produtoId}
               onSaved={() => { setFazendo(false); onSaved() }}
               onCancel={() => setFazendo(false)}
             />
@@ -653,7 +654,7 @@ function PedidosContent() {
       <SectionLabel>Selecione o dia</SectionLabel>
       <DaySelector dias={semana} selected={selectedDate} onSelect={setSelectedDate} />
       {diaSelected && (
-        <Card highlight={!!diaSelected.pedido}>
+        <Card highlight={(diaSelected?.pedidos ?? []).length > 0}>
           {produtoAtual === null ? (
             /* Seleção de produto */
             <div className="flex flex-col gap-3">
@@ -665,26 +666,42 @@ function PedidosContent() {
                   Nenhum produto liberado para esta empresa.
                 </p>
               )}
-              {produtosEmpresa.map((ep: any) => (
-                <button key={ep.id}
-                  onClick={() => setProdutoAtual(ep)}
-                  className="w-full bg-[#0d1525] border border-[#1c2e48] rounded-[12px] px-4 py-3 text-left flex items-center justify-between cursor-pointer hover:border-[rgba(0,232,122,.3)] transition-all">
-                  <div>
-                    <p className="text-sm text-[#ddeaf8] font-medium">{ep.produto.nome}</p>
-                    {ep.produto.descricao && (
-                      <p className="font-[var(--mono)] text-[10px] text-[#3d5875] mt-0.5">{ep.produto.descricao}</p>
-                    )}
-                  </div>
-                  <div className="text-right">
-                    <p className="font-[var(--mono)] text-sm font-bold text-[#00e87a]">
-                      {(ep.preco ?? ep.produto.preco_base) > 0
-                        ? (ep.preco ?? ep.produto.preco_base).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-                        : ''}
-                    </p>
-                    <span className="text-[#3d5875] text-xs">→</span>
-                  </div>
-                </button>
-              ))}
+              {produtosEmpresa.map((ep: any) => {
+                const pedidosDoProduto = (diaSelected?.pedidos ?? []).filter(
+                  (p: any) => p.produto_id === ep.produto.id
+                )
+                const temPedido = pedidosDoProduto.length > 0
+                return (
+                  <button key={ep.id}
+                    onClick={() => setProdutoAtual(ep)}
+                    className={`w-full border rounded-[12px] px-4 py-3 text-left flex items-center justify-between cursor-pointer transition-all
+                      ${temPedido
+                        ? 'bg-[rgba(0,232,122,.05)] border-[rgba(0,232,122,.3)] hover:border-[rgba(0,232,122,.5)]'
+                        : 'bg-[#0d1525] border-[#1c2e48] hover:border-[rgba(0,232,122,.3)]'}`}>
+                    <div>
+                      <p className="text-sm text-[#ddeaf8] font-medium flex items-center gap-2">
+                        {ep.produto.nome}
+                        {temPedido && (
+                          <span className="font-[var(--mono)] text-[9px] text-[#00e87a] border border-[rgba(0,232,122,.3)] rounded-full px-1.5 py-0.5">
+                            ✓ {pedidosDoProduto.length} pedido{pedidosDoProduto.length > 1 ? 's' : ''}
+                          </span>
+                        )}
+                      </p>
+                      {ep.produto.descricao && (
+                        <p className="font-[var(--mono)] text-[10px] text-[#3d5875] mt-0.5">{ep.produto.descricao}</p>
+                      )}
+                    </div>
+                    <div className="text-right">
+                      <p className="font-[var(--mono)] text-sm font-bold text-[#00e87a]">
+                        {(ep.preco ?? ep.produto.preco_base) > 0
+                          ? (ep.preco ?? ep.produto.preco_base).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+                          : ''}
+                      </p>
+                      <span className="text-[#3d5875] text-xs">→</span>
+                    </div>
+                  </button>
+                )
+              })}
             </div>
           ) : (
             /* Formulário do produto selecionado */
@@ -704,7 +721,7 @@ function PedidosContent() {
               ) : produtoAtual.produto.tipo === 'marmita' ? (
                 <OrderForm
                   key={selectedDate + produtoAtual.id}
-                  dia={diaSelected}
+                  dia={{ ...diaSelected, _produtoId: produtoAtual.produto.id }}
                   colabId={colabId}
                   empId={empId}
                   restId={meta?.restaurante_id ?? diaSelected?._empConfig?.restaurante_id ?? ''}
