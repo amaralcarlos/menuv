@@ -759,6 +759,7 @@ function PedidosContent() {
       )}
     </div>
   )
+}
 
 
 /* ── Faça seu pedido — área unificada ───────────────────── */
