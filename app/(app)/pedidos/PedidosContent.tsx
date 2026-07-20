@@ -771,32 +771,31 @@ function FacaSeuPedido({ dia, colabId, empId, restId, produtosEmpresa, onSaved }
   const { call } = useApi()
   const toast    = useToast()
 
-  const parts   = dia.data.split('/')
+  const parts   = (dia.data as string).split('/')
   const dataISO = `${parts[2]}-${parts[1]}-${parts[0]}`
   const isPast  = isPassado(dia.data)
-  const pedidos = dia.pedidos ?? []
+  const pedidos: any[] = dia.pedidos ?? []
 
-  // Itens do cardápio (marmita)
-  const allCardapio = [
+  const allCardapio: { nome: string; secao: string }[] = [
     ...(dia.pratos     ?? []).map((p: any) => ({ nome: p.nome, secao: 'prato'     })),
     ...(dia.guarnicoes ?? []).map((g: any) => ({ nome: g.nome, secao: 'guarnicao' })),
     ...(dia.outros     ?? []).map((o: any) => ({ nome: o.nome, secao: 'outro'     })),
   ]
 
-  // Estado unificado de seleção
-  const [selCardapio,  setSelCardapio]  = useState<Record<string, 'normal'|'extra'|'reduzido'>>({})
-  const [selProdutos,  setSelProdutos]  = useState<Record<string, { qtd: number; obs: string }>>({})
-  const [saving,       setSaving]       = useState(false)
-  const [fazendo,      setFazendo]      = useState(pedidos.length === 0)
-  const [cancelando,   setCancelando]   = useState('')
+  const [selCardapio, setSelCardapio] = useState<Record<string, 'normal'|'extra'|'reduzido'>>({})
+  const [selProdutos, setSelProdutos] = useState<Record<string, { qtd: number; obs: string }>>({})
+  const [marmitaObs,  setMarmitaObs]  = useState('')
+  const [saving,      setSaving]      = useState(false)
+  const [fazendo,     setFazendo]     = useState(pedidos.length === 0)
+  const [cancelando,  setCancelando]  = useState('')
 
-  // Horário limite
   const empConfig = dia._empConfig
   const hoje = new Date()
   let bloqueado = false
   if (empConfig?.horario_limite) {
-    const [h, m] = empConfig.horario_limite.split(':').map(Number)
-    const cutoff = new Date(); cutoff.setHours(h, m, 0, 0)
+    const [h, m] = (empConfig.horario_limite as string).split(':').map(Number)
+    const cutoff = new Date()
+    cutoff.setHours(h, m, 0, 0)
     if (hoje >= cutoff) {
       if (empConfig?.extensao_ate) {
         if (hoje >= new Date(empConfig.extensao_ate)) bloqueado = true
@@ -807,13 +806,13 @@ function FacaSeuPedido({ dia, colabId, empId, restId, produtosEmpresa, onSaved }
   }
   const podeCancelar = !isPast && !bloqueado
 
-  const temMarmita = produtosEmpresa.some(ep => ep.produto.tipo === 'marmita')
-  const temBuffet  = produtosEmpresa.some(ep => ep.produto.tipo === 'buffet')
-  const avulsos    = produtosEmpresa.filter(ep => ep.produto.tipo === 'avulso')
+  const temMarmita = produtosEmpresa.some((ep: any) => ep.produto.tipo === 'marmita')
+  const temBuffet  = produtosEmpresa.some((ep: any) => ep.produto.tipo === 'buffet')
+  const avulsos    = produtosEmpresa.filter((ep: any) => ep.produto.tipo === 'avulso')
 
-  // Marmita helpers
   const cardapioSelecionado = Object.keys(selCardapio)
-  const isCompleto = allCardapio.length > 0 && cardapioSelecionado.length === allCardapio.length &&
+  const isCompleto = allCardapio.length > 0 &&
+    cardapioSelecionado.length === allCardapio.length &&
     allCardapio.every(i => selCardapio[i.nome] === 'normal')
 
   function toggleCardapio(nome: string) {
@@ -824,16 +823,17 @@ function FacaSeuPedido({ dia, colabId, empId, restId, produtosEmpresa, onSaved }
       return n
     })
   }
+
   function toggleAjuste(nome: string, aj: 'extra'|'reduzido') {
     setSelCardapio(s => ({ ...s, [nome]: s[nome] === aj ? 'normal' : aj }))
   }
+
   function selecionarTudo() {
     const all: Record<string, 'normal'> = {}
     allCardapio.forEach(i => { all[i.nome] = 'normal' })
     setSelCardapio(all)
   }
 
-  // Avulso helpers
   function toggleAvulso(id: string) {
     setSelProdutos(s => {
       const n = { ...s }
@@ -847,22 +847,20 @@ function FacaSeuPedido({ dia, colabId, empId, restId, produtosEmpresa, onSaved }
     setSaving(true)
     const promises: Promise<any>[] = []
 
-    // Pedido de marmita se tiver itens selecionados
     if (temMarmita && cardapioSelecionado.length > 0) {
       const itens = isCompleto
         ? ['Refeição completa']
         : cardapioSelecionado.map(n => selCardapio[n] === 'normal' ? n : `${n} [${selCardapio[n]}]`)
-      const prodMarmita = produtosEmpresa.find(ep => ep.produto.tipo === 'marmita')
+      const prodMarmita = produtosEmpresa.find((ep: any) => ep.produto.tipo === 'marmita')
       promises.push(call('/api/pedidos', {
         method: 'POST',
         body: JSON.stringify({ colaboradorId: colabId, empresaId: empId, data: dataISO,
-          itens, obs: selProdutos['__marmita_obs__']?.obs ?? '', produto_id: prodMarmita?.produto.id ?? null }),
+          itens, obs: marmitaObs, produto_id: prodMarmita?.produto.id ?? null }),
       }))
     }
 
-    // Pedido de buffet se selecionado
     if (temBuffet && selProdutos['__buffet__']) {
-      const prodBuffet = produtosEmpresa.find(ep => ep.produto.tipo === 'buffet')
+      const prodBuffet = produtosEmpresa.find((ep: any) => ep.produto.tipo === 'buffet')
       promises.push(call('/api/pedidos', {
         method: 'POST',
         body: JSON.stringify({ colaboradorId: colabId, empresaId: empId, data: dataISO,
@@ -870,10 +868,9 @@ function FacaSeuPedido({ dia, colabId, empId, restId, produtosEmpresa, onSaved }
       }))
     }
 
-    // Pedidos avulsos
     Object.entries(selProdutos).forEach(([prodId, { qtd, obs }]) => {
       if (prodId === '__buffet__') return
-      const nomeProd = produtosEmpresa.find(ep => ep.produto.id === prodId)?.produto.nome ?? prodId
+      const nomeProd = produtosEmpresa.find((ep: any) => ep.produto.id === prodId)?.produto.nome ?? prodId
       promises.push(call('/api/pedidos', {
         method: 'POST',
         body: JSON.stringify({ colaboradorId: colabId, empresaId: empId, data: dataISO,
@@ -885,9 +882,9 @@ function FacaSeuPedido({ dia, colabId, empId, restId, produtosEmpresa, onSaved }
 
     const results = await Promise.all(promises)
     setSaving(false)
-    if (results.every(r => r.success)) {
+    if (results.every((r: any) => r.success)) {
       toast('Pedido enviado!')
-      setSelCardapio({}); setSelProdutos({}); setObsGeral('')
+      setSelCardapio({}); setSelProdutos({}); setMarmitaObs('')
       setFazendo(false); onSaved()
     } else {
       toast('Erro ao salvar pedido.', 'error')
@@ -900,7 +897,7 @@ function FacaSeuPedido({ dia, colabId, empId, restId, produtosEmpresa, onSaved }
     const r = await call(`/api/pedidos/${id}`, { method: 'DELETE' })
     setCancelando('')
     if (r.success) { toast('Pedido cancelado.'); onSaved() }
-    else toast(r.error, 'error')
+    else toast((r as any).error, 'error')
   }
 
   const SECAO_LABEL: Record<string, string> = { prato: 'Pratos', guarnicao: 'Guarnição', outro: 'Outros' }
@@ -912,7 +909,7 @@ function FacaSeuPedido({ dia, colabId, empId, restId, produtosEmpresa, onSaved }
       {allCardapio.length > 0 && (
         <div className="bg-[#080c14] border border-[#1c2e48] rounded-[11px] p-3">
           <p className="font-[var(--mono)] text-[9px] tracking-[2px] text-[#3d5875] uppercase mb-2">Cardápio do dia</p>
-          {['prato','guarnicao','outro'].map(sec => {
+          {(['prato','guarnicao','outro'] as const).map(sec => {
             const items = allCardapio.filter(i => i.secao === sec)
             if (!items.length) return null
             return (
@@ -932,7 +929,9 @@ function FacaSeuPedido({ dia, colabId, empId, restId, produtosEmpresa, onSaved }
           {pedidos.map((p: any) => (
             <div key={p.id} className="bg-[#0d1525] border border-[#1c2e48] rounded-[10px] px-3 py-2.5 flex items-center justify-between gap-2">
               <div>
-                <p className="text-sm text-[#ddeaf8]">{(p.itens ?? p.pedido_itens?.map((i:any)=>i.item))?.join(', ')}</p>
+                <p className="text-sm text-[#ddeaf8]">
+                  {(p.pedido_itens?.map((i: any) => i.item) ?? p.itens ?? []).join(', ')}
+                </p>
                 {p.obs && <p className="font-[var(--mono)] text-[10px] text-[#3d5875]">Obs: {p.obs}</p>}
               </div>
               {podeCancelar && (
@@ -946,13 +945,12 @@ function FacaSeuPedido({ dia, colabId, empId, restId, produtosEmpresa, onSaved }
         </div>
       )}
 
-      {/* Botão novo pedido */}
+      {isPast && <p className="font-[var(--mono)] text-xs text-[#7a96b8] text-center py-2">📅 Dia anterior — apenas consulta.</p>}
+      {bloqueado && <p className="font-[var(--mono)] text-xs text-[#ffb340] text-center py-2">⏰ Pedidos encerrados.</p>}
+
       {!isPast && !bloqueado && !fazendo && (
         <Btn onClick={() => setFazendo(true)}>+ Fazer novo pedido</Btn>
       )}
-
-      {isPast && <p className="font-[var(--mono)] text-xs text-[#7a96b8] text-center py-2">📅 Dia anterior — apenas consulta.</p>}
-      {bloqueado && <p className="font-[var(--mono)] text-xs text-[#ffb340] text-center py-2">⏰ Pedidos encerrados.</p>}
 
       {/* Formulário unificado */}
       {fazendo && !isPast && !bloqueado && (
@@ -971,11 +969,9 @@ function FacaSeuPedido({ dia, colabId, empId, restId, produtosEmpresa, onSaved }
                 const aj  = selCardapio[item.nome]
                 return (
                   <div key={item.nome}
-                    className={`rounded-[10px] border px-3 py-2 transition-all
-                      ${sel ? 'border-[rgba(0,232,122,.3)] bg-[rgba(0,232,122,.04)]' : 'border-[#1c2e48] bg-[#0d1525]'}`}>
+                    className={`rounded-[10px] border px-3 py-2 transition-all ${sel ? 'border-[rgba(0,232,122,.3)] bg-[rgba(0,232,122,.04)]' : 'border-[#1c2e48] bg-[#0d1525]'}`}>
                     <div className="flex items-center gap-2 cursor-pointer" onClick={() => toggleCardapio(item.nome)}>
-                      <div className={`w-4 h-4 rounded-[4px] border flex items-center justify-center flex-shrink-0
-                        ${sel ? 'bg-[#00e87a] border-[#00e87a]' : 'border-[#2a4060]'}`}>
+                      <div className={`w-4 h-4 rounded-[4px] border flex items-center justify-center flex-shrink-0 ${sel ? 'bg-[#00e87a] border-[#00e87a]' : 'border-[#2a4060]'}`}>
                         {sel && <span className="text-black text-[10px] font-bold">✓</span>}
                       </div>
                       <span className="text-sm text-[#ddeaf8]">{item.nome}</span>
@@ -984,8 +980,7 @@ function FacaSeuPedido({ dia, colabId, empId, restId, produtosEmpresa, onSaved }
                       <div className="flex gap-2 mt-1.5 ml-6">
                         {(['extra','reduzido'] as const).map(a => (
                           <button key={a} onClick={() => toggleAjuste(item.nome, a)}
-                            className={`font-[var(--mono)] text-[9px] px-2 py-1 rounded-full border transition-all cursor-pointer
-                              ${aj === a ? 'border-[#ffb340] bg-[rgba(255,179,64,.15)] text-[#ffb340]' : 'border-[#1c2e48] text-[#3d5875] bg-transparent'}`}>
+                            className={`font-[var(--mono)] text-[9px] px-2 py-1 rounded-full border transition-all cursor-pointer ${aj === a ? 'border-[#ffb340] bg-[rgba(255,179,64,.15)] text-[#ffb340]' : 'border-[#1c2e48] text-[#3d5875] bg-transparent'}`}>
                             {a}
                           </button>
                         ))}
@@ -994,22 +989,19 @@ function FacaSeuPedido({ dia, colabId, empId, restId, produtosEmpresa, onSaved }
                   </div>
                 )
               })}
-            {cardapioSelecionado.length > 0 && (
-            <textarea
-              value={selProdutos['__marmita_obs__']?.obs ?? ''}
-              onChange={e => setSelProdutos(s => ({ ...s, __marmita_obs__: { qtd: 1, obs: e.target.value } }))}
-              placeholder="Observação da marmita (opcional)" rows={1}
-              className="w-full bg-[#080c14] border border-[#253d5e] rounded-[11px] px-3 py-1.5 font-[var(--mono)] text-xs text-[#ddeaf8] outline-none placeholder:text-[#3d5875] resize-none" />
+              {cardapioSelecionado.length > 0 && (
+                <textarea value={marmitaObs} onChange={e => setMarmitaObs(e.target.value)}
+                  placeholder="Observação da marmita (opcional)" rows={1}
+                  className="w-full bg-[#080c14] border border-[#253d5e] rounded-[11px] px-3 py-1.5 font-[var(--mono)] text-xs text-[#ddeaf8] outline-none placeholder:text-[#3d5875] resize-none" />
+              )}
             </div>
           )}
 
           {/* Buffet */}
           {temBuffet && (
-            <div className={`rounded-[10px] border px-3 py-2.5 transition-all
-              ${selProdutos['__buffet__'] ? 'border-[rgba(0,232,122,.3)] bg-[rgba(0,232,122,.04)]' : 'border-[#1c2e48] bg-[#0d1525]'}`}>
+            <div className={`rounded-[10px] border px-3 py-2.5 transition-all ${selProdutos['__buffet__'] ? 'border-[rgba(0,232,122,.3)] bg-[rgba(0,232,122,.04)]' : 'border-[#1c2e48] bg-[#0d1525]'}`}>
               <div className="flex items-center gap-2 cursor-pointer" onClick={() => toggleAvulso('__buffet__')}>
-                <div className={`w-4 h-4 rounded-[4px] border flex items-center justify-center flex-shrink-0
-                  ${selProdutos['__buffet__'] ? 'bg-[#00e87a] border-[#00e87a]' : 'border-[#2a4060]'}`}>
+                <div className={`w-4 h-4 rounded-[4px] border flex items-center justify-center flex-shrink-0 ${selProdutos['__buffet__'] ? 'bg-[#00e87a] border-[#00e87a]' : 'border-[#2a4060]'}`}>
                   {selProdutos['__buffet__'] && <span className="text-black text-[10px] font-bold">✓</span>}
                 </div>
                 <span className="text-sm text-[#ddeaf8]">Buffet</span>
@@ -1024,15 +1016,13 @@ function FacaSeuPedido({ dia, colabId, empId, restId, produtosEmpresa, onSaved }
           )}
 
           {/* Avulsos */}
-          {avulsos.map(ep => {
+          {avulsos.map((ep: any) => {
             const sel = selProdutos[ep.produto.id]
             return (
               <div key={ep.id}
-                className={`rounded-[10px] border px-3 py-2.5 transition-all
-                  ${sel ? 'border-[rgba(0,232,122,.3)] bg-[rgba(0,232,122,.04)]' : 'border-[#1c2e48] bg-[#0d1525]'}`}>
+                className={`rounded-[10px] border px-3 py-2.5 transition-all ${sel ? 'border-[rgba(0,232,122,.3)] bg-[rgba(0,232,122,.04)]' : 'border-[#1c2e48] bg-[#0d1525]'}`}>
                 <div className="flex items-center gap-2 cursor-pointer" onClick={() => toggleAvulso(ep.produto.id)}>
-                  <div className={`w-4 h-4 rounded-[4px] border flex items-center justify-center flex-shrink-0
-                    ${sel ? 'bg-[#00e87a] border-[#00e87a]' : 'border-[#2a4060]'}`}>
+                  <div className={`w-4 h-4 rounded-[4px] border flex items-center justify-center flex-shrink-0 ${sel ? 'bg-[#00e87a] border-[#00e87a]' : 'border-[#2a4060]'}`}>
                     {sel && <span className="text-black text-[10px] font-bold">✓</span>}
                   </div>
                   <div>
@@ -1062,9 +1052,8 @@ function FacaSeuPedido({ dia, colabId, empId, restId, produtosEmpresa, onSaved }
             )
           })}
 
-
           <div className="flex gap-2">
-            <Btn variant="secondary" onClick={() => { setFazendo(false); setSelCardapio({}); setSelProdutos({}) }} className="flex-1">Cancelar</Btn>
+            <Btn variant="secondary" onClick={() => { setFazendo(false); setSelCardapio({}); setSelProdutos({}); setMarmitaObs('') }} className="flex-1">Cancelar</Btn>
             <Btn onClick={enviar} loading={saving} className="flex-1">Enviar pedido</Btn>
           </div>
         </div>
