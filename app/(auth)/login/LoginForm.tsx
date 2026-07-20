@@ -19,9 +19,6 @@ export default function LoginForm() {
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    // Sempre limpa sessão existente ao abrir a tela de login.
-    // O usuário precisa fazer login explicitamente.
-    // Isso evita que sessões de outros perfis (ex: colaborador) sejam restauradas.
     const sb = supabaseBrowser()
     sb.auth.signOut().catch(() => {})
   }, [])
@@ -78,14 +75,13 @@ export default function LoginForm() {
         boxShadow: '0 20px 60px rgba(0,0,0,.6)',
       }}>
 
-        {/* Header */}
         <div className="flex flex-col items-center gap-3 mb-8">
-<div className="w-14 h-14 flex items-center justify-center rounded-[14px]
-  bg-[linear-gradient(145deg,rgba(0,232,122,.15),rgba(0,196,99,.05))]
-  border border-[rgba(0,232,122,.3)]
-  shadow-[0_0_24px_rgba(0,232,122,.15)]">
-  <img src="/favicon.svg" alt="Menuv" width={36} height={36} />
-</div>
+          <div className="w-14 h-14 flex items-center justify-center rounded-[14px]
+            bg-[linear-gradient(145deg,rgba(0,232,122,.15),rgba(0,196,99,.05))]
+            border border-[rgba(0,232,122,.3)]
+            shadow-[0_0_24px_rgba(0,232,122,.15)]">
+            <img src="/favicon.svg" alt="Menuv" width={36} height={36} />
+          </div>
           <div className="text-center">
             <h1 className="text-2xl font-black text-[#ddeaf8] tracking-tight">Menuv</h1>
             <p className="font-[var(--mono)] text-[10px] tracking-[2px] text-[#3d5875] uppercase mt-1">
@@ -121,16 +117,6 @@ export default function LoginForm() {
           </Btn>
         </form>
 
-        <div className="mt-5 text-center">
-          <p className="font-[var(--mono)] text-[10px] text-[#3d5875] mb-2">
-            É um restaurante?
-          </p>
-          <button
-            onClick={() => router.push('/cadastro?tipo=restaurante')}
-            className="font-[var(--mono)] text-[10px] tracking-[1px] text-[#00e87a] hover:text-[#00c463] transition-colors uppercase cursor-pointer bg-transparent border-none">
-            Criar conta de restaurante →
-          </button>
-        </div>
       </div>
     </div>
   )
