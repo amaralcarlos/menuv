@@ -636,8 +636,6 @@ function PedidosContent() {
 
   if (loading) return <Spinner />
 
-  const isBuffet = empConfig?.formato === 'buffet'
-
   if (semana.length === 0) return (
     <div className="px-4 pt-8 text-center">
       <p className="text-4xl mb-3">🍽️</p>
@@ -652,33 +650,77 @@ function PedidosContent() {
 
   return (
     <div className="px-4 pt-4 pb-24">
-      {isBuffet && (
-        <div className="flex items-center gap-2 mb-3 bg-[rgba(77,166,255,.06)] border border-[rgba(77,166,255,.15)] rounded-[8px] px-3 py-2">
-          <span className="text-sm">🍽️</span>
-          <p className="font-[var(--mono)] text-[10px] text-[#4da6ff]">Formato buffet — visualize o cardápio e faça a sua reserva</p>
-        </div>
-      )}
       <SectionLabel>Selecione o dia</SectionLabel>
       <DaySelector dias={semana} selected={selectedDate} onSelect={setSelectedDate} />
       {diaSelected && (
         <Card highlight={!!diaSelected.pedido}>
-          {isBuffet ? (
-            <BuffetForm
-              key={selectedDate}
-              dia={diaSelected}
-              colabId={colabId}
-              empId={empId}
-              onSaved={load}
-            />
+          {produtoAtual === null ? (
+            /* Seleção de produto */
+            <div className="flex flex-col gap-3">
+              <p className="font-[var(--mono)] text-[10px] tracking-[2px] text-[#3d5875] uppercase">
+                Escolha o produto
+              </p>
+              {produtosEmpresa.length === 0 && (
+                <p className="font-[var(--mono)] text-xs text-[#3d5875] text-center py-4">
+                  Nenhum produto liberado para esta empresa.
+                </p>
+              )}
+              {produtosEmpresa.map((ep: any) => (
+                <button key={ep.id}
+                  onClick={() => setProdutoAtual(ep)}
+                  className="w-full bg-[#0d1525] border border-[#1c2e48] rounded-[12px] px-4 py-3 text-left flex items-center justify-between cursor-pointer hover:border-[rgba(0,232,122,.3)] transition-all">
+                  <div>
+                    <p className="text-sm text-[#ddeaf8] font-medium">{ep.produto.nome}</p>
+                    {ep.produto.descricao && (
+                      <p className="font-[var(--mono)] text-[10px] text-[#3d5875] mt-0.5">{ep.produto.descricao}</p>
+                    )}
+                  </div>
+                  <div className="text-right">
+                    <p className="font-[var(--mono)] text-sm font-bold text-[#00e87a]">
+                      {(ep.preco ?? ep.produto.preco_base) > 0
+                        ? (ep.preco ?? ep.produto.preco_base).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+                        : ''}
+                    </p>
+                    <span className="text-[#3d5875] text-xs">→</span>
+                  </div>
+                </button>
+              ))}
+            </div>
           ) : (
-            <OrderForm
-              key={selectedDate}
-              dia={diaSelected}
-              colabId={colabId}
-              empId={empId}
-              restId={meta?.restaurante_id ?? diaSelected?._empConfig?.restaurante_id ?? ''}
-              onSaved={load}
-            />
+            /* Formulário do produto selecionado */
+            <div>
+              <button
+                onClick={() => setProdutoAtual(null)}
+                className="font-[var(--mono)] text-[10px] text-[#3d5875] hover:text-[#ddeaf8] mb-3 cursor-pointer bg-transparent border-none flex items-center gap-1">
+                ← {produtoAtual.produto.nome}
+              </button>
+              {produtoAtual.produto.tipo === 'buffet' ? (
+                <BuffetForm
+                  dia={diaSelected}
+                  colabId={colabId}
+                  empId={empId}
+                  onSaved={() => { setProdutoAtual(null); load() }}
+                />
+              ) : produtoAtual.produto.tipo === 'marmita' ? (
+                <OrderForm
+                  key={selectedDate + produtoAtual.id}
+                  dia={diaSelected}
+                  colabId={colabId}
+                  empId={empId}
+                  restId={meta?.restaurante_id ?? diaSelected?._empConfig?.restaurante_id ?? ''}
+                  onSaved={() => { setProdutoAtual(null); load() }}
+                />
+              ) : (
+                <AvulsoForm
+                  dia={diaSelected}
+                  colabId={colabId}
+                  empId={empId}
+                  produto={produtoAtual}
+                  onSaved={() => { setProdutoAtual(null); load() }}
+                  onCancel={() => setProdutoAtual(null)}
+                />
+              )}
+            </div>
           )}
         </Card>
       )}
