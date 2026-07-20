@@ -62,9 +62,10 @@ function EmpresaForm({ empresa, restId, onSave, onCancel }: {
 }) {
   const { call } = useApi()
   const toast = useToast()
-  const [nome,   setNome]   = useState(empresa?.nome ?? '')
-  const [hl,     setHl]     = useState(empresa?.horario_limite ?? '09:30')
-  const [saving, setSaving] = useState(false)
+  const [nome,     setNome]     = useState(empresa?.nome ?? '')
+  const [hl,       setHl]       = useState(empresa?.horario_limite ?? '09:30')
+  const [diaCiclo, setDiaCiclo] = useState(String((empresa as any)?.dia_ciclo ?? '1'))
+  const [saving,   setSaving]   = useState(false)
 
   async function save() {
     if (!nome.trim()) { toast('Nome é obrigatório.', 'error'); return }
@@ -72,7 +73,7 @@ function EmpresaForm({ empresa, restId, onSave, onCancel }: {
     const isEdit = !!empresa?.id
     const res = await call(isEdit ? `/api/empresas/${empresa!.id}` : '/api/empresas', {
       method: isEdit ? 'PUT' : 'POST',
-      body: JSON.stringify({ nome, horarioLimite: hl, restauranteId: restId }),
+      body: JSON.stringify({ nome, horarioLimite: hl, restauranteId: restId, diaCiclo: parseInt(diaCiclo) || 1 }),
     })
     setSaving(false)
     if (res.success) { toast(isEdit ? 'Empresa atualizada.' : 'Empresa criada.'); onSave() }
@@ -83,6 +84,22 @@ function EmpresaForm({ empresa, restId, onSave, onCancel }: {
     <div className="flex flex-col gap-4">
       <Input label="Nome da empresa" value={nome} onChange={e => setNome(e.target.value)} placeholder="Empresa Ltda." />
       <Input label="Horário limite (HH:MM)" value={hl} onChange={e => setHl(e.target.value)} placeholder="09:30" />
+
+      <div className="flex flex-col gap-1.5">
+        <label className="font-[var(--mono)] text-[10px] tracking-[1.5px] text-[#3d5875] uppercase">
+          Dia de início do ciclo
+        </label>
+        <select value={diaCiclo} onChange={e => setDiaCiclo(e.target.value)}
+          className="w-full bg-[#080c14] border border-[#253d5e] rounded-[11px] px-3 py-2.5 font-[var(--mono)] text-[#ddeaf8] outline-none">
+          <option value="1">Dia 1 (mês calendário)</option>
+          {Array.from({ length: 27 }, (_, i) => i + 2).map(d => (
+            <option key={d} value={d}>Dia {d} (ciclo {d}/{String(new Date().getMonth() + 1).padStart(2,'0')} a {d-1}/{String(new Date().getMonth() + 2 > 12 ? 1 : new Date().getMonth() + 2).padStart(2,'0')})</option>
+          ))}
+        </select>
+        <p className="font-[var(--mono)] text-[9px] text-[#3d5875]">
+          O ciclo começa neste dia e fecha no dia anterior do mês seguinte.
+        </p>
+      </div>
       <div className="flex gap-2">
         <Btn variant="secondary" onClick={onCancel}>Cancelar</Btn>
         <Btn loading={saving} onClick={save}>Salvar</Btn>
