@@ -741,7 +741,7 @@ function PedidosContent() {
 
   const diaSelected = semana.find(d => d.data === selectedDate)
 
-  return (
+  const PedidoTab = (
     <div className="px-4 pt-4 pb-24">
       <SectionLabel>Selecione o dia</SectionLabel>
       <DaySelector dias={semana} selected={selectedDate} onSelect={setSelectedDate} />
@@ -760,6 +760,13 @@ function PedidosContent() {
       )}
     </div>
   )
+
+  const tabs = [
+    { id: 'pedido',  label: 'Pedido',  icon: 'pedido'   as const, component: PedidoTab },
+    { id: 'resumo',  label: 'Resumo',  icon: 'relatorio' as const, component: <ResumoColabPane colabId={colabId} empId={empId} /> },
+  ]
+
+  return <AppShell tabs={tabs} nome={meta?.nome ?? ''} badge="colaborador" role="Colaborador" />
 }
 
 
