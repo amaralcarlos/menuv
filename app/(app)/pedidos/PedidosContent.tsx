@@ -195,6 +195,95 @@ function BuffetForm({ dia, colabId, empId, onSaved }: {
 }
 
 
+
+/* ── Cardápio do dia (fixo no topo) ─────────────────────── */
+function CardapioDoDia({ dia }: { dia: any }) {
+  const pratos     = dia.pratos     ?? []
+  const guarnicoes = dia.guarnicoes ?? []
+  const outros     = dia.outros     ?? []
+
+  if (!pratos.length && !guarnicoes.length && !outros.length) return null
+
+  const SECOES = [
+    { label: 'Pratos',    items: pratos,     cor: 'text-[#ddeaf8]' },
+    { label: 'Guarnição', items: guarnicoes, cor: 'text-[#7a96b8]' },
+    { label: 'Outros',    items: outros,     cor: 'text-[#7a96b8]' },
+  ]
+
+  return (
+    <div className="bg-[#080c14] border border-[#1c2e48] rounded-[12px] p-3 mb-3">
+      <p className="font-[var(--mono)] text-[9px] tracking-[2px] text-[#3d5875] uppercase mb-2">
+        Cardápio do dia
+      </p>
+      <div className="flex flex-col gap-2">
+        {SECOES.map(s => s.items.length > 0 && (
+          <div key={s.label}>
+            <p className="font-[var(--mono)] text-[9px] text-[#3d5875] uppercase tracking-[1px] mb-1">{s.label}</p>
+            {s.items.map((item: any) => (
+              <p key={item.nome} className={`font-[var(--mono)] text-xs ${s.cor}`}>• {item.nome}</p>
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/* ── AvulsosCheckbox — avulsos disponíveis para adicionar ── */
+function AvulsosCheckbox({ produtosEmpresa, avulsosSel, setAvulsosSel, avulsosObs, setAvulsosObs }: {
+  produtosEmpresa: any[]
+  avulsosSel:    Set<string>
+  setAvulsosSel: (s: Set<string>) => void
+  avulsosObs:    Record<string, string>
+  setAvulsosObs: (o: Record<string, string>) => void
+}) {
+  const avulsos = produtosEmpresa.filter(ep => ep.produto.tipo === 'avulso')
+  if (!avulsos.length) return null
+
+  function toggle(id: string) {
+    const next = new Set(avulsosSel)
+    if (next.has(id)) next.delete(id)
+    else next.add(id)
+    setAvulsosSel(next)
+  }
+
+  return (
+    <div className="border-t border-[#1c2e48] pt-3 mt-1 flex flex-col gap-2">
+      <p className="font-[var(--mono)] text-[9px] tracking-[2px] text-[#3d5875] uppercase">
+        Itens adicionais
+      </p>
+      {avulsos.map(ep => {
+        const sel = avulsosSel.has(ep.produto.id)
+        return (
+          <div key={ep.id}
+            className={`rounded-[10px] border px-3 py-2 transition-all
+              ${sel ? 'border-[rgba(0,232,122,.3)] bg-[rgba(0,232,122,.04)]' : 'border-[#1c2e48] bg-[#0d1525]'}`}>
+            <div className="flex items-center gap-2 cursor-pointer" onClick={() => toggle(ep.produto.id)}>
+              <div className={`w-4 h-4 rounded-[4px] border flex items-center justify-center flex-shrink-0 transition-all
+                ${sel ? 'bg-[#00e87a] border-[#00e87a]' : 'border-[#2a4060]'}`}>
+                {sel && <span className="text-black text-[10px] font-bold">✓</span>}
+              </div>
+              <span className="text-sm text-[#ddeaf8]">{ep.produto.nome}</span>
+              {ep.produto.descricao && (
+                <span className="font-[var(--mono)] text-[10px] text-[#3d5875]">— {ep.produto.descricao}</span>
+              )}
+            </div>
+            {sel && (
+              <textarea
+                value={avulsosObs[ep.produto.id] ?? ''}
+                onChange={e => setAvulsosObs({ ...avulsosObs, [ep.produto.id]: e.target.value })}
+                placeholder="Observação (opcional)"
+                rows={1}
+                className="mt-2 ml-6 w-[calc(100%-1.5rem)] bg-[#080c14] border border-[#253d5e] rounded-[8px] px-2.5 py-1.5 font-[var(--mono)] text-xs text-[#ddeaf8] outline-none placeholder:text-[#3d5875] resize-none"
+              />
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 /* ── Avulso form ─────────────────────────────────────────── */
 function AvulsoForm({ dia, colabId, empId, produto, onSaved, onCancel }: {
   dia: any; colabId: string; empId: string
@@ -588,6 +677,8 @@ function PedidosContent() {
   const [empConfig,      setEmpConfig]      = useState<any>(null)
   const [produtosEmpresa, setProdutosEmpresa] = useState<any[]>([])
   const [produtoAtual,    setProdutoAtual]    = useState<any | null>(null)
+  const [avulsosSel,      setAvulsosSel]      = useState<Set<string>>(new Set())
+  const [avulsosObs,      setAvulsosObs]      = useState<Record<string, string>>({})
   const [loading,      setLoading]      = useState(true)
   const [selectedDate, setSelectedDate] = useState('')
 
@@ -658,15 +749,18 @@ function PedidosContent() {
           {produtoAtual === null ? (
             /* Seleção de produto */
             <div className="flex flex-col gap-3">
+              {/* Cardápio do dia fixo */}
+              <CardapioDoDia dia={diaSelected} />
+
               <p className="font-[var(--mono)] text-[10px] tracking-[2px] text-[#3d5875] uppercase">
                 Escolha o produto
               </p>
-              {produtosEmpresa.length === 0 && (
+              {produtosEmpresa.filter(ep => ep.produto.tipo !== 'avulso').length === 0 && (
                 <p className="font-[var(--mono)] text-xs text-[#3d5875] text-center py-4">
                   Nenhum produto liberado para esta empresa.
                 </p>
               )}
-              {produtosEmpresa.map((ep: any) => {
+              {produtosEmpresa.filter((ep: any) => ep.produto.tipo !== 'avulso').map((ep: any) => {
                 const pedidosDoProduto = (diaSelected?.pedidos ?? []).filter(
                   (p: any) => p.produto_id === ep.produto.id
                 )
@@ -691,21 +785,23 @@ function PedidosContent() {
                         <p className="font-[var(--mono)] text-[10px] text-[#3d5875] mt-0.5">{ep.produto.descricao}</p>
                       )}
                     </div>
-                    <div className="text-right">
-                      <p className="font-[var(--mono)] text-sm font-bold text-[#00e87a]">
-                        {(ep.preco ?? ep.produto.preco_base) > 0
-                          ? (ep.preco ?? ep.produto.preco_base).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-                          : ''}
-                      </p>
-                      <span className="text-[#3d5875] text-xs">→</span>
-                    </div>
+                    <span className="text-[#3d5875] text-xs">→</span>
                   </button>
                 )
               })}
+              {/* Itens avulsos como checkboxes */}
+              <AvulsosCheckbox
+                produtosEmpresa={produtosEmpresa}
+                avulsosSel={avulsosSel}
+                setAvulsosSel={setAvulsosSel}
+                avulsosObs={avulsosObs}
+                setAvulsosObs={setAvulsosObs}
+              />
             </div>
           ) : (
             /* Formulário do produto selecionado */
             <div>
+              <CardapioDoDia dia={diaSelected} />
               <button
                 onClick={() => setProdutoAtual(null)}
                 className="font-[var(--mono)] text-[10px] text-[#3d5875] hover:text-[#ddeaf8] mb-3 cursor-pointer bg-transparent border-none flex items-center gap-1">
