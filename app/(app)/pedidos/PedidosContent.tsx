@@ -746,99 +746,331 @@ function PedidosContent() {
       <DaySelector dias={semana} selected={selectedDate} onSelect={setSelectedDate} />
       {diaSelected && (
         <Card highlight={(diaSelected?.pedidos ?? []).length > 0}>
-          {produtoAtual === null ? (
-            /* Seleção de produto */
-            <div className="flex flex-col gap-3">
-              {/* Cardápio do dia fixo */}
-              <CardapioDoDia dia={diaSelected} />
-
-              <p className="font-[var(--mono)] text-[10px] tracking-[2px] text-[#3d5875] uppercase">
-                Escolha o produto
-              </p>
-              {produtosEmpresa.filter(ep => ep.produto.tipo !== 'avulso').length === 0 && (
-                <p className="font-[var(--mono)] text-xs text-[#3d5875] text-center py-4">
-                  Nenhum produto liberado para esta empresa.
-                </p>
-              )}
-              {produtosEmpresa.filter((ep: any) => ep.produto.tipo !== 'avulso').map((ep: any) => {
-                const pedidosDoProduto = (diaSelected?.pedidos ?? []).filter(
-                  (p: any) => p.produto_id === ep.produto.id
-                )
-                const temPedido = pedidosDoProduto.length > 0
-                return (
-                  <button key={ep.id}
-                    onClick={() => setProdutoAtual(ep)}
-                    className={`w-full border rounded-[12px] px-4 py-3 text-left flex items-center justify-between cursor-pointer transition-all
-                      ${temPedido
-                        ? 'bg-[rgba(0,232,122,.05)] border-[rgba(0,232,122,.3)] hover:border-[rgba(0,232,122,.5)]'
-                        : 'bg-[#0d1525] border-[#1c2e48] hover:border-[rgba(0,232,122,.3)]'}`}>
-                    <div>
-                      <p className="text-sm text-[#ddeaf8] font-medium flex items-center gap-2">
-                        {ep.produto.nome}
-                        {temPedido && (
-                          <span className="font-[var(--mono)] text-[9px] text-[#00e87a] border border-[rgba(0,232,122,.3)] rounded-full px-1.5 py-0.5">
-                            ✓ {pedidosDoProduto.length} pedido{pedidosDoProduto.length > 1 ? 's' : ''}
-                          </span>
-                        )}
-                      </p>
-                      {ep.produto.descricao && (
-                        <p className="font-[var(--mono)] text-[10px] text-[#3d5875] mt-0.5">{ep.produto.descricao}</p>
-                      )}
-                    </div>
-                    <span className="text-[#3d5875] text-xs">→</span>
-                  </button>
-                )
-              })}
-              {/* Itens avulsos como checkboxes */}
-              <AvulsosCheckbox
-                produtosEmpresa={produtosEmpresa}
-                avulsosSel={avulsosSel}
-                setAvulsosSel={setAvulsosSel}
-                avulsosObs={avulsosObs}
-                setAvulsosObs={setAvulsosObs}
-              />
-            </div>
-          ) : (
-            /* Formulário do produto selecionado */
-            <div>
-              <CardapioDoDia dia={diaSelected} />
-              <button
-                onClick={() => setProdutoAtual(null)}
-                className="font-[var(--mono)] text-[10px] text-[#3d5875] hover:text-[#ddeaf8] mb-3 cursor-pointer bg-transparent border-none flex items-center gap-1">
-                ← {produtoAtual.produto.nome}
-              </button>
-              {produtoAtual.produto.tipo === 'buffet' ? (
-                <BuffetForm
-                  dia={diaSelected}
-                  colabId={colabId}
-                  empId={empId}
-                  onSaved={() => { setProdutoAtual(null); load() }}
-                />
-              ) : produtoAtual.produto.tipo === 'marmita' ? (
-                <OrderForm
-                  key={selectedDate + produtoAtual.id}
-                  dia={{ ...diaSelected, _produtoId: produtoAtual.produto.id }}
-                  colabId={colabId}
-                  empId={empId}
-                  restId={meta?.restaurante_id ?? diaSelected?._empConfig?.restaurante_id ?? ''}
-                  onSaved={() => { setProdutoAtual(null); load() }}
-                />
-              ) : (
-                <AvulsoForm
-                  dia={diaSelected}
-                  colabId={colabId}
-                  empId={empId}
-                  produto={produtoAtual}
-                  onSaved={() => { setProdutoAtual(null); load() }}
-                  onCancel={() => setProdutoAtual(null)}
-                />
-              )}
-            </div>
-          )}
+          <FacaSeuPedido
+            key={selectedDate}
+            dia={diaSelected}
+            colabId={colabId}
+            empId={empId}
+            restId={meta?.restaurante_id ?? diaSelected?._empConfig?.restaurante_id ?? ''}
+            produtosEmpresa={produtosEmpresa}
+            onSaved={load}
+          />
         </Card>
       )}
     </div>
   )
+
+
+/* ── Faça seu pedido — área unificada ───────────────────── */
+function FacaSeuPedido({ dia, colabId, empId, restId, produtosEmpresa, onSaved }: {
+  dia: any; colabId: string; empId: string; restId: string
+  produtosEmpresa: any[]; onSaved: () => void
+}) {
+  const { call } = useApi()
+  const toast    = useToast()
+
+  const parts   = dia.data.split('/')
+  const dataISO = `${parts[2]}-${parts[1]}-${parts[0]}`
+  const isPast  = isPassado(dia.data)
+  const pedidos = dia.pedidos ?? []
+
+  // Itens do cardápio (marmita)
+  const allCardapio = [
+    ...(dia.pratos     ?? []).map((p: any) => ({ nome: p.nome, secao: 'prato'     })),
+    ...(dia.guarnicoes ?? []).map((g: any) => ({ nome: g.nome, secao: 'guarnicao' })),
+    ...(dia.outros     ?? []).map((o: any) => ({ nome: o.nome, secao: 'outro'     })),
+  ]
+
+  // Estado unificado de seleção
+  const [selCardapio,  setSelCardapio]  = useState<Record<string, 'normal'|'extra'|'reduzido'>>({})
+  const [selProdutos,  setSelProdutos]  = useState<Record<string, { qtd: number; obs: string }>>({})
+  const [obsGeral,     setObsGeral]     = useState('')
+  const [saving,       setSaving]       = useState(false)
+  const [fazendo,      setFazendo]      = useState(pedidos.length === 0)
+  const [cancelando,   setCancelando]   = useState('')
+
+  // Horário limite
+  const empConfig = dia._empConfig
+  const hoje = new Date()
+  let bloqueado = false
+  if (empConfig?.horario_limite) {
+    const [h, m] = empConfig.horario_limite.split(':').map(Number)
+    const cutoff = new Date(); cutoff.setHours(h, m, 0, 0)
+    if (hoje >= cutoff) {
+      if (empConfig?.extensao_ate) {
+        if (hoje >= new Date(empConfig.extensao_ate)) bloqueado = true
+      } else {
+        bloqueado = true
+      }
+    }
+  }
+  const podeCancelar = !isPast && !bloqueado
+
+  const temMarmita = produtosEmpresa.some(ep => ep.produto.tipo === 'marmita')
+  const temBuffet  = produtosEmpresa.some(ep => ep.produto.tipo === 'buffet')
+  const avulsos    = produtosEmpresa.filter(ep => ep.produto.tipo === 'avulso')
+
+  // Marmita helpers
+  const cardapioSelecionado = Object.keys(selCardapio)
+  const isCompleto = allCardapio.length > 0 && cardapioSelecionado.length === allCardapio.length &&
+    allCardapio.every(i => selCardapio[i.nome] === 'normal')
+
+  function toggleCardapio(nome: string) {
+    setSelCardapio(s => {
+      const n = { ...s }
+      if (n[nome]) delete n[nome]
+      else n[nome] = 'normal'
+      return n
+    })
+  }
+  function toggleAjuste(nome: string, aj: 'extra'|'reduzido') {
+    setSelCardapio(s => ({ ...s, [nome]: s[nome] === aj ? 'normal' : aj }))
+  }
+  function selecionarTudo() {
+    const all: Record<string, 'normal'> = {}
+    allCardapio.forEach(i => { all[i.nome] = 'normal' })
+    setSelCardapio(all)
+  }
+
+  // Avulso helpers
+  function toggleAvulso(id: string) {
+    setSelProdutos(s => {
+      const n = { ...s }
+      if (n[id]) delete n[id]
+      else n[id] = { qtd: 1, obs: '' }
+      return n
+    })
+  }
+
+  async function enviar() {
+    setSaving(true)
+    const promises: Promise<any>[] = []
+
+    // Pedido de marmita se tiver itens selecionados
+    if (temMarmita && cardapioSelecionado.length > 0) {
+      const itens = isCompleto
+        ? ['Refeição completa']
+        : cardapioSelecionado.map(n => selCardapio[n] === 'normal' ? n : `${n} [${selCardapio[n]}]`)
+      const prodMarmita = produtosEmpresa.find(ep => ep.produto.tipo === 'marmita')
+      promises.push(call('/api/pedidos', {
+        method: 'POST',
+        body: JSON.stringify({ colaboradorId: colabId, empresaId: empId, data: dataISO,
+          itens, obs: obsGeral, produto_id: prodMarmita?.produto.id ?? null }),
+      }))
+    }
+
+    // Pedido de buffet se selecionado
+    if (temBuffet && selProdutos['__buffet__']) {
+      const prodBuffet = produtosEmpresa.find(ep => ep.produto.tipo === 'buffet')
+      promises.push(call('/api/pedidos', {
+        method: 'POST',
+        body: JSON.stringify({ colaboradorId: colabId, empresaId: empId, data: dataISO,
+          itens: ['reserva'], obs: selProdutos['__buffet__'].obs, produto_id: prodBuffet?.produto.id ?? null }),
+      }))
+    }
+
+    // Pedidos avulsos
+    Object.entries(selProdutos).forEach(([prodId, { qtd, obs }]) => {
+      if (prodId === '__buffet__') return
+      promises.push(call('/api/pedidos', {
+        method: 'POST',
+        body: JSON.stringify({ colaboradorId: colabId, empresaId: empId, data: dataISO,
+          itens: [`${qtd}x`], obs, produto_id: prodId }),
+      }))
+    })
+
+    if (promises.length === 0) { toast('Selecione ao menos um item.', 'error'); setSaving(false); return }
+
+    const results = await Promise.all(promises)
+    setSaving(false)
+    if (results.every(r => r.success)) {
+      toast('Pedido enviado!')
+      setSelCardapio({}); setSelProdutos({}); setObsGeral('')
+      setFazendo(false); onSaved()
+    } else {
+      toast('Erro ao salvar pedido.', 'error')
+    }
+  }
+
+  async function cancelarPedido(id: string) {
+    if (!confirm('Cancelar este pedido?')) return
+    setCancelando(id)
+    const r = await call(`/api/pedidos/${id}`, { method: 'DELETE' })
+    setCancelando('')
+    if (r.success) { toast('Pedido cancelado.'); onSaved() }
+    else toast(r.error, 'error')
+  }
+
+  const SECAO_LABEL: Record<string, string> = { prato: 'Pratos', guarnicao: 'Guarnição', outro: 'Outros' }
+
+  return (
+    <div className="flex flex-col gap-3">
+
+      {/* Cardápio do dia */}
+      {allCardapio.length > 0 && (
+        <div className="bg-[#080c14] border border-[#1c2e48] rounded-[11px] p-3">
+          <p className="font-[var(--mono)] text-[9px] tracking-[2px] text-[#3d5875] uppercase mb-2">Cardápio do dia</p>
+          {['prato','guarnicao','outro'].map(sec => {
+            const items = allCardapio.filter(i => i.secao === sec)
+            if (!items.length) return null
+            return (
+              <div key={sec} className="mb-1.5">
+                <p className="font-[var(--mono)] text-[9px] text-[#3d5875] uppercase">{SECAO_LABEL[sec]}</p>
+                {items.map(i => <p key={i.nome} className="font-[var(--mono)] text-xs text-[#7a96b8]">• {i.nome}</p>)}
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Pedidos do dia */}
+      {pedidos.length > 0 && (
+        <div className="flex flex-col gap-2">
+          <p className="font-[var(--mono)] text-[9px] tracking-[2px] text-[#3d5875] uppercase">Meus pedidos do dia</p>
+          {pedidos.map((p: any) => (
+            <div key={p.id} className="bg-[#0d1525] border border-[#1c2e48] rounded-[10px] px-3 py-2.5 flex items-center justify-between gap-2">
+              <div>
+                <p className="text-sm text-[#ddeaf8]">{p.itens?.join(', ')}</p>
+                {p.obs && <p className="font-[var(--mono)] text-[10px] text-[#3d5875]">Obs: {p.obs}</p>}
+              </div>
+              {podeCancelar && (
+                <button onClick={() => cancelarPedido(p.id)} disabled={cancelando === p.id}
+                  className="font-[var(--mono)] text-[9px] text-[#ff4d6a] border border-[rgba(255,77,106,.2)] rounded-[5px] px-2 py-1 cursor-pointer bg-transparent hover:bg-[rgba(255,77,106,.08)]">
+                  {cancelando === p.id ? '...' : '✕'}
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Botão novo pedido */}
+      {!isPast && !bloqueado && !fazendo && (
+        <Btn onClick={() => setFazendo(true)}>+ Fazer novo pedido</Btn>
+      )}
+
+      {isPast && <p className="font-[var(--mono)] text-xs text-[#7a96b8] text-center py-2">📅 Dia anterior — apenas consulta.</p>}
+      {bloqueado && <p className="font-[var(--mono)] text-xs text-[#ffb340] text-center py-2">⏰ Pedidos encerrados.</p>}
+
+      {/* Formulário unificado */}
+      {fazendo && !isPast && !bloqueado && (
+        <div className="flex flex-col gap-3 border-t border-[#1c2e48] pt-3">
+          <p className="font-semibold text-[#ddeaf8] text-sm">Faça seu pedido</p>
+
+          {/* Marmita */}
+          {temMarmita && allCardapio.length > 0 && (
+            <div className="flex flex-col gap-1.5">
+              <button onClick={selecionarTudo}
+                className="w-full py-2 rounded-[10px] border border-[rgba(0,232,122,.2)] bg-[rgba(0,232,122,.04)] font-[var(--mono)] text-[10px] text-[#00e87a] cursor-pointer hover:bg-[rgba(0,232,122,.08)]">
+                ✅ Refeição completa
+              </button>
+              {allCardapio.map(item => {
+                const sel = !!selCardapio[item.nome]
+                const aj  = selCardapio[item.nome]
+                return (
+                  <div key={item.nome}
+                    className={`rounded-[10px] border px-3 py-2 transition-all
+                      ${sel ? 'border-[rgba(0,232,122,.3)] bg-[rgba(0,232,122,.04)]' : 'border-[#1c2e48] bg-[#0d1525]'}`}>
+                    <div className="flex items-center gap-2 cursor-pointer" onClick={() => toggleCardapio(item.nome)}>
+                      <div className={`w-4 h-4 rounded-[4px] border flex items-center justify-center flex-shrink-0
+                        ${sel ? 'bg-[#00e87a] border-[#00e87a]' : 'border-[#2a4060]'}`}>
+                        {sel && <span className="text-black text-[10px] font-bold">✓</span>}
+                      </div>
+                      <span className="text-sm text-[#ddeaf8]">{item.nome}</span>
+                    </div>
+                    {sel && (
+                      <div className="flex gap-2 mt-1.5 ml-6">
+                        {(['extra','reduzido'] as const).map(a => (
+                          <button key={a} onClick={() => toggleAjuste(item.nome, a)}
+                            className={`font-[var(--mono)] text-[9px] px-2 py-1 rounded-full border transition-all cursor-pointer
+                              ${aj === a ? 'border-[#ffb340] bg-[rgba(255,179,64,.15)] text-[#ffb340]' : 'border-[#1c2e48] text-[#3d5875] bg-transparent'}`}>
+                            {a}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
+          {/* Buffet */}
+          {temBuffet && (
+            <div className={`rounded-[10px] border px-3 py-2.5 transition-all
+              ${selProdutos['__buffet__'] ? 'border-[rgba(0,232,122,.3)] bg-[rgba(0,232,122,.04)]' : 'border-[#1c2e48] bg-[#0d1525]'}`}>
+              <div className="flex items-center gap-2 cursor-pointer" onClick={() => toggleAvulso('__buffet__')}>
+                <div className={`w-4 h-4 rounded-[4px] border flex items-center justify-center flex-shrink-0
+                  ${selProdutos['__buffet__'] ? 'bg-[#00e87a] border-[#00e87a]' : 'border-[#2a4060]'}`}>
+                  {selProdutos['__buffet__'] && <span className="text-black text-[10px] font-bold">✓</span>}
+                </div>
+                <span className="text-sm text-[#ddeaf8]">Buffet</span>
+              </div>
+              {selProdutos['__buffet__'] && (
+                <textarea value={selProdutos['__buffet__'].obs}
+                  onChange={e => setSelProdutos(s => ({ ...s, __buffet__: { ...s['__buffet__'], obs: e.target.value } }))}
+                  placeholder="Observação (opcional)" rows={1}
+                  className="mt-2 ml-6 w-[calc(100%-1.5rem)] bg-[#080c14] border border-[#253d5e] rounded-[8px] px-2.5 py-1.5 font-[var(--mono)] text-xs text-[#ddeaf8] outline-none placeholder:text-[#3d5875] resize-none" />
+              )}
+            </div>
+          )}
+
+          {/* Avulsos */}
+          {avulsos.map(ep => {
+            const sel = selProdutos[ep.produto.id]
+            return (
+              <div key={ep.id}
+                className={`rounded-[10px] border px-3 py-2.5 transition-all
+                  ${sel ? 'border-[rgba(0,232,122,.3)] bg-[rgba(0,232,122,.04)]' : 'border-[#1c2e48] bg-[#0d1525]'}`}>
+                <div className="flex items-center gap-2 cursor-pointer" onClick={() => toggleAvulso(ep.produto.id)}>
+                  <div className={`w-4 h-4 rounded-[4px] border flex items-center justify-center flex-shrink-0
+                    ${sel ? 'bg-[#00e87a] border-[#00e87a]' : 'border-[#2a4060]'}`}>
+                    {sel && <span className="text-black text-[10px] font-bold">✓</span>}
+                  </div>
+                  <div>
+                    <span className="text-sm text-[#ddeaf8]">{ep.produto.nome}</span>
+                    {ep.produto.descricao && (
+                      <span className="font-[var(--mono)] text-[10px] text-[#3d5875] ml-1.5">— {ep.produto.descricao}</span>
+                    )}
+                  </div>
+                </div>
+                {sel && (
+                  <div className="ml-6 mt-2 flex flex-col gap-1.5">
+                    <div className="flex items-center gap-3">
+                      <span className="font-[var(--mono)] text-[9px] text-[#3d5875] uppercase">Qtd</span>
+                      <button onClick={() => setSelProdutos(s => ({ ...s, [ep.produto.id]: { ...s[ep.produto.id], qtd: Math.max(1, s[ep.produto.id].qtd - 1) } }))}
+                        className="w-6 h-6 rounded-full border border-[#253d5e] text-[#ddeaf8] bg-transparent cursor-pointer hover:border-[#00e87a] flex items-center justify-center text-sm">−</button>
+                      <span className="font-[var(--mono)] text-sm font-bold text-[#00e87a] w-4 text-center">{sel.qtd}</span>
+                      <button onClick={() => setSelProdutos(s => ({ ...s, [ep.produto.id]: { ...s[ep.produto.id], qtd: Math.min(20, s[ep.produto.id].qtd + 1) } }))}
+                        className="w-6 h-6 rounded-full border border-[#253d5e] text-[#ddeaf8] bg-transparent cursor-pointer hover:border-[#00e87a] flex items-center justify-center text-sm">+</button>
+                    </div>
+                    <textarea value={sel.obs}
+                      onChange={e => setSelProdutos(s => ({ ...s, [ep.produto.id]: { ...s[ep.produto.id], obs: e.target.value } }))}
+                      placeholder="Observação (opcional)" rows={1}
+                      className="w-full bg-[#080c14] border border-[#253d5e] rounded-[8px] px-2.5 py-1.5 font-[var(--mono)] text-xs text-[#ddeaf8] outline-none placeholder:text-[#3d5875] resize-none" />
+                  </div>
+                )}
+              </div>
+            )
+          })}
+
+          {/* Observação geral */}
+          <div className="flex flex-col gap-1.5">
+            <label className="font-[var(--mono)] text-[9px] tracking-[1.5px] text-[#3d5875] uppercase">Observação geral (opcional)</label>
+            <textarea value={obsGeral} onChange={e => setObsGeral(e.target.value)}
+              placeholder="Ex: sem pimenta, alergia..." rows={2}
+              className="w-full bg-[#080c14] border border-[#253d5e] rounded-[11px] px-3 py-2.5 font-[var(--mono)] text-sm text-[#ddeaf8] outline-none focus:border-[rgba(0,232,122,.5)] placeholder:text-[#3d5875] resize-none" />
+          </div>
+
+          <div className="flex gap-2">
+            <Btn variant="secondary" onClick={() => { setFazendo(false); setSelCardapio({}); setSelProdutos({}); setObsGeral('') }} className="flex-1">Cancelar</Btn>
+            <Btn onClick={enviar} loading={saving} className="flex-1">Enviar pedido</Btn>
+          </div>
+        </div>
+      )}
+    </div>
+  )
 }
+
 
 export default PedidosContent
