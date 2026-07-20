@@ -1,3 +1,20 @@
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
+  if (!id) return E.badRequest()
+
+  const sb = await supabaseServer()
+  const { data: { session } } = await sb.auth.getSession()
+  if (!session) return E.unauthorized()
+
+  const { data, error } = await sb
+    .from('empresas')
+    .select('id, nome, horario_limite, extensao_ate, preco_por_refeicao, formato, ativa, status_plano, restaurante_id, dia_ciclo')
+    .eq('id', id).single() as any
+
+  if (error || !data) return E.notFound('Empresa não encontrada.')
+  return ok(data)
+}
+
 import { NextRequest } from 'next/server'
 import { supabaseServer, ok, E, sanitize, log } from '@/lib/api-helpers'
 
