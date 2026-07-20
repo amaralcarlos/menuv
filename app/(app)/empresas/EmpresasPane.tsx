@@ -12,6 +12,7 @@ interface Empresa {
   preco_por_refeicao: number
   ativa: boolean
   formato: 'marmita' | 'buffet'
+  dia_ciclo?: number
 }
 
 /* ── Link de convite ─────────────────────────────────────── */
@@ -159,7 +160,7 @@ export default function EmpresasPane({ restId }: { restId: string }) {
             <div>
               <p className="font-bold text-sm text-[#ddeaf8]">{e.nome}</p>
               <p className="font-[var(--mono)] text-[10px] text-[#3d5875] mt-0.5">
-                Limite: {e.horario_limite}
+                Limite: {e.horario_limite?.slice(0,5)}
               </p>
             </div>
             <div className="flex items-center gap-2">
