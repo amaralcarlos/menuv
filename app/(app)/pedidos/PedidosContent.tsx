@@ -763,7 +763,7 @@ function PedidosContent() {
 
   const tabs = [
     { id: 'pedido',  label: 'Pedido',  icon: 'pedido'   as const, component: PedidoTab },
-    { id: 'resumo',  label: 'Resumo',  icon: 'relatorio' as const, component: <ResumoColabPane colabId={colabId} empId={empId} /> },
+    { id: 'resumo',  label: 'Resumo',  icon: 'relatorio' as const, component: <ResumoColabPane empresaId={empId} /> },
   ]
 
   return <AppShell tabs={tabs} nome={meta?.nome ?? ''} badge="colaborador" role="Colaborador" />
