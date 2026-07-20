@@ -791,8 +791,14 @@ function FacaSeuPedido({ dia, colabId, empId, restId, produtosEmpresa, onSaved }
 
   const empConfig = dia._empConfig
   const hoje = new Date()
+
+  // Só bloqueia se o dia selecionado for HOJE
+  const parts2  = (dia.data as string).split('/')
+  const diaDate = new Date(+parts2[2], +parts2[1] - 1, +parts2[0])
+  const isHoje  = diaDate.toDateString() === hoje.toDateString()
+
   let bloqueado = false
-  if (empConfig?.horario_limite) {
+  if (isHoje && empConfig?.horario_limite) {
     const [h, m] = (empConfig.horario_limite as string).split(':').map(Number)
     const cutoff = new Date()
     cutoff.setHours(h, m, 0, 0)
@@ -804,7 +810,7 @@ function FacaSeuPedido({ dia, colabId, empId, restId, produtosEmpresa, onSaved }
       }
     }
   }
-  const podeCancelar = !isPast && !bloqueado
+  const podeCancelar = !isPast && (!bloqueado || !isHoje)
 
   const temMarmita = produtosEmpresa.some((ep: any) => ep.produto.tipo === 'marmita')
   const temBuffet  = produtosEmpresa.some((ep: any) => ep.produto.tipo === 'buffet')
