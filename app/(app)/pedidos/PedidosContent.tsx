@@ -853,7 +853,7 @@ function FacaSeuPedido({ dia, colabId, empId, produtosEmpresa, onSaved }: {
       setSel({}); setFazendo(false); onSaved()
     } else {
       const erros = results.filter((r: any) => !r.success)
-      toast(erros[0]?.error ?? 'Erro ao salvar pedido.', 'error')
+      toast((erros[0] as any)?.error ?? 'Erro ao salvar pedido.', 'error')
     }
   }
 
