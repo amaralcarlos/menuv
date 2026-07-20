@@ -5,6 +5,24 @@ function parseJwt(token: string) {
   try { return JSON.parse(atob(token.split('.')[1])) } catch { return null }
 }
 
+// Calcula o período do ciclo baseado no dia_ciclo da empresa e no mesAno informado
+// Ex: dia_ciclo=21, mesAno=05/2026 → 21/05/2026 a 20/06/2026
+function calcularPeriodoCiclo(diaCiclo: number, mes: number, ano: number) {
+  // Início: dia_ciclo do mês informado
+  const inicio = new Date(ano, mes - 1, diaCiclo)
+
+  // Fim: dia_ciclo - 1 do mês seguinte
+  const fimDate = new Date(ano, mes, diaCiclo - 1)
+
+  const fmt = (d: Date) => d.toISOString().split('T')[0]
+  return {
+    inicio:      fmt(inicio),
+    fim:         fmt(fimDate),
+    labelInicio: `${String(diaCiclo).padStart(2,'0')}/${String(mes).padStart(2,'0')}/${ano}`,
+    labelFim:    `${String(diaCiclo - 1).padStart(2,'0')}/${String(mes + 1 > 12 ? 1 : mes + 1).padStart(2,'0')}/${mes + 1 > 12 ? ano + 1 : ano}`,
+  }
+}
+
 export async function GET(req: NextRequest) {
   const sb = await supabaseServer()
   const { data: { session } } = await sb.auth.getSession()
@@ -23,30 +41,43 @@ export async function GET(req: NextRequest) {
 
   const { data: emp } = await sb
     .from('empresas')
-    .select('id, nome, preco_por_refeicao, restaurante_id')
+    .select('id, nome, preco_por_refeicao, restaurante_id, dia_ciclo')
     .eq('id', empresaId).single() as any
+
   if (!emp) return E.notFound('Empresa não encontrada.')
 
-  const isColab      = meta?.app_role === 'colaborador' && meta?.empresa_id === empresaId
+  const isColab       = meta?.app_role === 'colaborador' && meta?.empresa_id === empresaId
   const isRestaurante = meta?.app_role !== 'colaborador' && meta?.restaurante_id === emp.restaurante_id
   if (!isColab && !isRestaurante && meta?.app_role !== 'admin') return E.forbidden()
 
-  const inicio = `${ano}-${String(mes).padStart(2,'0')}-01`
-  const fim    = new Date(ano, mes, 0).toISOString().split('T')[0]
+  // Usa ciclo personalizado se definido, senão mês calendário
+  const diaCiclo = emp.dia_ciclo && emp.dia_ciclo > 1 ? emp.dia_ciclo : null
+
+  let inicio: string, fim: string, periodoLabel: string
+
+  if (diaCiclo) {
+    const periodo = calcularPeriodoCiclo(diaCiclo, mes, ano)
+    inicio       = periodo.inicio
+    fim          = periodo.fim
+    periodoLabel = `${periodo.labelInicio} a ${periodo.labelFim}`
+  } else {
+    inicio       = `${ano}-${String(mes).padStart(2,'0')}-01`
+    fim          = new Date(ano, mes, 0).toISOString().split('T')[0]
+    periodoLabel = mesAno
+  }
 
   const { data: pedidos } = await sb
     .from('pedidos')
     .select('id, colaboradores(id, nome)')
     .eq('empresa_id', empresaId)
     .gte('data_pedido', inicio)
-    .lte('data_pedido', fim)
+    .lte('data_pedido', fim) as any
 
-  // Todos os colaboradores da empresa
   const { data: todosColabs } = await sb
     .from('colaboradores')
     .select('id, nome')
     .eq('empresa_id', empresaId)
-    .eq('ativo', true)
+    .eq('ativo', true) as any
 
   const cnt: Record<string, number> = {}
   ;(pedidos ?? []).forEach((p: any) => {
@@ -55,20 +86,23 @@ export async function GET(req: NextRequest) {
   })
 
   const preco = Number(emp.preco_por_refeicao)
-const colaboradores = (todosColabs ?? []).map((c: any) => ({
-  id:    c.id,
-  nome:  c.nome,
-  total: cnt[c.nome] ?? 0,
-  valor: (cnt[c.nome] ?? 0) * preco,
-}))
+  const colaboradores = (todosColabs ?? []).map((c: any) => ({
+    id:    c.id,
+    nome:  c.nome,
+    total: cnt[c.nome] ?? 0,
+    valor: (cnt[c.nome] ?? 0) * preco,
+  }))
 
   return ok({
     empresaNome:   emp.nome,
-    empresaEmail:  '',
     preco,
     totalPedidos:  (pedidos ?? []).length,
     valorTotal:    (pedidos ?? []).length * preco,
     colaboradores,
     mesAno,
+    periodoLabel,
+    diaCiclo,
+    inicio,
+    fim,
   })
 }
