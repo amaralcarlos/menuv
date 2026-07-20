@@ -994,14 +994,13 @@ function FacaSeuPedido({ dia, colabId, empId, restId, produtosEmpresa, onSaved }
                   </div>
                 )
               })}
-            </div>
-          {cardapioSelecionado.length > 0 && (
+            {cardapioSelecionado.length > 0 && (
             <textarea
               value={selProdutos['__marmita_obs__']?.obs ?? ''}
               onChange={e => setSelProdutos(s => ({ ...s, __marmita_obs__: { qtd: 1, obs: e.target.value } }))}
               placeholder="Observação da marmita (opcional)" rows={1}
               className="w-full bg-[#080c14] border border-[#253d5e] rounded-[11px] px-3 py-1.5 font-[var(--mono)] text-xs text-[#ddeaf8] outline-none placeholder:text-[#3d5875] resize-none" />
-          )}
+            </div>
           )}
 
           {/* Buffet */}
