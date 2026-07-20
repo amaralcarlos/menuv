@@ -707,8 +707,9 @@ function PedidosContent() {
       const pedMap: Record<string, any[]> = {}
       if (pedRes.success) {
         pedRes.data.forEach((p: any) => {
-          const parts = p.data.split('-')
-          const key   = `${parts[2]}/${parts[1]}/${parts[0]}`
+          const raw   = p.data_pedido ?? p.data ?? ''
+          const parts = raw.split('-')
+          const key   = parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : raw
           if (!pedMap[key]) pedMap[key] = []
           pedMap[key].push(p)
         })
@@ -785,7 +786,6 @@ function FacaSeuPedido({ dia, colabId, empId, restId, produtosEmpresa, onSaved }
   // Estado unificado de seleção
   const [selCardapio,  setSelCardapio]  = useState<Record<string, 'normal'|'extra'|'reduzido'>>({})
   const [selProdutos,  setSelProdutos]  = useState<Record<string, { qtd: number; obs: string }>>({})
-  const [obsGeral,     setObsGeral]     = useState('')
   const [saving,       setSaving]       = useState(false)
   const [fazendo,      setFazendo]      = useState(pedidos.length === 0)
   const [cancelando,   setCancelando]   = useState('')
@@ -856,7 +856,7 @@ function FacaSeuPedido({ dia, colabId, empId, restId, produtosEmpresa, onSaved }
       promises.push(call('/api/pedidos', {
         method: 'POST',
         body: JSON.stringify({ colaboradorId: colabId, empresaId: empId, data: dataISO,
-          itens, obs: obsGeral, produto_id: prodMarmita?.produto.id ?? null }),
+          itens, obs: selProdutos['__marmita_obs__']?.obs ?? '', produto_id: prodMarmita?.produto.id ?? null }),
       }))
     }
 
@@ -873,10 +873,11 @@ function FacaSeuPedido({ dia, colabId, empId, restId, produtosEmpresa, onSaved }
     // Pedidos avulsos
     Object.entries(selProdutos).forEach(([prodId, { qtd, obs }]) => {
       if (prodId === '__buffet__') return
+      const nomeProd = produtosEmpresa.find(ep => ep.produto.id === prodId)?.produto.nome ?? prodId
       promises.push(call('/api/pedidos', {
         method: 'POST',
         body: JSON.stringify({ colaboradorId: colabId, empresaId: empId, data: dataISO,
-          itens: [`${qtd}x`], obs, produto_id: prodId }),
+          itens: qtd > 1 ? [`${qtd}x ${nomeProd}`] : [nomeProd], obs, produto_id: prodId }),
       }))
     })
 
@@ -931,7 +932,7 @@ function FacaSeuPedido({ dia, colabId, empId, restId, produtosEmpresa, onSaved }
           {pedidos.map((p: any) => (
             <div key={p.id} className="bg-[#0d1525] border border-[#1c2e48] rounded-[10px] px-3 py-2.5 flex items-center justify-between gap-2">
               <div>
-                <p className="text-sm text-[#ddeaf8]">{p.itens?.join(', ')}</p>
+                <p className="text-sm text-[#ddeaf8]">{(p.itens ?? p.pedido_itens?.map((i:any)=>i.item))?.join(', ')}</p>
                 {p.obs && <p className="font-[var(--mono)] text-[10px] text-[#3d5875]">Obs: {p.obs}</p>}
               </div>
               {podeCancelar && (
@@ -994,6 +995,12 @@ function FacaSeuPedido({ dia, colabId, empId, restId, produtosEmpresa, onSaved }
                 )
               })}
             </div>
+          {cardapioSelecionado.length > 0 && (
+            <textarea
+              value={selProdutos['__marmita_obs__']?.obs ?? ''}
+              onChange={e => setSelProdutos(s => ({ ...s, __marmita_obs__: { qtd: 1, obs: e.target.value } }))}
+              placeholder="Observação da marmita (opcional)" rows={1}
+              className="w-full bg-[#080c14] border border-[#253d5e] rounded-[11px] px-3 py-1.5 font-[var(--mono)] text-xs text-[#ddeaf8] outline-none placeholder:text-[#3d5875] resize-none" />
           )}
 
           {/* Buffet */}
@@ -1055,16 +1062,9 @@ function FacaSeuPedido({ dia, colabId, empId, restId, produtosEmpresa, onSaved }
             )
           })}
 
-          {/* Observação geral */}
-          <div className="flex flex-col gap-1.5">
-            <label className="font-[var(--mono)] text-[9px] tracking-[1.5px] text-[#3d5875] uppercase">Observação geral (opcional)</label>
-            <textarea value={obsGeral} onChange={e => setObsGeral(e.target.value)}
-              placeholder="Ex: sem pimenta, alergia..." rows={2}
-              className="w-full bg-[#080c14] border border-[#253d5e] rounded-[11px] px-3 py-2.5 font-[var(--mono)] text-sm text-[#ddeaf8] outline-none focus:border-[rgba(0,232,122,.5)] placeholder:text-[#3d5875] resize-none" />
-          </div>
 
           <div className="flex gap-2">
-            <Btn variant="secondary" onClick={() => { setFazendo(false); setSelCardapio({}); setSelProdutos({}); setObsGeral('') }} className="flex-1">Cancelar</Btn>
+            <Btn variant="secondary" onClick={() => { setFazendo(false); setSelCardapio({}); setSelProdutos({}) }} className="flex-1">Cancelar</Btn>
             <Btn onClick={enviar} loading={saving} className="flex-1">Enviar pedido</Btn>
           </div>
         </div>
