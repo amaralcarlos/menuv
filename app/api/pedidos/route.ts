@@ -107,12 +107,15 @@ export async function POST(req: NextRequest) {
 
   if (meta?.app_role === 'colaborador' && colaboradorId !== meta?.colaborador_id) return E.forbidden()
 
+  const produtoId = body.produto_id ?? null
+
   const { data: pedidoId, error } = await sb.rpc('salvar_pedido', {
     p_colaborador_id: colaboradorId,
     p_empresa_id:     empresaId,
     p_data_pedido:    dataIso,
     p_itens:          itens,
     p_obs:            obs,
+    p_produto_id:     produtoId,
   })
   if (error) return E.internal(error.message)
 
