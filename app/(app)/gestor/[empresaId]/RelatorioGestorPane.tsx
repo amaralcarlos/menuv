@@ -206,61 +206,24 @@ export default function RelatorioGestorPane({ empresaId }: { empresaId: string }
   const [loading,      setLoading]      = useState(false)
   const [pctInput,     setPctInput]     = useState('0')
   const [pct,          setPct]          = useState(0)
-  const [subsidios,    setSubsidios]    = useState<Record<string,string>>({})
-  const [salvandoSub,  setSalvandoSub]  = useState<string|null>(null)
-  const [empProdutos,  setEmpProdutos]  = useState<any[]>([])
   const [emailModal,   setEmailModal]   = useState(false)
   const [emailDest,    setEmailDest]    = useState('')
   const [emailAssunto, setEmailAssunto] = useState('')
   const [emailMsg,     setEmailMsg]     = useState('')
   const [sending,      setSending]      = useState(false)
 
-  useEffect(() => {
-    const saved = localStorage.getItem(`alm_pct_${empresaId}`)
-    if (saved) { setPctInput(saved); setPct(parseInt(saved)) }
-  }, [empresaId])
-
   async function buscar(mes: string) {
     setLoading(true)
-    const [relRes, prodRes] = await Promise.all([
-      call<any>(`/api/relatorio/empresa?empresaId=${empresaId}&mesAno=${mes}`),
-      call<any>(`/api/empresas/${empresaId}/produtos`),
-    ])
+    const res = await call<any>(`/api/relatorio/empresa?empresaId=${empresaId}&mesAno=${mes}`)
     setLoading(false)
-    if (relRes.success) {
-      setDetalhe(relRes.data)
-      setEmailDest(relRes.data.empresaEmail ?? '')
-      setEmailAssunto(`Relatório de Refeições · ${relRes.data.empresaNome} · ${mes}`)
-    } else toast(relRes.error, 'error')
-    if (prodRes.success) {
-      setEmpProdutos(prodRes.data.filter((ep: any) => ep.ativo))
-      const subMap: Record<string,string> = {}
-      prodRes.data.forEach((ep: any) => {
-        subMap[ep.produto.id] = String(ep.subsidio ?? 0)
-      })
-      setSubsidios(subMap)
-    }
+    if (res.success) {
+      setDetalhe(res.data)
+      setEmailDest(res.data.empresaEmail ?? '')
+      setEmailAssunto(`Relatório de Refeições · ${res.data.empresaNome} · ${mes}`)
+    } else toast(res.error, 'error')
   }
 
   useEffect(() => { buscar(mesAno) }, [empresaId])
-
-  async function salvarSubsidio(empProdutoId: string, produtoId: string) {
-    setSalvandoSub(produtoId)
-    const r = await call(`/api/empresas/${empresaId}/produtos`, {
-      method: 'PATCH',
-      body: JSON.stringify({ empresa_produto_id: empProdutoId, subsidio: parseFloat(subsidios[produtoId]) || 0 }),
-    })
-    setSalvandoSub(null)
-    if (r.success) toast('Subsídio salvo.')
-    else toast((r as any).error ?? 'Erro ao salvar.', 'error')
-  }
-
-  function aplicarPct() {
-    const v = Math.min(100, Math.max(0, parseInt(pctInput) || 0))
-    setPct(v)
-    setPctInput(String(v))
-    localStorage.setItem(`alm_pct_${empresaId}`, String(v))
-  }
 
   async function enviarEmail() {
     if (!emailDest) { toast('Informe o e-mail.', 'error'); return }
@@ -286,20 +249,15 @@ export default function RelatorioGestorPane({ empresaId }: { empresaId: string }
   }
 
   const colabs    = detalhe ? [...detalhe.colaboradores].sort((a: any, b: any) => b.total - a.total) : []
-  const temRateio = pct > 0
-
-  const infoText = pct === 0
-    ? '💼 Empresa absorve 100% do custo — colaboradores não pagam nada'
-    : pct === 100
-      ? '👤 Colaboradores pagam 100% — empresa não subsidia'
-      : `🤝 Empresa subsidia ${100 - pct}% · Colaborador paga ${pct}% do valor por refeição`
+  const temRateio = false
+  const pct = 0
 
   return (
     <div className="px-4 pt-4 pb-24">
 
       {/* Controles */}
       <Card>
-        <div className="grid grid-cols-2 gap-3 mb-3">
+        <div className="mb-3">
           <div>
             <p className="font-[var(--mono)] text-[10px] text-[#3d5875] uppercase tracking-[1px] mb-1">Período</p>
             <select
@@ -311,7 +269,7 @@ export default function RelatorioGestorPane({ empresaId }: { empresaId: string }
               ))}
             </select>
           </div>
-          <div>
+          <div className="hidden">
             <p className="font-[var(--mono)] text-[10px] text-[#3d5875] uppercase tracking-[1px] mb-1">% do colaborador</p>
             <div className="flex gap-1.5">
               <div className="flex-1 flex items-center bg-[#080c14] border border-[#1c2e48] rounded-[8px] px-2.5">
