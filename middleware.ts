@@ -2,6 +2,7 @@ import { createServerClient } from '@supabase/ssr'
 import { NextRequest, NextResponse } from 'next/server'
 
 const PUBLIC_PATHS = ['/cadastro', '/reset-senha']
+const ADMIN_PATHS   = ['/gestor']  // admin e restaurante podem acessar
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
@@ -27,9 +28,25 @@ export async function middleware(req: NextRequest) {
 
   const { data: { session } } = await sb.auth.getSession()
 
+  // Rotas que admin/restaurante podem acessar sem redirect
+  const isAdminPath = ADMIN_PATHS.some(p => pathname.startsWith(p))
+
   // Não autenticado tentando aceder a rota protegida → vai para /
   if (!session && !isPublic && !isRoot) {
     return NextResponse.redirect(new URL('/', req.url))
+  }
+
+  // Autenticado em rota de admin (ex: /gestor) → deixa passar
+  if (session && isAdminPath) {
+    const { data: refreshed } = await sb.auth.refreshSession()
+    const user    = refreshed.session?.user ?? session.user
+    const appRole = user.app_metadata?.app_role
+    // Só admin e restaurante podem acessar /gestor diretamente
+    if (appRole === 'admin' || appRole === 'restaurante') return res
+    // Gestor acessa normalmente
+    if (appRole === 'colaborador' && user.app_metadata?.is_gestor) return res
+    // Outros → redireciona para seu painel
+    return NextResponse.redirect(new URL('/pedidos', req.url))
   }
 
   // Autenticado na raiz → força refresh do JWT e redireciona para o painel correto
