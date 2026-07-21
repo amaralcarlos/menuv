@@ -14,7 +14,7 @@ export async function GET(
 
   const { data, error } = await admin
     .from('empresa_produtos')
-    .select('id, ativo, preco, produto:produto_id(id, nome, descricao, preco_base, tipo)')
+    .select('id, ativo, preco, subsidio, produto:produto_id(id, nome, descricao, preco_base, tipo)')
     .eq('empresa_id', empresaId) as any
 
   if (error) return E.internal(error.message)
@@ -61,14 +61,15 @@ export async function PATCH(
 
   const { id: empresaId } = await params
   const body = await req.json().catch(() => null)
-  const { empresa_produto_id, preco, ativo } = body ?? {}
+  const { empresa_produto_id, preco, ativo, subsidio } = body ?? {}
 
   if (!empresa_produto_id) return E.badRequest('empresa_produto_id é obrigatório.')
 
   const admin   = supabaseAdmin()
   const updates: any = {}
-  if (preco !== undefined) updates.preco = parseFloat(preco) || 0
-  if (ativo !== undefined) updates.ativo = Boolean(ativo)
+  if (preco    !== undefined) updates.preco    = parseFloat(preco) || 0
+  if (ativo    !== undefined) updates.ativo    = Boolean(ativo)
+  if (subsidio !== undefined) updates.subsidio = parseFloat(subsidio) || 0
 
   const { data, error } = await admin
     .from('empresa_produtos')
