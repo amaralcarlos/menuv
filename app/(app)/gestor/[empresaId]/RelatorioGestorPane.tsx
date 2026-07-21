@@ -204,7 +204,6 @@ export default function RelatorioGestorPane({ empresaId }: { empresaId: string }
   const [mesAno,       setMesAno]       = useState(mesAtual())
   const [detalhe,      setDetalhe]      = useState<any>(null)
   const [loading,      setLoading]      = useState(false)
-  const [pctInput,     setPctInput]     = useState('0')
   const [pct,          setPct]          = useState(0)
   const [emailModal,   setEmailModal]   = useState(false)
   const [emailDest,    setEmailDest]    = useState('')
@@ -268,27 +267,8 @@ export default function RelatorioGestorPane({ empresaId }: { empresaId: string }
               ))}
             </select>
           </div>
-          <div className="hidden">
-            <p className="font-[var(--mono)] text-[10px] text-[#3d5875] uppercase tracking-[1px] mb-1">% do colaborador</p>
-            <div className="flex gap-1.5">
-              <div className="flex-1 flex items-center bg-[#080c14] border border-[#1c2e48] rounded-[8px] px-2.5">
-                <input
-                  type="number" min="0" max="100"
-                  value={pctInput}
-                  onChange={e => setPctInput(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && aplicarPct()}
-                  className="flex-1 bg-transparent font-[var(--mono)] text-xs text-[#ddeaf8] outline-none w-full py-2"
-                />
-                <span className="font-[var(--mono)] text-xs text-[#3d5875]">%</span>
-              </div>
-              <button onClick={aplicarPct}
-                className="bg-[rgba(0,232,122,.1)] border border-[rgba(0,232,122,.3)] rounded-[8px] px-2.5 font-[var(--mono)] text-[10px] text-[#00e87a] cursor-pointer whitespace-nowrap hover:bg-[rgba(0,232,122,.15)] transition-colors">
-                Aplicar
-              </button>
-            </div>
-          </div>
+
         </div>
-        <p className="font-[var(--mono)] text-[10px] text-[#7a96b8]">{infoText}</p>
       </Card>
 
       {loading && <div className="mt-4"><Spinner /></div>}
