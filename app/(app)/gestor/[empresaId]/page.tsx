@@ -45,7 +45,7 @@ function InicioPane({ empresaId }: { empresaId: string }) {
         if (emp?.extensao_ate) setExtensaoAte(new Date(emp.extensao_ate))
       }
       setLoading(false)
-    })
+    }).catch(() => setLoading(false))
   }, [empresaId])
 
   async function liberarExtensao() {
