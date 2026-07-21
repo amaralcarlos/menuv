@@ -18,7 +18,6 @@ interface Produto {
   id: string
   nome: string
   descricao: string
-  preco_base: number
   tipo: string
   ativo: boolean
 }
@@ -35,7 +34,7 @@ export default function ProdutosPane({ restId }: { restId: string }) {
   const [editando,  setEditando]  = useState<Produto | null>(null)
   const [saving,    setSaving]    = useState(false)
 
-  const [form, setForm] = useState({ nome: '', descricao: '', preco_base: '', tipo: 'avulso' })
+  const [form, setForm] = useState({ nome: '', descricao: '', tipo: 'avulso' })
 
   function load() {
     call<any>(`/api/produtos?restauranteId=${restId}`).then(r => {
@@ -48,13 +47,13 @@ export default function ProdutosPane({ restId }: { restId: string }) {
 
   function abrirNovo() {
     setEditando(null)
-    setForm({ nome: '', descricao: '', preco_base: '', tipo: 'avulso' })
+    setForm({ nome: '', descricao: '', tipo: 'avulso' })
     setModal(true)
   }
 
   function abrirEditar(p: Produto) {
     setEditando(p)
-    setForm({ nome: p.nome, descricao: p.descricao ?? '', preco_base: String(p.preco_base), tipo: p.tipo })
+    setForm({ nome: p.nome, descricao: p.descricao ?? '', tipo: p.tipo })
     setModal(true)
   }
 
@@ -63,10 +62,9 @@ export default function ProdutosPane({ restId }: { restId: string }) {
     setSaving(true)
 
     const body = {
-      nome:       form.nome,
-      descricao:  form.descricao,
-      preco_base: parseFloat(form.preco_base) || 0,
-      tipo:       form.tipo,
+      nome:      form.nome,
+      descricao: form.descricao,
+      tipo:      form.tipo,
     }
 
     const r = editando
@@ -118,7 +116,6 @@ export default function ProdutosPane({ restId }: { restId: string }) {
             <div>
               <p className="text-sm text-[#ddeaf8] font-medium">{p.nome}</p>
               {p.descricao && <p className="font-[var(--mono)] text-[10px] text-[#3d5875] mt-0.5">{p.descricao}</p>}
-              <p className="font-[var(--mono)] text-xs text-[#00e87a] mt-1 font-bold">{BRL(p.preco_base)}</p>
             </div>
             <Badge color={TIPO_COR[p.tipo] ?? 'gray'}>{TIPO_LABEL[p.tipo] ?? p.tipo}</Badge>
           </div>
@@ -167,10 +164,6 @@ export default function ProdutosPane({ restId }: { restId: string }) {
           <Input label="Descrição (opcional)" value={form.descricao}
             onChange={e => setForm(f => ({ ...f, descricao: e.target.value }))}
             placeholder="Breve descrição do produto" />
-
-          <Input label="Preço base (R$)" type="number" step="0.01" value={form.preco_base}
-            onChange={e => setForm(f => ({ ...f, preco_base: e.target.value }))}
-            placeholder="0,00" />
 
           {!editando && (
             <div className="flex flex-col gap-1.5">
