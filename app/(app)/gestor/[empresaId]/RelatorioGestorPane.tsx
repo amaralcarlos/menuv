@@ -250,7 +250,6 @@ export default function RelatorioGestorPane({ empresaId }: { empresaId: string }
 
   const colabs    = detalhe ? [...detalhe.colaboradores].sort((a: any, b: any) => b.total - a.total) : []
   const temRateio = false
-  const pct = 0
 
   return (
     <div className="px-4 pt-4 pb-24">
@@ -359,7 +358,7 @@ export default function RelatorioGestorPane({ empresaId }: { empresaId: string }
                     i={i}
                     empresaId={empresaId}
                     mesAno={mesAno}
-                    pct={pct}
+                    pct={0}
                     temRateio={temRateio}
                   />
                 ))}
