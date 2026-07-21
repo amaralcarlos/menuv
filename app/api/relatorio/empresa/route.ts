@@ -76,14 +76,14 @@ export async function GET(req: NextRequest) {
   // Busca subsídios por produto da empresa
   const { data: empProdutos } = await sb
     .from('empresa_produtos')
-    .select('produto_id, preco, produto:produto_id(nome, preco_base)')
+    .select('produto_id, preco, subsidio, produto:produto_id(nome, preco_base)')
     .eq('empresa_id', empresaId) as any
 
   const subsidioMap: Record<string, { subsidio: number; preco: number; nome: string }> = {}
   ;(empProdutos ?? []).forEach((ep: any) => {
     subsidioMap[ep.produto_id] = {
-      subsidio: Number(ep.preco ?? 0),
-      preco:    Number(ep.produto?.preco_base ?? 0),
+      subsidio: Number(ep.subsidio ?? 0),
+      preco:    Number(ep.preco ?? ep.produto?.preco_base ?? 0),
       nome:     ep.produto?.nome ?? '',
     }
   })
