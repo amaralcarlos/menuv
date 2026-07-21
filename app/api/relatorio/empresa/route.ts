@@ -68,10 +68,25 @@ export async function GET(req: NextRequest) {
 
   const { data: pedidos } = await sb
     .from('pedidos')
-    .select('id, colaboradores(id, nome)')
+    .select('id, produto_id, colaboradores(id, nome)')
     .eq('empresa_id', empresaId)
     .gte('data_pedido', inicio)
     .lte('data_pedido', fim) as any
+
+  // Busca subsídios por produto da empresa
+  const { data: empProdutos } = await sb
+    .from('empresa_produtos')
+    .select('produto_id, preco, produto:produto_id(nome, preco_base)')
+    .eq('empresa_id', empresaId) as any
+
+  const subsidioMap: Record<string, { subsidio: number; preco: number; nome: string }> = {}
+  ;(empProdutos ?? []).forEach((ep: any) => {
+    subsidioMap[ep.produto_id] = {
+      subsidio: Number(ep.preco ?? 0),
+      preco:    Number(ep.produto?.preco_base ?? 0),
+      nome:     ep.produto?.nome ?? '',
+    }
+  })
 
   const { data: todosColabs } = await sb
     .from('colaboradores')
@@ -86,18 +101,47 @@ export async function GET(req: NextRequest) {
   })
 
   const preco = Number(emp.preco_por_refeicao)
-  const colaboradores = (todosColabs ?? []).map((c: any) => ({
-    id:    c.id,
-    nome:  c.nome,
-    total: cnt[c.nome] ?? 0,
-    valor: (cnt[c.nome] ?? 0) * preco,
-  }))
+
+  // Calcula por colaborador com subsídio por produto
+  const pedidosPorColab: Record<string, any[]> = {}
+  ;(pedidos ?? []).forEach((p: any) => {
+    const nome = p.colaboradores?.nome ?? 'Desconhecido'
+    if (!pedidosPorColab[nome]) pedidosPorColab[nome] = []
+    pedidosPorColab[nome].push(p)
+  })
+
+  const colaboradores = (todosColabs ?? []).map((c: any) => {
+    const peds = pedidosPorColab[c.nome] ?? []
+    let valorBruto   = 0
+    let valorSubsidio = 0
+    peds.forEach((p: any) => {
+      const info = p.produto_id ? subsidioMap[p.produto_id] : null
+      const precoProd = info?.preco ?? preco
+      const sub       = info?.subsidio ?? 0
+      valorBruto    += precoProd
+      valorSubsidio += sub
+    })
+    return {
+      id:           c.id,
+      nome:         c.nome,
+      total:        peds.length,
+      valorBruto,
+      valorSubsidio,
+      valorColab:   Math.max(0, valorBruto - valorSubsidio),
+    }
+  })
+
+  const totalBruto    = colaboradores.reduce((a: number, c: any) => a + c.valorBruto, 0)
+  const totalSubsidio = colaboradores.reduce((a: number, c: any) => a + c.valorSubsidio, 0)
+  const totalColab    = colaboradores.reduce((a: number, c: any) => a + c.valorColab, 0)
 
   return ok({
     empresaNome:   emp.nome,
     preco,
     totalPedidos:  (pedidos ?? []).length,
-    valorTotal:    (pedidos ?? []).length * preco,
+    valorTotal:    totalBruto,
+    totalSubsidio,
+    totalColab,
     colaboradores,
     mesAno,
     periodoLabel,
