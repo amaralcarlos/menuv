@@ -57,11 +57,18 @@ export async function PATCH(
 ) {
   const meta = await getAppMeta()
   if (!meta) return E.unauthorized()
-  if (meta.app_role !== 'restaurante' && meta.app_role !== 'admin') return E.forbidden()
 
   const { id: empresaId } = await params
+  const isGestorDaEmpresa = meta.app_role === 'colaborador' && meta.is_gestor && meta.empresa_id === empresaId
+  const isRestaurante     = meta.app_role === 'restaurante'
+  const isAdmin           = meta.app_role === 'admin'
+
+  if (!isGestorDaEmpresa && !isRestaurante && !isAdmin) return E.forbidden()
   const body = await req.json().catch(() => null)
   const { empresa_produto_id, preco, ativo, subsidio } = body ?? {}
+
+  // Gestor só pode atualizar subsídio
+  if (isGestorDaEmpresa && (preco !== undefined || ativo !== undefined)) return E.forbidden()
 
   if (!empresa_produto_id) return E.badRequest('empresa_produto_id é obrigatório.')
 
