@@ -142,7 +142,7 @@ export default function EmpresaProdutosManager({
             {ativo && ep && (
               <div className="flex items-center gap-2">
                 <label className="font-[var(--mono)] text-[9px] text-[#3d5875] uppercase whitespace-nowrap">
-                  Preço nesta empresa
+                  Subsídio da empresa (R$)
                 </label>
                 <input
                   type="number" step="0.01" min="0"
