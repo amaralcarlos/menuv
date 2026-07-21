@@ -206,6 +206,9 @@ export default function RelatorioGestorPane({ empresaId }: { empresaId: string }
   const [loading,      setLoading]      = useState(false)
   const [pctInput,     setPctInput]     = useState('0')
   const [pct,          setPct]          = useState(0)
+  const [subsidios,    setSubsidios]    = useState<Record<string,string>>({})
+  const [salvandoSub,  setSalvandoSub]  = useState<string|null>(null)
+  const [empProdutos,  setEmpProdutos]  = useState<any[]>([])
   const [emailModal,   setEmailModal]   = useState(false)
   const [emailDest,    setEmailDest]    = useState('')
   const [emailAssunto, setEmailAssunto] = useState('')
@@ -219,16 +222,38 @@ export default function RelatorioGestorPane({ empresaId }: { empresaId: string }
 
   async function buscar(mes: string) {
     setLoading(true)
-    const res = await call<any>(`/api/relatorio/empresa?empresaId=${empresaId}&mesAno=${mes}`)
+    const [relRes, prodRes] = await Promise.all([
+      call<any>(`/api/relatorio/empresa?empresaId=${empresaId}&mesAno=${mes}`),
+      call<any>(`/api/empresas/${empresaId}/produtos`),
+    ])
     setLoading(false)
-    if (res.success) {
-      setDetalhe(res.data)
-      setEmailDest(res.data.empresaEmail ?? '')
-      setEmailAssunto(`Relatório de Refeições · ${res.data.empresaNome} · ${mes}`)
-    } else toast(res.error, 'error')
+    if (relRes.success) {
+      setDetalhe(relRes.data)
+      setEmailDest(relRes.data.empresaEmail ?? '')
+      setEmailAssunto(`Relatório de Refeições · ${relRes.data.empresaNome} · ${mes}`)
+    } else toast(relRes.error, 'error')
+    if (prodRes.success) {
+      setEmpProdutos(prodRes.data.filter((ep: any) => ep.ativo))
+      const subMap: Record<string,string> = {}
+      prodRes.data.forEach((ep: any) => {
+        subMap[ep.produto.id] = String(ep.subsidio ?? 0)
+      })
+      setSubsidios(subMap)
+    }
   }
 
   useEffect(() => { buscar(mesAno) }, [empresaId])
+
+  async function salvarSubsidio(empProdutoId: string, produtoId: string) {
+    setSalvandoSub(produtoId)
+    const r = await call(`/api/empresas/${empresaId}/produtos`, {
+      method: 'PATCH',
+      body: JSON.stringify({ empresa_produto_id: empProdutoId, subsidio: parseFloat(subsidios[produtoId]) || 0 }),
+    })
+    setSalvandoSub(null)
+    if (r.success) toast('Subsídio salvo.')
+    else toast((r as any).error ?? 'Erro ao salvar.', 'error')
+  }
 
   function aplicarPct() {
     const v = Math.min(100, Math.max(0, parseInt(pctInput) || 0))
