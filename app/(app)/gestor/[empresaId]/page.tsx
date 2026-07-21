@@ -7,6 +7,7 @@ import { useToast } from '@/components/ui'
 import { AppShell } from '@/components/layout/AppShell'
 import { Card, SectionLabel, Badge, Btn, Modal, Input, Spinner } from '@/components/ui'
 import RelatorioGestorPane from './RelatorioGestorPane'
+import ProdutosGestorPane from './ProdutosGestorPane'
 import PedidoGestorPane from './PedidoGestorPane'
 import PedidosContent from '@/app/(app)/pedidos/PedidosContent'
 
