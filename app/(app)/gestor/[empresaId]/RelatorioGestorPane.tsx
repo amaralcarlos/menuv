@@ -41,9 +41,9 @@ function abrirPdf(detalhe: any, mesAno: string, pct: number) {
     .filter((c: any) => c.total > 0)
     .sort((a: any, b: any) => b.total - a.total)
     .map((c: any, i: number) => {
-      const total   = Number(c.valor).toFixed(2)
-      const empPaga = (c.valor * (1 - pct / 100)).toFixed(2)
-      const colPaga = (c.valor * (pct / 100)).toFixed(2)
+      const total   = Number(c.valorBruto ?? 0).toFixed(2)
+      const empPaga = (c.valorBruto * (1 - pct / 100)).toFixed(2)
+      const colPaga = (c.valorBruto * (pct / 100)).toFixed(2)
       return temRateio
         ? `<tr><td>${i+1}</td><td>${c.nome}</td><td>${c.total}</td><td>R$ ${total}</td><td style="color:#1a56db">R$ ${empPaga}</td><td style="color:#e02424;font-weight:bold">R$ ${colPaga}</td></tr>`
         : `<tr><td>${i+1}</td><td>${c.nome}</td><td>${c.total}</td><td>R$ ${total}</td></tr>`
@@ -156,11 +156,11 @@ function ColabRow({ c, i, empresaId, mesAno, pct, temRateio }: {
           {c.total > 0 ? c.total : '—'}
         </td>
         <td className="py-2 pr-2 text-right font-[var(--mono)] text-xs text-[#7a96b8]">
-          {c.total > 0 ? Number(c.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '—'}
+          {c.total > 0 ? Number(c.valorBruto ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '—'}
         </td>
         {temRateio && (
           <td className="py-2 text-right font-[var(--mono)] text-xs text-[#4da6ff] font-bold">
-            {c.total > 0 ? (c.valor * pct / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '—'}
+            {c.total > 0 ? (c.valorBruto * pct / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '—'}
           </td>
         )}
       </tr>
@@ -232,7 +232,7 @@ export default function RelatorioGestorPane({ empresaId }: { empresaId: string }
     const linhas = [...detalhe.colaboradores]
       .filter((c: any) => c.total > 0)
       .sort((a: any, b: any) => b.total - a.total)
-      .map((c: any, i: number) => `${i+1}. ${c.nome} — ${c.total} ref. — R$ ${Number(c.valor).toFixed(2)}`)
+      .map((c: any, i: number) => `${i+1}. ${c.nome} — ${c.total} ref. — R$ ${Number(c.valorBruto ?? 0).toFixed(2)}`)
       .join('\n')
 
     const relatorio = `=== RELATÓRIO DE REFEIÇÕES ===\n${detalhe.empresaNome} · ${nomeMes(mesAno)}\n\nTOTAL DE REFEIÇÕES: ${detalhe.totalPedidos}\nVALOR TOTAL: R$ ${Number(detalhe.valorTotal).toFixed(2)}\n(R$ ${Number(detalhe.preco).toFixed(2)} por refeição)\n\n--- POR COLABORADOR ---\n${linhas}`
