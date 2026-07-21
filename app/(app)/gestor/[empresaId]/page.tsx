@@ -333,6 +333,7 @@ export default function GestorEmpresaPage() {
     { id: 'inicio',        label: 'Início',       icon: 'home'      as const, component: <InicioPane empresaId={empresaId} /> },
     { id: 'pedido',        label: 'Pedido',        icon: 'pedido'    as const, component: <PedidosContent /> },
     { id: 'colaboradores', label: 'Colaboradores', icon: 'colabs'    as const, component: <ColabsPane empresaId={empresaId} /> },
+    { id: 'produtos',      label: 'Produtos',      icon: 'grade'     as const, component: <ProdutosGestorPane  empresaId={empresaId} /> },
     { id: 'relatorio',     label: 'Relatório',     icon: 'relatorio' as const, component: <RelatorioGestorPane empresaId={empresaId} /> },
   ]
 
