@@ -245,6 +245,7 @@ function DashboardPane() {
   const [saving,       setSaving]       = useState(false)
   const [acting,       setActing]       = useState('')
   const [expandedRest,    setExpandedRest]    = useState<string | null>(null)
+  const [drawer,           setDrawer]           = useState<'restaurantes'|'empresas'|'colaboradores'|null>(null)
   const [vencModal,        setVencModal]        = useState<any>(null)
   const [vencForm,         setVencForm]         = useState({ dia: '30', inicio: '', meses: '12', valor: '' })
   const [vencSaving,       setVencSaving]       = useState(false)
@@ -334,20 +335,70 @@ function DashboardPane() {
   return (
     <div className="px-4 pt-4 pb-24">
 
-      {/* Totais */}
+      {/* Totais — clicáveis */}
       <div className="grid grid-cols-2 gap-2 mb-4">
         {[
-          { label: 'Restaurantes',  value: dados?.totais?.restaurantes ?? 0, color: 'text-[#00e87a]' },
-          { label: 'Empresas',      value: dados?.totais?.empresas     ?? 0, color: 'text-[#4da6ff]' },
-          { label: 'Colaboradores', value: dados?.totais?.colaboradores ?? 0, color: 'text-[#a259ff]' },
-          { label: 'Pedidos/mês',   value: dados?.totais?.pedidosMes   ?? 0, color: 'text-[#ffb340]' },
+          { label: 'Restaurantes',  value: dados?.totais?.restaurantes ?? 0, color: 'text-[#00e87a]', key: 'restaurantes' },
+          { label: 'Empresas',      value: dados?.totais?.empresas     ?? 0, color: 'text-[#4da6ff]', key: 'empresas' },
+          { label: 'Colaboradores', value: dados?.totais?.colaboradores ?? 0, color: 'text-[#a259ff]', key: 'colaboradores' },
+          { label: 'Pedidos/mês',   value: dados?.totais?.pedidosMes   ?? 0, color: 'text-[#ffb340]', key: null },
         ].map(s => (
-          <div key={s.label} className="bg-[#0d1525] border border-[#1c2e48] rounded-[11px] p-3 text-center">
+          <button key={s.label}
+            onClick={() => s.key && setDrawer(s.key as any)}
+            className={`bg-[#0d1525] border border-[#1c2e48] rounded-[11px] p-3 text-center transition-all w-full
+              ${s.key ? 'cursor-pointer hover:border-[rgba(0,232,122,.25)] hover:bg-[rgba(0,232,122,.03)]' : 'cursor-default'}`}>
             <div className={`text-2xl font-black font-[var(--mono)] ${s.color}`}>{s.value}</div>
-            <div className="font-[var(--mono)] text-[10px] tracking-[1px] text-[#3d5875] uppercase mt-0.5">{s.label}</div>
-          </div>
+            <div className="font-[var(--mono)] text-[10px] tracking-[1px] text-[#3d5875] uppercase mt-0.5">
+              {s.label} {s.key && <span className="text-[#1c2e48]">›</span>}
+            </div>
+          </button>
         ))}
       </div>
+
+      {/* Drawer */}
+      {drawer && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={() => setDrawer(null)}>
+          <div className="absolute inset-0 bg-black/60" />
+          <div className="relative w-full max-w-[480px] bg-[#0d1525] border-t border-[#1c2e48] rounded-t-[20px] max-h-[70vh] overflow-y-auto"
+            onClick={e => e.stopPropagation()}>
+            <div className="sticky top-0 bg-[#0d1525] px-4 py-3 border-b border-[#1c2e48] flex items-center justify-between">
+              <p className="font-bold text-[#ddeaf8] capitalize">{drawer}</p>
+              <button onClick={() => setDrawer(null)} className="text-[#3d5875] hover:text-[#ddeaf8] text-xl bg-transparent border-none cursor-pointer">×</button>
+            </div>
+            <div className="p-3 flex flex-col gap-2">
+
+              {/* Restaurantes */}
+              {drawer === 'restaurantes' && (dados?.restaurantes ?? []).map((r: any) => (
+                <button key={r.id}
+                  onClick={() => { window.location.href = `/dashboard?restId=${r.id}`; setDrawer(null) }}
+                  className="w-full text-left bg-[#080c14] border border-[#1c2e48] rounded-[11px] px-3 py-2.5 hover:border-[rgba(0,232,122,.3)] transition-all cursor-pointer">
+                  <p className="text-sm text-[#ddeaf8] font-medium">{r.nome}</p>
+                  <p className="font-[var(--mono)] text-[10px] text-[#3d5875]">{r.numEmpresas} emp · {r.numColabs} colabs</p>
+                </button>
+              ))}
+
+              {/* Empresas */}
+              {drawer === 'empresas' && (dados?.restaurantes ?? []).flatMap((r: any) =>
+                (r.empresas ?? []).map((e: any) => (
+                  <button key={e.id}
+                    onClick={() => { window.location.href = `/gestor/${e.id}`; setDrawer(null) }}
+                    className="w-full text-left bg-[#080c14] border border-[#1c2e48] rounded-[11px] px-3 py-2.5 hover:border-[rgba(0,232,122,.3)] transition-all cursor-pointer">
+                    <p className="text-sm text-[#ddeaf8] font-medium">{e.nome}</p>
+                    <p className="font-[var(--mono)] text-[10px] text-[#3d5875]">{r.nome}</p>
+                  </button>
+                ))
+              )}
+
+              {/* Colaboradores */}
+              {drawer === 'colaboradores' && (
+                <p className="font-[var(--mono)] text-xs text-[#3d5875] text-center py-4">
+                  Acesse uma empresa específica para ver os colaboradores.
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="flex items-center justify-between mb-2">
         <SectionLabel>Restaurantes</SectionLabel>
