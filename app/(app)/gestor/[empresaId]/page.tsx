@@ -87,6 +87,58 @@ function InicioPane({ empresaId }: { empresaId: string }) {
     }
   }
 
+  function gerarRelatorio(dia: string, pedidos: any[]) {
+    const hoje = new Date().toLocaleDateString('pt-BR')
+    const [dd, mm, yyyy] = dia.split('/')
+    const dataFmt = `${dd}/${mm}/${yyyy}`
+    const DIAS_PT = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']
+    const nomeDia = DIAS_PT[new Date(`${yyyy}-${mm}-${dd}`).getDay()]
+
+    const linhas = pedidos.map((p: any, i: number) => {
+      const itens = (p.pedido_itens?.map((it: any) => it.item) ?? p.itens ?? []).join(', ')
+      return `
+        <tr>
+          <td style="padding:10px 12px;border-bottom:1px solid #eee;font-size:13px">${i+1}</td>
+          <td style="padding:10px 12px;border-bottom:1px solid #eee;font-size:13px;font-weight:600">${p.colaboradorNome ?? '—'}</td>
+          <td style="padding:10px 12px;border-bottom:1px solid #eee;font-size:12px;color:#555">${itens}</td>
+          <td style="padding:10px 12px;border-bottom:1px solid #eee;width:160px">
+            <div style="border-bottom:1px solid #999;height:32px;margin-top:4px"></div>
+          </td>
+        </tr>`
+    }).join('')
+
+    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+    <title>Lista de Assinaturas — ${dataFmt}</title>
+    <style>
+      body { font-family: Arial, sans-serif; padding: 32px; color: #111; }
+      h1 { font-size: 20px; margin-bottom: 4px; }
+      .sub { font-size: 13px; color: #666; margin-bottom: 24px; }
+      table { width: 100%; border-collapse: collapse; }
+      th { background: #f5f5f5; text-align: left; padding: 10px 12px; font-size: 12px; color: #444; border-bottom: 2px solid #ddd; }
+      .footer { margin-top: 40px; font-size: 11px; color: #999; text-align: center; }
+      .btn-print { background: #1a56db; color: white; border: none; padding: 10px 24px; border-radius: 6px; cursor: pointer; font-size: 14px; margin-bottom: 24px; }
+      @media print { .btn-print { display: none; } }
+    </style></head><body>
+    <button class="btn-print" onclick="window.print()">🖨️ Imprimir / Salvar PDF</button>
+    <h1>Lista de Assinaturas</h1>
+    <div class="sub">${empresa?.nome ?? ''} · ${nomeDia}, ${dataFmt} · ${pedidos.length} refeição(ões)</div>
+    <table>
+      <thead><tr>
+        <th style="width:32px">#</th>
+        <th>Colaborador</th>
+        <th>Pedido</th>
+        <th style="width:160px">Assinatura</th>
+      </tr></thead>
+      <tbody>${linhas}</tbody>
+    </table>
+    <div class="footer">Gerado em ${hoje} · Menuv — Gestão de Refeições</div>
+    </body></html>`
+
+    const w = window.open('', '_blank')
+    w?.document.write(html)
+    w?.document.close()
+  }
+
   // Lógica de horário
   const horarioLimite = empresa?.horario_limite ?? '09:30'
   const [hlH, hlM] = horarioLimite.split(':').map(Number)
@@ -172,6 +224,15 @@ function InicioPane({ empresaId }: { empresaId: string }) {
           })
         })()}
       </div>
+
+      {/* Botão relatório + lista */}
+      {(pedidosSemana[diaSel] ?? []).length > 0 && (
+        <button
+          onClick={() => gerarRelatorio(diaSel, pedidosSemana[diaSel] ?? [])}
+          className="w-full mb-3 py-2.5 rounded-[11px] border border-[rgba(77,166,255,.3)] bg-[rgba(77,166,255,.05)] font-[var(--mono)] text-[11px] text-[#4da6ff] cursor-pointer hover:bg-[rgba(77,166,255,.1)] transition-colors">
+          🖨️ Gerar lista de assinaturas
+        </button>
+      )}
 
       {/* Lista de pedidos do dia selecionado */}
       {(pedidosSemana[diaSel] ?? []).length > 0 ? (
