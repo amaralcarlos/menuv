@@ -360,14 +360,29 @@ function ColabsPane({ empresaId }: { empresaId: string }) {
 
 /* ── Main ────────────────────────────────────────────────── */
 export default function GestorEmpresaPage() {
-  const params    = useParams()
-  const { meta }  = useAuth()
-  const empresaId = params.empresaId as string
-  const isAdmin   = meta?.app_role === 'admin'
+  const params       = useParams()
+  const { meta }     = useAuth()
+  const { call }     = useApi()
+  const empresaId    = params.empresaId as string
+  const isAdmin      = meta?.app_role === 'admin'
+  const isRestaurante = meta?.app_role === 'restaurante'
+  const [gestorColabId, setGestorColabId] = useState<string | undefined>(undefined)
+
+  useEffect(() => {
+    // Para admin/restaurante: busca o colaborador gestor da empresa
+    if (isAdmin || isRestaurante) {
+      call<any[]>(`/api/colaboradores?empresaId=${empresaId}`).then(r => {
+        if (r.success) {
+          const gestor = r.data.find((c: any) => c.is_gestor)
+          if (gestor) setGestorColabId(gestor.id)
+        }
+      })
+    }
+  }, [empresaId])
 
   const tabs = [
-    { id: 'inicio',        label: 'Início',       icon: 'home'      as const, component: <InicioPane empresaId={empresaId} /> },
-    { id: 'pedido',        label: 'Meu Pedido',    icon: 'pedido'    as const, component: <PedidosContent empresaIdOverride={empresaId} /> },
+    { id: 'inicio',        label: 'Início',        icon: 'home'      as const, component: <InicioPane empresaId={empresaId} /> },
+    ...(!isAdmin ? [{ id: 'pedido', label: 'Meu Pedido', icon: 'pedido' as const, component: <PedidosContent /> }] : []),
     { id: 'colaboradores', label: 'Colaboradores', icon: 'colabs'    as const, component: <ColabsPane empresaId={empresaId} /> },
     { id: 'produtos',      label: 'Produtos',      icon: 'grade'     as const, component: <ProdutosGestorPane  empresaId={empresaId} /> },
     { id: 'relatorio',     label: 'Relatório',     icon: 'relatorio' as const, component: <RelatorioGestorPane empresaId={empresaId} /> },
