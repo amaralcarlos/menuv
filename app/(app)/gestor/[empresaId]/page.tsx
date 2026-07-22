@@ -94,7 +94,8 @@ function InicioPane({ empresaId }: { empresaId: string }) {
     const DIAS_PT = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']
     const nomeDia = DIAS_PT[new Date(`${yyyy}-${mm}-${dd}`).getDay()]
 
-    const linhas = pedidos.map((p: any, i: number) => {
+    const pedidosOrdenados = [...pedidos].sort((a, b) => (a.colaboradorNome ?? '').localeCompare(b.colaboradorNome ?? '', 'pt-BR'))
+    const linhas = pedidosOrdenados.map((p: any, i: number) => {
       const itens = (p.pedido_itens?.map((it: any) => it.item) ?? p.itens ?? []).join(', ')
       return `
         <tr>
