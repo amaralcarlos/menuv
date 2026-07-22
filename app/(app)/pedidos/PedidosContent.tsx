@@ -707,7 +707,11 @@ function PedidosContent({ empresaIdOverride }: { empresaIdOverride?: string } = 
       const pedRes = await call<any[]>(`/api/pedidos?empresaId=${empId}&dataInicio=${res.data[0].data}&dataFim=${res.data[res.data.length-1].data}${colabFilter}`)
       const pedMap: Record<string, any[]> = {}
       if (pedRes.success) {
-        pedRes.data.forEach((p: any) => {
+        // Se colaborador (gestor ou não), filtra só os próprios pedidos
+        const meusPedidos = colabId
+          ? pedRes.data.filter((p: any) => p.colaborador_id === colabId || p.colaboradorId === colabId)
+          : pedRes.data
+        meusPedidos.forEach((p: any) => {
           const raw   = p.data_pedido ?? p.data ?? ''
           const parts = raw.split('-')
           const key   = parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : raw
