@@ -372,11 +372,11 @@ export default function GestorEmpresaPage() {
     // Para admin/restaurante: busca o colaborador gestor da empresa
     if (isAdmin || isRestaurante) {
       call<any[]>(`/api/colaboradores?empresaId=${empresaId}`).then(r => {
-        if (r.success) {
-          const gestor = r.data.find((c: any) => c.is_gestor)
-          if (gestor) setGestorColabId(gestor.id)
-        }
-      })
+        const gestor = r.success ? r.data.find((c: any) => c.is_gestor) : null
+        setGestorColabId(gestor?.id ?? '')  // '' = sem gestor, renderiza sem filtro
+      }).catch(() => setGestorColabId(''))
+    } else {
+      setGestorColabId(meta?.colaborador_id ?? '')
     }
   }, [empresaId])
 
