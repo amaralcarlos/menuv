@@ -8,8 +8,8 @@ export async function GET() {
     { auth: { autoRefreshToken: false, persistSession: false } }
   )
 
-  const { error } = await admin.auth.admin.updateUserById(
-    '7026feaf-db9f-4418-ab54-32154252aba5',
+const { error } = await admin.auth.admin.updateUserById(
+    '2a892844-7875-4389-b88c-6d0242bd1b81',
     {
       app_metadata: {
         app_role:       'colaborador',
@@ -22,3 +22,5 @@ export async function GET() {
 
   return NextResponse.json({ ok: !error, error: error?.message })
 }
+
+
