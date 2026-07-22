@@ -57,8 +57,12 @@ if (meta?.app_role === 'colaborador') {
       if (!emp || emp.restaurante_id !== meta?.restaurante_id) return E.forbidden()
     }
     query = query.eq('empresa_id', empresaId)
-    // Filtro adicional por colaborador (para gestor ver só os seus)
-    if (colabFilter) query = query.eq('colaborador_id', colabFilter)
+    // Gestor vê só os próprios pedidos; admin/restaurante vê todos
+    if (colabFilter) {
+      query = query.eq('colaborador_id', colabFilter)
+    } else if (meta?.app_role === 'colaborador' && meta?.is_gestor && meta?.colaborador_id) {
+      query = query.eq('colaborador_id', meta.colaborador_id)
+    }
   } else if (restId || meta?.app_role === 'restaurante' || meta?.app_role === 'rest_usuario') {
     const rid = restId ?? meta?.restaurante_id
     const { data: emps } = await sb.from('empresas')
