@@ -98,40 +98,98 @@ function InicioPane({ empresaId }: { empresaId: string }) {
       const itens = (p.pedido_itens?.map((it: any) => it.item) ?? p.itens ?? []).join(', ')
       return `
         <tr>
-          <td style="padding:10px 12px;border-bottom:1px solid #eee;font-size:13px">${i+1}</td>
-          <td style="padding:10px 12px;border-bottom:1px solid #eee;font-size:13px;font-weight:600">${p.colaboradorNome ?? '—'}</td>
-          <td style="padding:10px 12px;border-bottom:1px solid #eee;font-size:12px;color:#555">${itens}</td>
-          <td style="padding:10px 12px;border-bottom:1px solid #eee;width:160px">
-            <div style="border-bottom:1px solid #999;height:32px;margin-top:4px"></div>
-          </td>
+          <td class="td-num">${i+1}</td>
+          <td class="td-nome">${p.colaboradorNome ?? '—'}</td>
+          <td class="td-pedido">${itens}</td>
+          <td class="td-ass"><div class="ass-line"></div></td>
         </tr>`
     }).join('')
 
     const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
     <title>Lista de Assinaturas — ${dataFmt}</title>
     <style>
-      body { font-family: Arial, sans-serif; padding: 32px; color: #111; }
-      h1 { font-size: 20px; margin-bottom: 4px; }
-      .sub { font-size: 13px; color: #666; margin-bottom: 24px; }
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body { font-family: 'Helvetica Neue', Arial, sans-serif; padding: 36px 40px; color: #111; background: #fff; }
+      .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 2px solid #eee; }
+      .header-left { display: flex; align-items: center; gap: 14px; }
+      .logo { width: 44px; height: 44px; border-radius: 10px; background: #0d1525; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+      .logo img { width: 28px; height: 28px; }
+      .brand { font-size: 22px; font-weight: 900; color: #111; letter-spacing: -0.5px; }
+      .brand span { color: #00994d; }
+      .header-right { text-align: right; }
+      .doc-title { font-size: 13px; font-weight: 700; color: #111; text-transform: uppercase; letter-spacing: 1px; }
+      .doc-sub { font-size: 11px; color: #888; margin-top: 2px; }
+      .info-bar { display: flex; gap: 24px; background: #f7f8fa; border-radius: 8px; padding: 12px 16px; margin-bottom: 20px; }
+      .info-item { display: flex; flex-direction: column; gap: 2px; }
+      .info-label { font-size: 9px; text-transform: uppercase; letter-spacing: 1px; color: #999; font-weight: 600; }
+      .info-value { font-size: 13px; font-weight: 700; color: #111; }
       table { width: 100%; border-collapse: collapse; }
-      th { background: #f5f5f5; text-align: left; padding: 10px 12px; font-size: 12px; color: #444; border-bottom: 2px solid #ddd; }
-      .footer { margin-top: 40px; font-size: 11px; color: #999; text-align: center; }
-      .btn-print { background: #1a56db; color: white; border: none; padding: 10px 24px; border-radius: 6px; cursor: pointer; font-size: 14px; margin-bottom: 24px; }
-      @media print { .btn-print { display: none; } }
+      thead tr { background: #111; }
+      thead th { color: #fff; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; padding: 9px 10px; text-align: left; }
+      tbody tr:nth-child(even) { background: #fafafa; }
+      tbody tr { border-bottom: 1px solid #eee; }
+      td { padding: 11px 10px; vertical-align: middle; }
+      .td-num { width: 28px; font-size: 11px; color: #999; font-weight: 600; }
+      .td-nome { width: 22%; font-size: 13px; font-weight: 700; color: #111; white-space: nowrap; }
+      .td-pedido { font-size: 11px; color: #555; }
+      .td-ass { width: 38%; padding-right: 16px; }
+      .ass-line { border-bottom: 1.5px solid #bbb; height: 28px; width: 100%; }
+      .footer { margin-top: 32px; display: flex; align-items: center; justify-content: space-between; padding-top: 12px; border-top: 1px solid #eee; }
+      .footer-left { font-size: 10px; color: #bbb; }
+      .footer-right { font-size: 10px; color: #bbb; }
+      .btn-print { background: #111; color: white; border: none; padding: 10px 24px; border-radius: 6px; cursor: pointer; font-size: 13px; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
+      .btn-print:hover { background: #333; }
+      @media print { .btn-print { display: none; } body { padding: 20px 24px; } }
     </style></head><body>
+
     <button class="btn-print" onclick="window.print()">🖨️ Imprimir / Salvar PDF</button>
-    <h1>Lista de Assinaturas</h1>
-    <div class="sub">${empresa?.nome ?? ''} · ${nomeDia}, ${dataFmt} · ${pedidos.length} refeição(ões)</div>
+
+    <div class="header">
+      <div class="header-left">
+        <div class="logo">
+          <img src="https://app.menuv.com.br/favicon.svg" alt="Menuv" />
+        </div>
+        <div>
+          <div class="brand">Menu<span>v</span></div>
+          <div style="font-size:10px;color:#888;margin-top:1px">Gestão de Refeições</div>
+        </div>
+      </div>
+      <div class="header-right">
+        <div class="doc-title">Lista de Assinaturas</div>
+        <div class="doc-sub">Documento gerado em ${hoje}</div>
+      </div>
+    </div>
+
+    <div class="info-bar">
+      <div class="info-item">
+        <span class="info-label">Empresa</span>
+        <span class="info-value">${empresa?.nome ?? '—'}</span>
+      </div>
+      <div class="info-item">
+        <span class="info-label">Data</span>
+        <span class="info-value">${nomeDia}, ${dataFmt}</span>
+      </div>
+      <div class="info-item">
+        <span class="info-label">Total</span>
+        <span class="info-value">${pedidos.length} refeição(ões)</span>
+      </div>
+    </div>
+
     <table>
       <thead><tr>
-        <th style="width:32px">#</th>
-        <th>Colaborador</th>
+        <th class="td-num">#</th>
+        <th style="width:22%">Colaborador</th>
         <th>Pedido</th>
-        <th style="width:160px">Assinatura</th>
+        <th style="width:38%">Assinatura</th>
       </tr></thead>
       <tbody>${linhas}</tbody>
     </table>
-    <div class="footer">Gerado em ${hoje} · Menuv — Gestão de Refeições</div>
+
+    <div class="footer">
+      <div class="footer-left">Menuv · app.menuv.com.br</div>
+      <div class="footer-right">${empresa?.nome ?? ''} · ${dataFmt}</div>
+    </div>
+
     </body></html>`
 
     const w = window.open('', '_blank')
