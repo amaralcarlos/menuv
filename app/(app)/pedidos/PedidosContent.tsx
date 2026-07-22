@@ -670,7 +670,7 @@ function OrderForm({ dia, colabId, empId, restId, onSaved }: {
 
 /* ── Main pedidos page ───────────────────────────────────── */
 
-function PedidosContent({ empresaIdOverride }: { empresaIdOverride?: string } = {}) {
+function PedidosContent({ empresaIdOverride, colabIdOverride }: { empresaIdOverride?: string; colabIdOverride?: string } = {}) {
   const { meta }  = useAuth()
   const { call }  = useApi()
   const [semana,       setSemana]       = useState<any[]>([])
@@ -682,7 +682,7 @@ function PedidosContent({ empresaIdOverride }: { empresaIdOverride?: string } = 
   const [loading,      setLoading]      = useState(true)
   const [selectedDate, setSelectedDate] = useState('')
 
-  const colabId = meta?.colaborador_id ?? ''
+  const colabId = colabIdOverride ?? meta?.colaborador_id ?? ''
   const empId   = empresaIdOverride ?? meta?.empresa_id ?? ''
 
   async function load() {
