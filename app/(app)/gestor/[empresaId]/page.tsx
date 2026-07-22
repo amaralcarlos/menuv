@@ -382,7 +382,11 @@ export default function GestorEmpresaPage() {
 
   const tabs = [
     { id: 'inicio',        label: 'Início',        icon: 'home'      as const, component: <InicioPane empresaId={empresaId} /> },
-    ...(!isAdmin ? [{ id: 'pedido', label: 'Meu Pedido', icon: 'pedido' as const, component: <PedidosContent /> }] : []),
+    { id: 'pedido',        label: 'Meu Pedido',    icon: 'pedido'    as const,
+      component: gestorColabId === null
+        ? <div className="flex justify-center py-12"><Spinner /></div>
+        : <PedidosContent empresaIdOverride={empresaId} colabIdOverride={gestorColabId || undefined} />
+    },
     { id: 'colaboradores', label: 'Colaboradores', icon: 'colabs'    as const, component: <ColabsPane empresaId={empresaId} /> },
     { id: 'produtos',      label: 'Produtos',      icon: 'grade'     as const, component: <ProdutosGestorPane  empresaId={empresaId} /> },
     { id: 'relatorio',     label: 'Relatório',     icon: 'relatorio' as const, component: <RelatorioGestorPane empresaId={empresaId} /> },
