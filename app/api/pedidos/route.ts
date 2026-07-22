@@ -17,6 +17,7 @@ export async function GET(req: NextRequest) {
   const dataFimParam = req.nextUrl.searchParams.get('dataFim')
   const empresaId  = req.nextUrl.searchParams.get('empresaId')
   const restId     = req.nextUrl.searchParams.get('restauranteId')
+  const colabFilter = req.nextUrl.searchParams.get('colaboradorId')
 
   let query = sb.from('pedidos')
     .select('id, data_pedido, obs, status, criado_em, colaborador_id, produto_id, colaboradores(id,nome), empresas(id,nome), pedido_itens(item,ordem)')
@@ -56,6 +57,8 @@ if (meta?.app_role === 'colaborador') {
       if (!emp || emp.restaurante_id !== meta?.restaurante_id) return E.forbidden()
     }
     query = query.eq('empresa_id', empresaId)
+    // Filtro adicional por colaborador (para gestor ver só os seus)
+    if (colabFilter) query = query.eq('colaborador_id', colabFilter)
   } else if (restId || meta?.app_role === 'restaurante' || meta?.app_role === 'rest_usuario') {
     const rid = restId ?? meta?.restaurante_id
     const { data: emps } = await sb.from('empresas')
