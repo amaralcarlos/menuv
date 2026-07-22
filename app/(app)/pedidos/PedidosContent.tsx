@@ -709,8 +709,10 @@ function PedidosContent({ empresaIdOverride, colabIdOverride }: { empresaIdOverr
       if (pedRes.success) {
         // Se colaborador (gestor ou não), filtra só os próprios pedidos
         const meusPedidos = colabId
-          ? pedRes.data.filter((p: any) => p.colaborador_id === colabId || p.colaboradorId === colabId)
-          : pedRes.data
+          ? pedRes.data.filter((p: any) =>
+              p.colaborador_id === colabId ||
+              p.colaboradorId  === colabId)
+          : pedRes.data  // sem filtro quando admin/restaurante sem colabId
         meusPedidos.forEach((p: any) => {
           const raw   = p.data_pedido ?? p.data ?? ''
           const parts = raw.split('-')
