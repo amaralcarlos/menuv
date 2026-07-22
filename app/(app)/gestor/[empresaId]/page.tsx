@@ -16,10 +16,10 @@ function InicioPane({ empresaId }: { empresaId: string }) {
   const { call } = useApi()
   const toast    = useToast()
   const [colabs,        setColabs]        = useState<any[]>([])
-  const [pedidos,       setPedidos]       = useState<any[]>([])
+  const [pedidosSemana, setPedidosSemana] = useState<Record<string, any[]>>({})
   const [empresa,       setEmpresa]       = useState<any>(null)
   const [loading,       setLoading]       = useState(true)
-  const [expandPedidos, setExpandPedidos] = useState(false)
+  const [diaSel,        setDiaSel]        = useState('')
   const [extLoading,    setExtLoading]    = useState(false)
   const [extensaoAte,   setExtensaoAte]   = useState<Date | null>(null)
   const [agora,         setAgora]         = useState(new Date())
@@ -29,24 +29,51 @@ function InicioPane({ empresaId }: { empresaId: string }) {
     return () => clearInterval(id)
   }, [])
 
-  useEffect(() => {
-    const hoje    = new Date()
-    const dataStr = `${String(hoje.getDate()).padStart(2,'0')}/${String(hoje.getMonth()+1).padStart(2,'0')}/${hoje.getFullYear()}`
-    Promise.all([
-      call<any[]>(`/api/colaboradores?empresaId=${empresaId}`),
-      call<any[]>(`/api/pedidos?empresaId=${empresaId}&data=${dataStr}`),
-      call<any>(`/api/empresas/${empresaId}`),
-    ]).then(([colabsRes, pedidosRes, empRes]) => {
+  useEffect(() => { load() }, [empresaId])
+
+  async function load() {
+    const hoje = new Date()
+    // Calcula seg-sex da semana atual
+    const diaSemana = hoje.getDay() === 0 ? 6 : hoje.getDay() - 1 // 0=seg
+    const seg = new Date(hoje); seg.setDate(hoje.getDate() - diaSemana)
+    const sex = new Date(seg);  sex.setDate(seg.getDate() + 4)
+    const fmt = (d: Date) => `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`
+    const fmtISO = (d: Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+
+    // Seleciona hoje por padrão
+    const hojeStr = fmt(hoje)
+    setDiaSel(hojeStr)
+
+    try {
+      const [colabsRes, pedidosRes, empRes] = await Promise.all([
+        call<any[]>(`/api/colaboradores?empresaId=${empresaId}`),
+        call<any[]>(`/api/pedidos?empresaId=${empresaId}&dataInicio=${fmt(seg)}&dataFim=${fmt(sex)}`),
+        call<any>(`/api/empresas/${empresaId}`),
+      ])
       setColabs(colabsRes.success ? colabsRes.data : [])
-      setPedidos(pedidosRes.success ? pedidosRes.data : [])
+      if (pedidosRes.success) {
+        // Agrupa por data
+        const map: Record<string, any[]> = {}
+        pedidosRes.data.forEach((p: any) => {
+          const raw = p.data_pedido ?? p.data ?? ''
+          const parts = raw.split('-')
+          const key = parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : raw
+          if (!map[key]) map[key] = []
+          map[key].push(p)
+        })
+        setPedidosSemana(map)
+      }
       if (empRes.success) {
         const emp = empRes.data?.[0] ?? empRes.data
         setEmpresa(emp)
         if (emp?.extensao_ate) setExtensaoAte(new Date(emp.extensao_ate))
       }
+    } catch(e) {
+      console.error('InicioPane load error:', e)
+    } finally {
       setLoading(false)
-    }).catch(() => setLoading(false))
-  }, [empresaId])
+    }
+  }
 
   async function liberarExtensao() {
     setExtLoading(true)
@@ -112,56 +139,65 @@ function InicioPane({ empresaId }: { empresaId: string }) {
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-2.5 mb-4">
-        <div className="bg-[#0d1525] border border-[#1c2e48] rounded-[11px] p-3 text-center">
-          <div className="text-2xl font-black font-[var(--mono)] text-[#00e87a]">{colabs.length}</div>
-          <div className="font-[var(--mono)] text-[10px] tracking-[1px] text-[#3d5875] uppercase mt-0.5">Colaboradores</div>
-        </div>
-        <button
-          onClick={() => pedidos.length > 0 && setExpandPedidos(e => !e)}
-          className={`bg-[#0d1525] border rounded-[11px] p-3 text-center transition-all
-            ${pedidos.length > 0 ? 'cursor-pointer hover:border-[rgba(77,166,255,.3)]' : 'cursor-default'}
-            ${expandPedidos ? 'border-[rgba(77,166,255,.4)]' : 'border-[#1c2e48]'}`}>
-          <div className="text-2xl font-black font-[var(--mono)] text-[#4da6ff]">{pedidos.length}</div>
-          <div className="font-[var(--mono)] text-[10px] tracking-[1px] text-[#3d5875] uppercase mt-0.5">
-            Pedidos hoje {pedidos.length > 0 && <span className="text-[#4da6ff]">{expandPedidos ? '▲' : '▼'}</span>}
-          </div>
-        </button>
+      {/* Card colaboradores */}
+      <div className="bg-[#0d1525] border border-[#1c2e48] rounded-[11px] p-3 text-center mb-4">
+        <div className="text-2xl font-black font-[var(--mono)] text-[#00e87a]">{colabs.length}</div>
+        <div className="font-[var(--mono)] text-[10px] tracking-[1px] text-[#3d5875] uppercase mt-0.5">Colaboradores</div>
       </div>
 
-      {expandPedidos && pedidos.length > 0 && (
-        <div className="mb-4">
-          <p className="font-[var(--mono)] text-[10px] text-[#3d5875] uppercase tracking-[1px] mb-2">
-            Pedidos de hoje
-          </p>
-          <div className="flex flex-col gap-2">
-            {pedidos.map((p: any) => (
-              <div key={p.id} className="bg-[#0d1525] border border-[#1c2e48] rounded-[8px] px-3 py-2.5">
-                <div className="flex items-center justify-between mb-1">
-                  <p className="font-semibold text-sm text-[#ddeaf8]">{p.colaboradorNome}</p>
-                  <Badge color={
-                    p.status === 'despachado' || p.status === 'confirmado' ? 'green' :
-                    p.status === 'separado' ? 'blue' : 'gray'
-                  }>
-                    {p.status === 'despachado' ? 'Despachado' :
-                     p.status === 'confirmado' ? 'Confirmado' :
-                     p.status === 'separado'   ? 'Separado'   : 'Em aberto'}
-                  </Badge>
-                </div>
-                {p.itens?.length > 0 && (
-                  <p className="font-[var(--mono)] text-[10px] text-[#7a96b8]">
-                    {p.itens.join(', ')}
-                  </p>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* Pedidos da semana */}
+      <p className="font-[var(--mono)] text-[10px] text-[#3d5875] uppercase tracking-[1px] mb-2">Pedidos da semana</p>
 
-      {pedidos.length === 0 && (
+      {/* Seletor de dias */}
+      <div className="flex gap-1.5 mb-3 overflow-x-auto pb-1">
+        {(() => {
+          const hoje = new Date()
+          const diaSemana = hoje.getDay() === 0 ? 6 : hoje.getDay() - 1
+          const seg = new Date(hoje); seg.setDate(hoje.getDate() - diaSemana)
+          const DIAS = ['Seg','Ter','Qua','Qui','Sex']
+          return DIAS.map((nome, i) => {
+            const d = new Date(seg); d.setDate(seg.getDate() + i)
+            const key = `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`
+            const count = pedidosSemana[key]?.length ?? 0
+            const isSelected = diaSel === key
+            return (
+              <button key={key} onClick={() => setDiaSel(key)}
+                className={`flex-shrink-0 rounded-[10px] border px-3 py-2 text-center transition-all cursor-pointer
+                  ${isSelected ? 'border-[rgba(0,232,122,.4)] bg-[rgba(0,232,122,.06)]' : 'border-[#1c2e48] bg-[#0d1525]'}`}>
+                <p className="font-[var(--mono)] text-[9px] text-[#3d5875] uppercase">{nome}</p>
+                <p className={`font-[var(--mono)] text-lg font-black ${isSelected ? 'text-[#00e87a]' : 'text-[#ddeaf8]'}`}>{d.getDate()}</p>
+                {count > 0 && <p className="font-[var(--mono)] text-[9px] text-[#4da6ff]">{count} ped.</p>}
+              </button>
+            )
+          })
+        })()}
+      </div>
+
+      {/* Lista de pedidos do dia selecionado */}
+      {(pedidosSemana[diaSel] ?? []).length > 0 ? (
+        <div className="flex flex-col gap-2">
+          {(pedidosSemana[diaSel] ?? []).map((p: any) => (
+            <div key={p.id} className="bg-[#0d1525] border border-[#1c2e48] rounded-[8px] px-3 py-2.5">
+              <div className="flex items-center justify-between mb-1">
+                <p className="font-semibold text-sm text-[#ddeaf8]">{p.colaboradorNome}</p>
+                <Badge color={
+                  p.status === 'despachado' || p.status === 'confirmado' ? 'green' :
+                  p.status === 'separado' ? 'blue' : 'gray'
+                }>
+                  {p.status === 'despachado' ? 'Despachado' :
+                   p.status === 'confirmado' ? 'Confirmado' :
+                   p.status === 'separado'   ? 'Separado'   : 'Em aberto'}
+                </Badge>
+              </div>
+              {p.itens?.length > 0 && (
+                <p className="font-[var(--mono)] text-[10px] text-[#7a96b8]">{p.itens.join(', ')}</p>
+              )}
+            </div>
+          ))}
+        </div>
+      ) : (
         <div className="bg-[#0d1525] border border-[#1c2e48] rounded-[11px] p-4 text-center">
-          <p className="font-[var(--mono)] text-xs text-[#3d5875]">Nenhum pedido hoje ainda.</p>
+          <p className="font-[var(--mono)] text-xs text-[#3d5875]">Nenhum pedido neste dia.</p>
         </div>
       )}
     </div>
@@ -331,7 +367,7 @@ export default function GestorEmpresaPage() {
 
   const tabs = [
     { id: 'inicio',        label: 'Início',       icon: 'home'      as const, component: <InicioPane empresaId={empresaId} /> },
-    { id: 'pedido',        label: 'Pedido',        icon: 'pedido'    as const, component: <PedidosContent empresaIdOverride={empresaId} /> },
+    { id: 'pedido',        label: 'Meu Pedido',    icon: 'pedido'    as const, component: <PedidosContent empresaIdOverride={empresaId} /> },
     { id: 'colaboradores', label: 'Colaboradores', icon: 'colabs'    as const, component: <ColabsPane empresaId={empresaId} /> },
     { id: 'produtos',      label: 'Produtos',      icon: 'grade'     as const, component: <ProdutosGestorPane  empresaId={empresaId} /> },
     { id: 'relatorio',     label: 'Relatório',     icon: 'relatorio' as const, component: <RelatorioGestorPane empresaId={empresaId} /> },
