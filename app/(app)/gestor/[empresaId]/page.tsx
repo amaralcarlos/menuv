@@ -109,37 +109,37 @@ function InicioPane({ empresaId }: { empresaId: string }) {
     <title>Lista de Assinaturas — ${dataFmt}</title>
     <style>
       * { box-sizing: border-box; margin: 0; padding: 0; }
-      body { font-family: 'Helvetica Neue', Arial, sans-serif; padding: 36px 40px; color: #111; background: #fff; }
-      .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 2px solid #eee; }
+      body { font-family: 'Helvetica Neue', Arial, sans-serif; padding: 20px 28px; color: #111; background: #fff; }
+      .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1.5px solid #eee; }
       .header-left { display: flex; align-items: center; gap: 14px; }
-      .logo { width: 44px; height: 44px; border-radius: 10px; background: #0d1525; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-      .logo img { width: 28px; height: 28px; }
-      .brand { font-size: 22px; font-weight: 900; color: #111; letter-spacing: -0.5px; }
+      .logo { width: 32px; height: 32px; border-radius: 7px; background: #0d1525; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+      .logo img { width: 20px; height: 20px; }
+      .brand { font-size: 16px; font-weight: 900; color: #111; letter-spacing: -0.5px; }
       .brand span { color: #00994d; }
       .header-right { text-align: right; }
       .doc-title { font-size: 13px; font-weight: 700; color: #111; text-transform: uppercase; letter-spacing: 1px; }
       .doc-sub { font-size: 11px; color: #888; margin-top: 2px; }
-      .info-bar { display: flex; gap: 24px; background: #f7f8fa; border-radius: 8px; padding: 12px 16px; margin-bottom: 20px; }
+      .info-bar { display: flex; gap: 24px; background: #f7f8fa; border-radius: 6px; padding: 7px 14px; margin-bottom: 12px; }
       .info-item { display: flex; flex-direction: column; gap: 2px; }
-      .info-label { font-size: 9px; text-transform: uppercase; letter-spacing: 1px; color: #999; font-weight: 600; }
-      .info-value { font-size: 13px; font-weight: 700; color: #111; }
+      .info-label { font-size: 8px; text-transform: uppercase; letter-spacing: 1px; color: #999; font-weight: 600; }
+      .info-value { font-size: 11px; font-weight: 700; color: #111; }
       table { width: 100%; border-collapse: collapse; }
       thead tr { background: #111; }
-      thead th { color: #fff; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; padding: 9px 10px; text-align: left; }
+      thead th { color: #fff; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; padding: 5px 8px; text-align: left; }
       tbody tr:nth-child(even) { background: #fafafa; }
       tbody tr { border-bottom: 1px solid #eee; }
-      td { padding: 11px 10px; vertical-align: middle; }
-      .td-num { width: 28px; font-size: 11px; color: #999; font-weight: 600; }
-      .td-nome { width: 22%; font-size: 13px; font-weight: 700; color: #111; white-space: nowrap; }
-      .td-pedido { font-size: 11px; color: #555; }
-      .td-ass { width: 38%; padding-right: 16px; }
-      .ass-line { border-bottom: 1.5px solid #bbb; height: 28px; width: 100%; }
-      .footer { margin-top: 32px; display: flex; align-items: center; justify-content: space-between; padding-top: 12px; border-top: 1px solid #eee; }
+      td { padding: 4px 8px; vertical-align: middle; }
+      .td-num { width: 24px; font-size: 10px; color: #999; font-weight: 600; }
+      .td-nome { width: 22%; font-size: 11px; font-weight: 700; color: #111; white-space: nowrap; }
+      .td-pedido { font-size: 10px; color: #555; }
+      .td-ass { width: 38%; padding-right: 12px; }
+      .ass-line { border-bottom: 1px solid #bbb; height: 18px; width: 100%; }
+      .footer { margin-top: 14px; display: flex; align-items: center; justify-content: space-between; padding-top: 12px; border-top: 1px solid #eee; }
       .footer-left { font-size: 10px; color: #bbb; }
       .footer-right { font-size: 10px; color: #bbb; }
       .btn-print { background: #111; color: white; border: none; padding: 10px 24px; border-radius: 6px; cursor: pointer; font-size: 13px; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
       .btn-print:hover { background: #333; }
-      @media print { .btn-print { display: none; } body { padding: 20px 24px; } }
+      @media print { .btn-print { display: none; } body { padding: 14px 20px; } }
     </style></head><body>
 
     <button class="btn-print" onclick="window.print()">🖨️ Imprimir / Salvar PDF</button>
