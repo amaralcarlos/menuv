@@ -9,16 +9,33 @@ type Step = 'conta' | 'empresa' | 'sucesso'
 export default function CadastroForm() {
   const router = useRouter()
   const params  = useSearchParams()
-  const tipo    = params.get('tipo') ?? 'colaborador'
-  const ref     = params.get('ref') ?? ''
-  const empId   = params.get('emp') ?? ''
-  const isGestor = tipo === 'gestor'
-  const isRest   = tipo === 'restaurante'
-  const isColab  = tipo === 'colaborador'
+  const tipo      = params.get('tipo') ?? 'colaborador'
+  const ref       = params.get('ref') ?? ''
+  const empId     = params.get('emp') ?? ''
+  const conviteToken = params.get('convite') ?? ''
+  const isGestor  = tipo === 'gestor'
+  const isRest    = tipo === 'restaurante'
+  const isColab   = tipo === 'colaborador' || !!conviteToken
 
-  const [step,    setStep]    = useState<Step>('conta')
-  const [error,   setError]   = useState('')
-  const [loading, setLoading] = useState(false)
+  const [step,       setStep]       = useState<Step>('conta')
+  const [error,      setError]      = useState('')
+  const [loading,    setLoading]    = useState(false)
+  const [conviteInfo, setConviteInfo] = useState<any>(null)
+  const [conviteErr,  setConviteErr]  = useState('')
+  const [validando,   setValidando]   = useState(!!conviteToken)
+
+  // Valida token ao carregar
+  useState(() => {
+    if (!conviteToken) return
+    fetch(`/api/convites/${conviteToken}`)
+      .then(r => r.json())
+      .then(d => {
+        if (d.success) setConviteInfo(d.data)
+        else setConviteErr('Link de convite inválido ou expirado.')
+        setValidando(false)
+      })
+      .catch(() => { setConviteErr('Erro ao validar convite.'); setValidando(false) })
+  })
 
   const [nome,  setNome]  = useState('')
   const [email, setEmail] = useState('')
@@ -39,7 +56,7 @@ export default function CadastroForm() {
     if (!nome || !email || !senha) { setError('Preencha todos os campos.'); return }
     if (senha !== conf) { setError('As senhas não coincidem.'); return }
     if (isGestor && !ref) { setError('Link de convite inválido.'); return }
-    if (isColab && !empId) { setError('Link de convite inválido.'); return }
+    if (conviteToken && !conviteInfo) { setError('Link de convite inválido ou expirado.'); return }
 
     setLoading(true)
 
@@ -63,7 +80,8 @@ export default function CadastroForm() {
         nome, email, senha,
         restauranteRef: ref,
         isGestor,
-        empresaId: isColab ? empId : null,
+        empresaId: conviteInfo?.empresaId ?? (isColab ? empId : null),
+        conviteToken: conviteToken || null,
       }),
     })
     const data = await res.json()
@@ -120,6 +138,22 @@ export default function CadastroForm() {
   const title = isRest ? '🏪 Novo restaurante'
               : isGestor ? (step === 'empresa' ? '🏢 Cadastrar empresa' : '🏢 Cadastro de gestor')
               : '👤 Criar conta'
+
+  if (validando) return (
+    <div className="min-h-screen flex items-center justify-center bg-[#080c14]">
+      <p className="font-[var(--mono)] text-sm text-[#3d5875]">Validando convite...</p>
+    </div>
+  )
+
+  if (conviteErr) return (
+    <div className="min-h-screen flex items-center justify-center bg-[#080c14] px-4">
+      <div className="text-center">
+        <p className="text-2xl mb-3">🔒</p>
+        <p className="font-bold text-[#ddeaf8] mb-2">Link inválido</p>
+        <p className="font-[var(--mono)] text-xs text-[#3d5875]">{conviteErr}</p>
+      </div>
+    </div>
+  )
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-8 bg-[#080c14]">
