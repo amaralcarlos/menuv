@@ -31,19 +31,19 @@ function fmtData(dataIso: string) {
   return dataIso
 }
 
-function abrirPdf(detalhe: any, mesAno: string, pct: number) {
+function abrirPdf(detalhe: any, mesAno: string) {
   const hoje        = new Date().toLocaleDateString('pt-BR')
-  const temRateio   = pct > 0
-  const empresaPaga = Math.round((1 - pct / 100) * 100)
-  const colabPaga   = pct
+  const temRateio = (detalhe?.totalSubsidio ?? 0) > 0
+
+
 
   const linhasTabela = [...detalhe.colaboradores]
     .filter((c: any) => c.total > 0)
     .sort((a: any, b: any) => b.total - a.total)
     .map((c: any, i: number) => {
       const total   = Number(c.valorBruto ?? 0).toFixed(2)
-      const empPaga = (c.valorBruto * (1 - pct / 100)).toFixed(2)
-      const colPaga = (c.valorBruto * (pct / 100)).toFixed(2)
+      const empPaga = Number(c.valorSubsidio ?? 0).toFixed(2)
+      const colPaga = Number(c.valorColab ?? 0).toFixed(2)
       return temRateio
         ? `<tr><td>${i+1}</td><td>${c.nome}</td><td>${c.total}</td><td>R$ ${total}</td><td style="color:#1a56db">R$ ${empPaga}</td><td style="color:#e02424;font-weight:bold">R$ ${colPaga}</td></tr>`
         : `<tr><td>${i+1}</td><td>${c.nome}</td><td>${c.total}</td><td>R$ ${total}</td></tr>`
@@ -56,10 +56,10 @@ function abrirPdf(detalhe: any, mesAno: string, pct: number) {
   const cardsHtml = temRateio ? `
     <div class="boxes">
       <div class="box"><div class="box-val">${detalhe.totalPedidos}</div><div class="box-lbl">🍽️ Refeições</div></div>
-      <div class="box"><div class="box-val" style="color:#1a56db">R$ ${(detalhe.valorTotal * (1 - pct/100)).toFixed(2)}</div><div class="box-lbl">🏢 Empresa paga (${empresaPaga}%)</div></div>
-      <div class="box"><div class="box-val" style="color:#e02424">R$ ${(detalhe.valorTotal * (pct/100)).toFixed(2)}</div><div class="box-lbl">👤 Colaboradores (${colabPaga}%)</div></div>
+      <div class="box"><div class="box-val" style="color:#1a56db">R$ ${Number(detalhe.totalSubsidio ?? 0).toFixed(2)}</div><div class="box-lbl">🏢 Subsídio empresa</div></div>
+      <div class="box"><div class="box-val" style="color:#e02424">R$ ${Number(detalhe.totalColab ?? 0).toFixed(2)}</div><div class="box-lbl">👤 A descontar colaboradores</div></div>
     </div>
-    <div class="banner">💼 Empresa subsidia ${empresaPaga}% · Colaboradores pagam ${colabPaga}% · Preço por refeição: R$ ${Number(detalhe.preco).toFixed(2)}</div>
+    <div class="banner">💼 Subsídio empresa: R$ ${Number(detalhe.totalSubsidio ?? 0).toFixed(2)} · A descontar colaboradores: R$ ${Number(detalhe.totalColab ?? 0).toFixed(2)}</div>
   ` : `
     <div class="boxes">
       <div class="box"><div class="box-val">${detalhe.totalPedidos}</div><div class="box-lbl">🍽️ Refeições</div></div>
@@ -101,8 +101,8 @@ function abrirPdf(detalhe: any, mesAno: string, pct: number) {
 }
 
 /* ── Linha de colaborador expansível ─────────────────────── */
-function ColabRow({ c, i, empresaId, mesAno, pct, temRateio }: {
-  c: any; i: number; empresaId: string; mesAno: string; pct: number; temRateio: boolean
+function ColabRow({ c, i, empresaId, mesAno, temRateio }: {
+  c: any; i: number; empresaId: string; mesAno: string; temRateio: boolean
 }) {
   const { call }   = useApi()
   const [expanded, setExpanded] = useState(false)
@@ -160,7 +160,7 @@ function ColabRow({ c, i, empresaId, mesAno, pct, temRateio }: {
         </td>
         {temRateio && (
           <td className="py-2 text-right font-[var(--mono)] text-xs text-[#4da6ff] font-bold">
-            {c.total > 0 ? (c.valorBruto * pct / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '—'}
+            {c.total > 0 ? Number(c.valorColab ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '—'}
           </td>
         )}
       </tr>
@@ -204,7 +204,6 @@ export default function RelatorioGestorPane({ empresaId }: { empresaId: string }
   const [mesAno,       setMesAno]       = useState(mesAtual())
   const [detalhe,      setDetalhe]      = useState<any>(null)
   const [loading,      setLoading]      = useState(false)
-  const [pct,          setPct]          = useState(0)
   const [emailModal,   setEmailModal]   = useState(false)
   const [emailDest,    setEmailDest]    = useState('')
   const [emailAssunto, setEmailAssunto] = useState('')
@@ -235,7 +234,8 @@ export default function RelatorioGestorPane({ empresaId }: { empresaId: string }
       .map((c: any, i: number) => `${i+1}. ${c.nome} — ${c.total} ref. — R$ ${Number(c.valorBruto ?? 0).toFixed(2)}`)
       .join('\n')
 
-    const relatorio = `=== RELATÓRIO DE REFEIÇÕES ===\n${detalhe.empresaNome} · ${nomeMes(mesAno)}\n\nTOTAL DE REFEIÇÕES: ${detalhe.totalPedidos}\nVALOR TOTAL: R$ ${Number(detalhe.valorTotal).toFixed(2)}\n(R$ ${Number(detalhe.preco).toFixed(2)} por refeição)\n\n--- POR COLABORADOR ---\n${linhas}`
+    const totalSubStr = detalhe.totalSubsidio > 0 ? `\nSUBSÍDIO EMPRESA: R$ ${Number(detalhe.totalSubsidio).toFixed(2)}\nA DESCONTAR COLABS: R$ ${Number(detalhe.totalColab).toFixed(2)}` : ''
+    const relatorio = `=== RELATÓRIO DE REFEIÇÕES ===\n${detalhe.empresaNome} · ${nomeMes(mesAno)}\n\nTOTAL DE REFEIÇÕES: ${detalhe.totalPedidos}\nVALOR TOTAL: R$ ${Number(detalhe.valorTotal).toFixed(2)}${totalSubStr}\n\n--- POR COLABORADOR ---\n${linhas}`
     const corpo = emailMsg ? `${emailMsg}\n\n${relatorio}` : relatorio
 
     const res = await call('/api/relatorio/email', {
@@ -248,7 +248,7 @@ export default function RelatorioGestorPane({ empresaId }: { empresaId: string }
   }
 
   const colabs    = detalhe ? [...detalhe.colaboradores].sort((a: any, b: any) => b.total - a.total) : []
-  const temRateio = false
+  const temRateio = (detalhe?.totalSubsidio ?? 0) > 0
 
   return (
     <div className="px-4 pt-4 pb-24">
@@ -286,17 +286,17 @@ export default function RelatorioGestorPane({ empresaId }: { empresaId: string }
               <>
                 <div className="bg-[#0d1525] border border-[#1c2e48] rounded-[11px] p-3 text-center">
                   <div className="text-lg font-black font-[var(--mono)] text-[#00e87a]">
-                    {(detalhe.valorTotal * (1 - pct/100)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    {Number(detalhe.totalSubsidio ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                   </div>
                   <div className="font-[var(--mono)] text-[9px] text-[#3d5875] uppercase mt-0.5">🏢 Empresa</div>
-                  <div className="font-[var(--mono)] text-[9px] text-[#3d5875] mt-0.5">{100-pct}% do total</div>
+                  <div className="font-[var(--mono)] text-[9px] text-[#3d5875] mt-0.5">Subsídio empresa</div>
                 </div>
                 <div className="bg-[#0d1525] border border-[#1c2e48] rounded-[11px] p-3 text-center">
                   <div className="text-lg font-black font-[var(--mono)] text-[#4da6ff]">
-                    {(detalhe.valorTotal * (pct/100)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    {Number(detalhe.totalColab ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                   </div>
                   <div className="font-[var(--mono)] text-[9px] text-[#3d5875] uppercase mt-0.5">👤 Colabs</div>
-                  <div className="font-[var(--mono)] text-[9px] text-[#3d5875] mt-0.5">{pct}% do total</div>
+                  <div className="font-[var(--mono)] text-[9px] text-[#3d5875] mt-0.5">A descontar colaboradores</div>
                 </div>
               </>
             ) : (
@@ -326,7 +326,7 @@ export default function RelatorioGestorPane({ empresaId }: { empresaId: string }
                   <th className="font-[var(--mono)] text-[9px] text-[#3d5875] text-right pb-2 pr-2">Ref.</th>
                   <th className="font-[var(--mono)] text-[9px] text-[#3d5875] text-right pb-2 pr-2">Total</th>
                   {temRateio && (
-                    <th className="font-[var(--mono)] text-[9px] text-[#4da6ff] text-right pb-2">A cobrar ({pct}%)</th>
+                    <th className="font-[var(--mono)] text-[9px] text-[#4da6ff] text-right pb-2">A descontar</th>
                   )}
                 </tr>
               </thead>
@@ -338,7 +338,7 @@ export default function RelatorioGestorPane({ empresaId }: { empresaId: string }
                     i={i}
                     empresaId={empresaId}
                     mesAno={mesAno}
-                    pct={0}
+                   
                     temRateio={temRateio}
                   />
                 ))}
@@ -348,7 +348,7 @@ export default function RelatorioGestorPane({ empresaId }: { empresaId: string }
 
           {/* Botões */}
           <div className="flex gap-2">
-            <Btn variant="secondary" className="flex-1" onClick={() => abrirPdf(detalhe, mesAno, pct)}>
+            <Btn variant="secondary" className="flex-1" onClick={() => abrirPdf(detalhe, mesAno)}>
               📄 PDF
             </Btn>
             <Btn variant="secondary" className="flex-1" onClick={() => setEmailModal(true)}>
