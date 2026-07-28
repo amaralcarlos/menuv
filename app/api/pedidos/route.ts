@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
   const colabFilter = req.nextUrl.searchParams.get('colaboradorId')
 
   let query = sb.from('pedidos')
-    .select('id, data_pedido, obs, status, criado_em, colaborador_id, produto_id, colaboradores(id,nome), empresas(id,nome), pedido_itens(item,ordem)')
+    .select('id, data_pedido, obs, status, criado_em, colaborador_id, produto_id, origem, justificativa, colaboradores(id,nome), empresas(id,nome), pedido_itens(item,ordem)')
     .order('criado_em')
 
   // Filtro de data
@@ -80,6 +80,8 @@ if (meta?.app_role === 'colaborador') {
     obs:             p.obs,
     status:          p.status ?? 'aberto',
     colaboradorId:   p.colaborador_id,
+    origem:          p.origem ?? 'colaborador',
+    justificativa:   p.justificativa ?? null,
     colaboradorNome: p.colaboradores?.nome ?? '',
     empresaNome:     p.empresas?.nome ?? '',
     itens:           (p.pedido_itens ?? []).sort((a: any, b: any) => a.ordem - b.ordem).map((i: any) => i.item),
@@ -114,7 +116,9 @@ export async function POST(req: NextRequest) {
 
   if (meta?.app_role === 'colaborador' && colaboradorId !== meta?.colaborador_id) return E.forbidden()
 
-  const produtoId = body.produto_id ?? null
+  const produtoId     = body.produto_id ?? null
+  const origem        = body.origem === 'manual' ? 'manual' : 'colaborador'
+  const justificativa = body.justificativa ?? null
 
   const { data: pedidoId, error } = await sb.rpc('salvar_pedido', {
     p_colaborador_id: colaboradorId,
