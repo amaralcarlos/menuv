@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { supabaseServer, ok, E } from '@/lib/api-helpers'
+import { supabaseServer, supabaseAdmin, ok, E } from '@/lib/api-helpers'
 
 function parseJwt(token: string) {
   try { return JSON.parse(atob(token.split('.')[1])) } catch { return null }
@@ -66,7 +66,7 @@ export async function GET(req: NextRequest) {
     periodoLabel = mesAno
   }
 
-  const { data: pedidos } = await sb
+  const { data: pedidos } = await admin
     .from('pedidos')
     .select('id, produto_id, colaboradores(id, nome)')
     .eq('empresa_id', empresaId)
@@ -74,7 +74,8 @@ export async function GET(req: NextRequest) {
     .lte('data_pedido', fim) as any
 
   // Busca subsídios por produto da empresa
-  const { data: empProdutos } = await sb
+  const admin = supabaseAdmin()
+  const { data: empProdutos } = await admin
     .from('empresa_produtos')
     .select('produto_id, preco, subsidio, produto:produto_id(nome, preco_base)')
     .eq('empresa_id', empresaId) as any
@@ -93,7 +94,7 @@ export async function GET(req: NextRequest) {
     if (!produtoPadrao) produtoPadrao = info
   })
 
-  const { data: todosColabs } = await sb
+  const { data: todosColabs } = await admin
     .from('colaboradores')
     .select('id, nome')
     .eq('empresa_id', empresaId)
