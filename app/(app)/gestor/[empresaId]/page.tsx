@@ -10,6 +10,7 @@ import RelatorioGestorPane from './RelatorioGestorPane'
 import ProdutosGestorPane from './ProdutosGestorPane'
 import PedidoGestorPane from './PedidoGestorPane'
 import PedidosContent from '@/app/(app)/pedidos/PedidosContent'
+import ConvitePane from './ConvitePane'
 
 /* ── Início ──────────────────────────────────────────────── */
 function InicioPane({ empresaId }: { empresaId: string }) {
@@ -507,7 +508,7 @@ export default function GestorEmpresaPage() {
         ? <div className="flex justify-center py-12"><Spinner /></div>
         : <PedidosContent empresaIdOverride={empresaId} colabIdOverride={gestorColabId || undefined} />
     },
-    { id: 'colaboradores', label: 'Colaboradores', icon: 'colabs'    as const, component: <ColabsPane empresaId={empresaId} /> },
+    { id: 'colaboradores', label: 'Colaboradores', icon: 'colabs'    as const, component: <><ConvitePane empresaId={empresaId} /><ColabsPane empresaId={empresaId} /> </>},
     { id: 'produtos',      label: 'Produtos',      icon: 'grade'     as const, component: <ProdutosGestorPane  empresaId={empresaId} /> },
     { id: 'relatorio',     label: 'Relatório',     icon: 'relatorio' as const, component: <RelatorioGestorPane empresaId={empresaId} /> },
   ]
