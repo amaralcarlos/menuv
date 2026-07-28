@@ -14,8 +14,8 @@ export async function GET() {
   // Busca pedidos sem produto_id
   const { data: pedidos } = await admin
     .from('pedidos')
-    .select('id, empresa_id, pedido_itens(item)')
-    .is('produto_id', null)
+    .select('id, empresa_id')
+    .is('produto_id', null) as any
 
   if (!pedidos?.length) return NextResponse.json({ ok: true, atualizados: 0 })
 
