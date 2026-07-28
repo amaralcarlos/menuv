@@ -114,7 +114,9 @@ export async function POST(req: NextRequest) {
   const dataIso = toIsoDate(dataStr)
   if (!dataIso) return E.badRequest('Formato de data inválido.')
 
-  if (meta?.app_role === 'colaborador' && colaboradorId !== meta?.colaborador_id) return E.forbidden()
+  // Gestor pode criar pedidos para qualquer colaborador da sua empresa
+  const isGestorDaEmpresa = meta?.app_role === 'colaborador' && meta?.is_gestor && meta?.empresa_id === empresaId
+  if (meta?.app_role === 'colaborador' && !isGestorDaEmpresa && colaboradorId !== meta?.colaborador_id) return E.forbidden()
 
   const produtoId     = body.produto_id ?? null
   const origem        = body.origem === 'manual' ? 'manual' : 'colaborador'
