@@ -19,6 +19,7 @@ function InicioPane({ empresaId }: { empresaId: string }) {
   const toast    = useToast()
   const [colabs,        setColabs]        = useState<any[]>([])
   const [pedidosSemana, setPedidosSemana] = useState<Record<string, any[]>>({})
+  const [pedidosManuais, setPedidosManuais] = useState<Record<string, any[]>>({})
   const [empresa,       setEmpresa]       = useState<any>(null)
   const [loading,       setLoading]       = useState(true)
   const [diaSel,        setDiaSel]        = useState('')
@@ -69,6 +70,20 @@ function InicioPane({ empresaId }: { empresaId: string }) {
         const emp = empRes.data?.[0] ?? empRes.data
         setEmpresa(emp)
         if (emp?.extensao_ate) setExtensaoAte(new Date(emp.extensao_ate))
+      }
+      // Busca lançamentos manuais de hoje (qualquer data retroativa lançada hoje)
+      const hojeISO = `${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}-${String(hoje.getDate()).padStart(2,'0')}`
+      const manualRes = await call<any[]>(`/api/pedidos?empresaId=${empresaId}&dataInicio=${fmt(seg)}&dataFim=${fmt(sex)}&origem=manual`)
+      if (manualRes.success) {
+        const mapM: Record<string, any[]> = {}
+        manualRes.data.forEach((p: any) => {
+          const raw = p.data_pedido ?? p.data ?? ''
+          const parts = raw.split('-')
+          const key = parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : raw
+          if (!mapM[key]) mapM[key] = []
+          mapM[key].push(p)
+        })
+        setPedidosManuais(mapM)
       }
     } catch(e) {
       console.error('InicioPane load error:', e)
