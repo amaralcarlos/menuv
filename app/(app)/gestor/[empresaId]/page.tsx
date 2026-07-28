@@ -488,9 +488,13 @@ export default function GestorEmpresaPage() {
   const isAdmin      = meta?.app_role === 'admin'
   const isRestaurante = meta?.app_role === 'restaurante'
   const [gestorColabId, setGestorColabId] = useState<string | null>(null)
+  const [empresaNome,   setEmpresaNome]   = useState('')
 
   useEffect(() => {
     // Para admin/restaurante: busca o colaborador gestor da empresa
+    // Busca nome da empresa
+    fetch(`/api/empresas/${empresaId}`).then(r => r.json()).then(d => { if (d.success) setEmpresaNome(d.data?.nome ?? '') }).catch(() => {})
+
     if (isAdmin || isRestaurante) {
       call<any[]>(`/api/colaboradores?empresaId=${empresaId}`).then(r => {
         const gestor = r.success ? r.data.find((c: any) => c.is_gestor) : null
