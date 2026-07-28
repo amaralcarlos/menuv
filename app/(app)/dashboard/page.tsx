@@ -408,11 +408,17 @@ export default function DashboardPage() {
     </div>
   )
 
-  const [alerta, setAlerta] = useState<{ tipo: string; mensagem: string; valor: number } | null>(null)
+  const [alerta,   setAlerta]   = useState<{ tipo: string; mensagem: string; valor: number } | null>(null)
+  const [restNome, setRestNome] = useState('')
   const setTabRef = useRef<((id: string) => void) | null>(null)
 
   useEffect(() => {
     if (!restId) return
+    // Busca nome do restaurante
+    fetch(`/api/restaurantes/${restId}`)
+      .then(r => r.json())
+      .then(d => { if (d.success) setRestNome(d.data?.nome ?? '') })
+      .catch(() => {})
     fetch(`/api/financeiro/alerta?restauranteId=${restId}`)
       .then(r => r.json())
       .then(r => { if (r.success) setAlerta(r.data.alerta) })
@@ -453,5 +459,5 @@ export default function DashboardPage() {
     ? (meta.perfil === 'admin' ? 'admin' : 'equipe')
     : 'restaurante'
 
-  return <AppShell tabs={tabs} nome={meta?.nome ?? 'Menuv'} badge={badge} role="Restaurante" banner={bannerAlerta} onTabReady={fn => { setTabRef.current = fn }} />
+  return <AppShell tabs={tabs} nome={meta?.nome ?? 'Menuv'} badge={badge} role="Restaurante" subInfo={restNome} banner={bannerAlerta} onTabReady={fn => { setTabRef.current = fn }} />
 }
