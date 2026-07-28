@@ -10,6 +10,7 @@ import RelatorioGestorPane from './RelatorioGestorPane'
 import ProdutosGestorPane from './ProdutosGestorPane'
 import PedidoGestorPane from './PedidoGestorPane'
 import PedidosContent from '@/app/(app)/pedidos/PedidosContent'
+import LancamentoManualPane from './LancamentoManualPane'
 import ConvitePane from './ConvitePane'
 
 /* ── Início ──────────────────────────────────────────────── */
@@ -97,13 +98,16 @@ function InicioPane({ empresaId }: { empresaId: string }) {
 
     const pedidosOrdenados = [...pedidos].sort((a, b) => (a.colaboradorNome ?? '').localeCompare(b.colaboradorNome ?? '', 'pt-BR'))
     const linhas = pedidosOrdenados.map((p: any, i: number) => {
-      const itens = (p.pedido_itens?.map((it: any) => it.item) ?? p.itens ?? []).join(', ')
+      const itens   = (p.pedido_itens?.map((it: any) => it.item) ?? p.itens ?? []).join(', ')
+      const isManual = p.origem === 'manual'
+      const rowStyle = isManual ? 'background:#fffbeb;' : ''
+      const tag      = isManual ? ' <span style="font-size:9px;color:#b45309;background:#fef3c7;border:1px solid #fde68a;border-radius:4px;padding:1px 5px;vertical-align:middle">⚡ manual</span>' : ''
       return `
-        <tr>
+        <tr style="${rowStyle}">
           <td class="td-num">${i+1}</td>
-          <td class="td-nome">${p.colaboradorNome ?? '—'}</td>
-          <td class="td-pedido">${itens}</td>
-          <td class="td-ass"><div class="ass-line"></div></td>
+          <td class="td-nome">${p.colaboradorNome ?? '—'}${tag}</td>
+          <td class="td-pedido">${itens}${isManual && p.justificativa ? `<br><span style="font-size:9px;color:#92400e;font-style:italic">${p.justificativa}</span>` : ''}</td>
+          <td class="td-ass">${isManual ? '<span style="font-size:9px;color:#92400e">Lançamento manual</span>' : '<div class="ass-line"></div>'}</td>
         </tr>`
     }).join('')
 
@@ -514,6 +518,7 @@ export default function GestorEmpresaPage() {
     },
     { id: 'colaboradores', label: 'Colaboradores', icon: 'colabs'    as const, component: <><ConvitePane empresaId={empresaId} /><ColabsPane empresaId={empresaId} /> </>},
     { id: 'produtos',      label: 'Produtos',      icon: 'grade'     as const, component: <ProdutosGestorPane  empresaId={empresaId} /> },
+    { id: 'lancamento',    label: 'Lançamentos',   icon: 'admin'     as const, component: <LancamentoManualPane empresaId={empresaId} /> },
     { id: 'relatorio',     label: 'Relatório',     icon: 'relatorio' as const, component: <RelatorioGestorPane empresaId={empresaId} /> },
   ]
 
