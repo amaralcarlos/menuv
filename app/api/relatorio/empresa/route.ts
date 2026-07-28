@@ -28,6 +28,8 @@ export async function GET(req: NextRequest) {
   const { data: { session } } = await sb.auth.getSession()
   if (!session) return E.unauthorized()
 
+  const admin = supabaseAdmin()
+
   const meta      = parseJwt(session.access_token)?.app_metadata as any
   const empresaId = req.nextUrl.searchParams.get('empresaId')
   const mesAno    = req.nextUrl.searchParams.get('mesAno')
@@ -74,7 +76,6 @@ export async function GET(req: NextRequest) {
     .lte('data_pedido', fim) as any
 
   // Busca subsídios por produto da empresa
-  const admin = supabaseAdmin()
   const { data: empProdutos } = await admin
     .from('empresa_produtos')
     .select('produto_id, preco, subsidio, produto:produto_id(nome, preco_base)')
