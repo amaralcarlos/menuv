@@ -80,12 +80,17 @@ export async function GET(req: NextRequest) {
     .eq('empresa_id', empresaId) as any
 
   const subsidioMap: Record<string, { subsidio: number; preco: number; nome: string }> = {}
+  let produtoPadrao: { subsidio: number; preco: number; nome: string } | null = null
+
   ;(empProdutos ?? []).forEach((ep: any) => {
-    subsidioMap[ep.produto_id] = {
+    const info = {
       subsidio: Number(ep.subsidio ?? 0),
       preco:    Number(ep.preco ?? ep.produto?.preco_base ?? 0),
       nome:     ep.produto?.nome ?? '',
     }
+    subsidioMap[ep.produto_id] = info
+    // Usa o primeiro produto ativo como fallback para pedidos sem produto_id
+    if (!produtoPadrao) produtoPadrao = info
   })
 
   const { data: todosColabs } = await sb
@@ -115,9 +120,17 @@ export async function GET(req: NextRequest) {
     let valorBruto   = 0
     let valorSubsidio = 0
     peds.forEach((p: any) => {
-      const info = p.produto_id ? subsidioMap[p.produto_id] : null
-      const precoProd = info?.preco ?? preco
-      const sub       = info?.subsidio ?? 0
+      // Tenta cruzar pelo nome do item quando produto_id é null
+      let info = p.produto_id ? subsidioMap[p.produto_id] : null
+      if (!info) {
+        const primeiroItem = (p.pedido_itens?.[0]?.item ?? '').toLowerCase()
+        const porNome = Object.values(subsidioMap).find(
+          (s: any) => primeiroItem.includes(s.nome.toLowerCase())
+        ) as any
+        info = porNome ?? produtoPadrao
+      }
+      const precoProd = (info as any)?.preco ?? produtoPadrao?.preco ?? preco
+      const sub       = (info as any)?.subsidio ?? produtoPadrao?.subsidio ?? 0
       valorBruto    += precoProd
       valorSubsidio += sub
     })
