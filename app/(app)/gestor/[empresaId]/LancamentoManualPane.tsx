@@ -52,7 +52,6 @@ export default function LancamentoManualPane({ empresaId }: { empresaId: string 
   async function salvar() {
     if (!colabId)      { toast('Selecione o colaborador.', 'error'); return }
     if (!produtoId)    { toast('Selecione o produto.', 'error'); return }
-    if (!data)         { toast('Informe a data.', 'error'); return }
     if (!justificativa.trim()) { toast('Justificativa é obrigatória.', 'error'); return }
 
     setSaving(true)
