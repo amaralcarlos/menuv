@@ -69,6 +69,8 @@ if (meta?.app_role === 'colaborador') {
       .select('id').eq('restaurante_id', rid).eq('ativa', true)
     const empIds = (emps ?? []).map((e: any) => e.id)
     if (empIds.length > 0) query = query.in('empresa_id', empIds)
+    // Restaurante não vê lançamentos manuais
+    query = query.or('origem.is.null,origem.eq.colaborador')
   }
 
   const { data, error } = await query
@@ -122,15 +124,44 @@ export async function POST(req: NextRequest) {
   const origem        = body.origem === 'manual' ? 'manual' : 'colaborador'
   const justificativa = body.justificativa ?? null
 
-  const { data: pedidoId, error } = await sb.rpc('salvar_pedido', {
-    p_colaborador_id: colaboradorId,
-    p_empresa_id:     empresaId,
-    p_data_pedido:    dataIso,
-    p_itens:          itens,
-    p_obs:            obs,
-    p_produto_id:     produtoId,
-  })
-  if (error) return E.internal(error.message)
+  let pedidoId: string | null = null
+
+  if (origem === 'manual') {
+    // Lançamento manual — INSERT direto sem upsert
+    const admin2 = supabaseAdmin()
+    const { data: novoPedido, error: insErr } = await admin2
+      .from('pedidos')
+      .insert({
+        colaborador_id: colaboradorId,
+        empresa_id:     empresaId,
+        data_pedido:    dataIso,
+        obs,
+        produto_id:     produtoId,
+        origem:         'manual',
+        justificativa,
+      })
+      .select('id').single() as any
+    if (insErr) return E.internal(insErr.message)
+    pedidoId = novoPedido.id
+
+    // Insere os itens
+    if (pedidoId && itens.length > 0) {
+      await admin2.from('pedido_itens').insert(
+        itens.map((item: string, idx: number) => ({ pedido_id: pedidoId, item, ordem: idx }))
+      )
+    }
+  } else {
+    const { data: rpcId, error } = await sb.rpc('salvar_pedido', {
+      p_colaborador_id: colaboradorId,
+      p_empresa_id:     empresaId,
+      p_data_pedido:    dataIso,
+      p_itens:          itens,
+      p_obs:            obs,
+      p_produto_id:     produtoId,
+    })
+    if (error) return E.internal(error.message)
+    pedidoId = rpcId
+  }
 
   await log('PEDIDO_SALVO', `${colaboradorId} — ${itens.join(', ')}`, colaboradorId)
   return ok({ id: pedidoId })
