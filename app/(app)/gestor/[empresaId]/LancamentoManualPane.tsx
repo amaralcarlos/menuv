@@ -22,7 +22,7 @@ export default function LancamentoManualPane({ empresaId }: { empresaId: string 
 
   const [colabId,      setColabId]      = useState('')
   const [produtoId,    setProdutoId]    = useState('')
-  const [data,         setData]         = useState(ontem())
+  const [data,         setData]         = useState(new Date().toISOString().split('T')[0])
   const [justificativa, setJustificativa] = useState('')
   const [qtd,          setQtd]          = useState(1)
 
@@ -56,10 +56,10 @@ export default function LancamentoManualPane({ empresaId }: { empresaId: string 
     if (!data)         { toast('Informe a data.', 'error'); return }
     if (!justificativa.trim()) { toast('Justificativa é obrigatória.', 'error'); return }
 
-    // Valida que a data é antes de ontem
-    const dataLanc = new Date(data + 'T12:00:00')
-    const ontemDate = new Date(); ontemDate.setDate(ontemDate.getDate() - 1); ontemDate.setHours(23,59,59)
-    if (dataLanc > ontemDate) { toast('A data deve ser anterior a ontem.', 'error'); return }
+    // Valida que a data não é futura
+    const dataLanc = new Date(data + 'T23:59:59')
+    const hoje2 = new Date(); hoje2.setHours(23,59,59)
+    if (dataLanc > hoje2) { toast('A data não pode ser futura.', 'error'); return }
 
     setSaving(true)
     const prod = produtos.find((ep: any) => ep.produto.id === produtoId)
@@ -71,7 +71,7 @@ export default function LancamentoManualPane({ empresaId }: { empresaId: string 
       body: JSON.stringify({
         colaboradorId:  colabId,
         empresaId,
-        data:           data,
+        data:           data.split('-').reverse().join('/'),  // YYYY-MM-DD → DD/MM/YYYY
         itens,
         obs:            justificativa,
         produto_id:     produtoId,
@@ -94,7 +94,8 @@ export default function LancamentoManualPane({ empresaId }: { empresaId: string 
   if (loading) return <div className="flex justify-center py-12"><Spinner /></div>
 
   const colabNome = (id: string) => colabs.find(c => c.id === id)?.nome ?? ''
-  const maxData   = ontem()
+  const hoje3 = new Date().toISOString().split('T')[0]
+  const maxData = hoje3
 
   return (
     <div className="px-4 pt-4 pb-24 flex flex-col gap-4">
