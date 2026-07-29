@@ -76,7 +76,7 @@ export default function LancamentoManualPane({ empresaId }: { empresaId: string 
 
     if (r.success) {
       toast('Lançamento registrado!')
-      setColabId(''); setProdutoId(''); setData(ontem())
+      setColabId(''); setProdutoId('')
       setJustificativa(''); setQtd(1)
       buscarLancamentos()
     } else {
