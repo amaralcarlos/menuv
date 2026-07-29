@@ -22,7 +22,6 @@ export default function LancamentoManualPane({ empresaId }: { empresaId: string 
 
   const [colabId,      setColabId]      = useState('')
   const [produtoId,    setProdutoId]    = useState('')
-  const [data,         setData]         = useState(new Date().toISOString().split('T')[0])
   const [justificativa, setJustificativa] = useState('')
   const [qtd,          setQtd]          = useState(1)
 
@@ -56,11 +55,6 @@ export default function LancamentoManualPane({ empresaId }: { empresaId: string 
     if (!data)         { toast('Informe a data.', 'error'); return }
     if (!justificativa.trim()) { toast('Justificativa é obrigatória.', 'error'); return }
 
-    // Valida que a data não é futura
-    const dataLanc = new Date(data + 'T23:59:59')
-    const hoje2 = new Date(); hoje2.setHours(23,59,59)
-    if (dataLanc > hoje2) { toast('A data não pode ser futura.', 'error'); return }
-
     setSaving(true)
     const prod = produtos.find((ep: any) => ep.produto.id === produtoId)
     const nome = prod?.produto.nome ?? 'Produto'
@@ -71,7 +65,7 @@ export default function LancamentoManualPane({ empresaId }: { empresaId: string 
       body: JSON.stringify({
         colaboradorId:  colabId,
         empresaId,
-        data:           data.split('-').reverse().join('/'),  // YYYY-MM-DD → DD/MM/YYYY
+        data:           `${String(new Date().getDate()).padStart(2,'0')}/${String(new Date().getMonth()+1).padStart(2,'0')}/${new Date().getFullYear()}`,
         itens,
         obs:            justificativa,
         produto_id:     produtoId,
@@ -94,9 +88,6 @@ export default function LancamentoManualPane({ empresaId }: { empresaId: string 
   if (loading) return <div className="flex justify-center py-12"><Spinner /></div>
 
   const colabNome = (id: string) => colabs.find(c => c.id === id)?.nome ?? ''
-  const hoje3 = new Date().toISOString().split('T')[0]
-  const maxData = hoje3
-
   return (
     <div className="px-4 pt-4 pb-24 flex flex-col gap-4">
 
@@ -130,16 +121,8 @@ export default function LancamentoManualPane({ empresaId }: { empresaId: string 
           </select>
         </div>
 
-        {/* Data */}
-        <div className="flex gap-3">
-          <div className="flex flex-col gap-1.5 flex-1">
-            <label className="font-[var(--mono)] text-[9px] text-[#3d5875] uppercase tracking-[1px]">Data</label>
-            <input type="date" value={data} max={maxData}
-              onChange={e => setData(e.target.value)}
-              className="w-full bg-[#080c14] border border-[#253d5e] rounded-[10px] px-3 py-2.5 font-[var(--mono)] text-sm text-[#ddeaf8] outline-none" />
-          </div>
-
-          {/* Quantidade */}
+        {/* Quantidade */}
+          <div className="flex flex-col gap-1.5">
           <div className="flex flex-col gap-1.5">
             <label className="font-[var(--mono)] text-[9px] text-[#3d5875] uppercase tracking-[1px]">Qtd</label>
             <div className="flex items-center gap-2 bg-[#080c14] border border-[#253d5e] rounded-[10px] px-3 py-2">
@@ -150,7 +133,6 @@ export default function LancamentoManualPane({ empresaId }: { empresaId: string 
                 className="text-[#ddeaf8] bg-transparent border-none cursor-pointer w-5 text-center">+</button>
             </div>
           </div>
-        </div>
 
         {/* Justificativa */}
         <div className="flex flex-col gap-1.5">
