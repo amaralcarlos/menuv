@@ -122,8 +122,7 @@ export default function LancamentoManualPane({ empresaId }: { empresaId: string 
         </div>
 
         {/* Quantidade */}
-          <div className="flex flex-col gap-1.5">
-          <div className="flex flex-col gap-1.5">
+        <div className="flex flex-col gap-1.5">
             <label className="font-[var(--mono)] text-[9px] text-[#3d5875] uppercase tracking-[1px]">Qtd</label>
             <div className="flex items-center gap-2 bg-[#080c14] border border-[#253d5e] rounded-[10px] px-3 py-2">
               <button onClick={() => setQtd(q => Math.max(1, q-1))}
