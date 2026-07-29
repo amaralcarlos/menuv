@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { supabaseServer, ok, E, sanitize, toIsoDate, log } from '@/lib/api-helpers'
+import { supabaseServer, supabaseAdmin, ok, E, sanitize, toIsoDate, log } from '@/lib/api-helpers'
 
 function parseJwt(token: string) {
   try { return JSON.parse(atob(token.split('.')[1])) } catch { return null }
