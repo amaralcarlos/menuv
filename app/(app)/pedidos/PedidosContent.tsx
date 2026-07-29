@@ -823,9 +823,6 @@ function FacaSeuPedido({ dia, colabId, empId, produtosEmpresa, onSaved }: {
     })
   }
 
-  function setQtd(prodId: string, qtd: number) {
-    setSel(s => ({ ...s, [prodId]: { ...s[prodId], qtd: Math.max(1, Math.min(20, qtd)) } }))
-  }
 
   function setObs(prodId: string, obs: string) {
     setSel(s => ({ ...s, [prodId]: { ...s[prodId], obs } }))
@@ -845,7 +842,7 @@ function FacaSeuPedido({ dia, colabId, empId, produtosEmpresa, onSaved }: {
           colaboradorId: colabId,
           empresaId:     empId,
           data:          dataISO,
-          itens:         qtd > 1 ? [`${qtd}x ${nome}`] : [nome],
+          itens:         [nome],
           obs,
           produto_id:    prodId,
         }),
@@ -977,25 +974,9 @@ function FacaSeuPedido({ dia, colabId, empId, produtosEmpresa, onSaved }: {
                   </div>
                 </div>
 
-                {/* Quantidade + observação */}
+                {/* Observação */}
                 {ativo && (
                   <div className="ml-6 mt-2 flex flex-col gap-2">
-                    <div className="flex items-center gap-3">
-                      <span className="font-[var(--mono)] text-[9px] text-[#3d5875] uppercase">Qtd</span>
-                      <button
-                        onClick={() => setQtd(prodId, sel[prodId].qtd - 1)}
-                        className="w-6 h-6 rounded-full border border-[#253d5e] text-[#ddeaf8] bg-transparent cursor-pointer hover:border-[#00e87a] hover:text-[#00e87a] flex items-center justify-center text-sm">
-                        −
-                      </button>
-                      <span className="font-[var(--mono)] text-sm font-bold text-[#00e87a] w-4 text-center">
-                        {sel[prodId].qtd}
-                      </span>
-                      <button
-                        onClick={() => setQtd(prodId, sel[prodId].qtd + 1)}
-                        className="w-6 h-6 rounded-full border border-[#253d5e] text-[#ddeaf8] bg-transparent cursor-pointer hover:border-[#00e87a] hover:text-[#00e87a] flex items-center justify-center text-sm">
-                        +
-                      </button>
-                    </div>
                     <textarea
                       value={sel[prodId].obs}
                       onChange={e => setObs(prodId, e.target.value)}
