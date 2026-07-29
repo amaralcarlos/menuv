@@ -70,7 +70,8 @@ export async function GET(req: NextRequest) {
 
   const { data: pedidos } = await admin
     .from('pedidos')
-    .select('id, produto_id, colaboradores(id, nome)')
+    .select('id, produto_id, criado_em, colaboradores(id, nome)')
+    .order('criado_em', { ascending: true })
     .eq('empresa_id', empresaId)
     .gte('data_pedido', inicio)
     .lte('data_pedido', fim) as any
@@ -121,18 +122,11 @@ export async function GET(req: NextRequest) {
     const peds = pedidosPorColab[c.nome] ?? []
     let valorBruto   = 0
     let valorSubsidio = 0
-    peds.forEach((p: any) => {
-      // Tenta cruzar pelo nome do item quando produto_id é null
-      let info = p.produto_id ? subsidioMap[p.produto_id] : null
-      if (!info) {
-        const primeiroItem = (p.pedido_itens?.[0]?.item ?? '').toLowerCase()
-        const porNome = Object.values(subsidioMap).find(
-          (s: any) => primeiroItem.includes(s.nome.toLowerCase())
-        ) as any
-        info = porNome ?? produtoPadrao
-      }
-      const precoProd = (info as any)?.preco ?? produtoPadrao?.preco ?? preco
-      const sub       = (info as any)?.subsidio ?? produtoPadrao?.subsidio ?? 0
+    peds.forEach((p: any, idx: number) => {
+      let info = p.produto_id ? subsidioMap[p.produto_id] : (produtoPadrao ?? null)
+      const precoProd = (info as any)?.preco ?? preco
+      // Subsídio válido apenas para o 1º pedido do colaborador no período
+      const sub = idx === 0 ? ((info as any)?.subsidio ?? 0) : 0
       valorBruto    += precoProd
       valorSubsidio += sub
     })
