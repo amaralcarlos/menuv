@@ -69,7 +69,10 @@ if (meta?.app_role === 'colaborador') {
       .select('id').eq('restaurante_id', rid).eq('ativa', true)
     const empIds = (emps ?? []).map((e: any) => e.id)
     if (empIds.length > 0) query = query.in('empresa_id', empIds)
-    // Restaurante não vê lançamentos manuais
+  }
+
+  // Restaurante nunca vê lançamentos manuais
+  if (meta?.app_role === 'restaurante') {
     query = query.neq('origem', 'manual')
   }
 
