@@ -70,7 +70,7 @@ if (meta?.app_role === 'colaborador') {
     const empIds = (emps ?? []).map((e: any) => e.id)
     if (empIds.length > 0) query = query.in('empresa_id', empIds)
     // Restaurante não vê lançamentos manuais
-    query = query.or('origem.is.null,origem.eq.colaborador')
+    query = query.neq('origem', 'manual')
   }
 
   const { data, error } = await query
