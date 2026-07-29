@@ -23,7 +23,6 @@ export default function LancamentoManualPane({ empresaId }: { empresaId: string 
   const [colabId,      setColabId]      = useState('')
   const [produtoId,    setProdutoId]    = useState('')
   const [justificativa, setJustificativa] = useState('')
-  const [qtd,          setQtd]          = useState(1)
 
   // Histórico de lançamentos manuais do dia
   const [lancamentos, setLancamentos] = useState<any[]>([])
@@ -57,7 +56,7 @@ export default function LancamentoManualPane({ empresaId }: { empresaId: string 
     setSaving(true)
     const prod = produtos.find((ep: any) => ep.produto.id === produtoId)
     const nome = prod?.produto.nome ?? 'Produto'
-    const itens = qtd > 1 ? [`${qtd}x ${nome}`] : [nome]
+    const itens = [nome]
 
     const r = await call('/api/pedidos', {
       method: 'POST',
@@ -77,7 +76,7 @@ export default function LancamentoManualPane({ empresaId }: { empresaId: string 
     if (r.success) {
       toast('Lançamento registrado!')
       setColabId(''); setProdutoId('')
-      setJustificativa(''); setQtd(1)
+      setJustificativa('')
       buscarLancamentos()
     } else {
       toast((r as any).error ?? 'Erro ao registrar.', 'error')
@@ -120,17 +119,6 @@ export default function LancamentoManualPane({ empresaId }: { empresaId: string 
           </select>
         </div>
 
-        {/* Quantidade */}
-        <div className="flex flex-col gap-1.5">
-            <label className="font-[var(--mono)] text-[9px] text-[#3d5875] uppercase tracking-[1px]">Qtd</label>
-            <div className="flex items-center gap-2 bg-[#080c14] border border-[#253d5e] rounded-[10px] px-3 py-2">
-              <button onClick={() => setQtd(q => Math.max(1, q-1))}
-                className="text-[#ddeaf8] bg-transparent border-none cursor-pointer w-5 text-center">−</button>
-              <span className="font-[var(--mono)] text-sm font-bold text-[#00e87a] w-5 text-center">{qtd}</span>
-              <button onClick={() => setQtd(q => Math.min(20, q+1))}
-                className="text-[#ddeaf8] bg-transparent border-none cursor-pointer w-5 text-center">+</button>
-            </div>
-          </div>
 
         {/* Justificativa */}
         <div className="flex flex-col gap-1.5">
