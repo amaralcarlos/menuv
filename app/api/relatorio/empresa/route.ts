@@ -70,7 +70,7 @@ export async function GET(req: NextRequest) {
 
   const { data: pedidos } = await admin
     .from('pedidos')
-    .select('id, produto_id, criado_em, colaboradores(id, nome)')
+    .select('id, produto_id, data_pedido, criado_em, colaboradores(id, nome)')
     .order('criado_em', { ascending: true })
     .eq('empresa_id', empresaId)
     .gte('data_pedido', inicio)
