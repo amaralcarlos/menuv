@@ -122,10 +122,10 @@ export async function GET(req: NextRequest) {
     const peds = pedidosPorColab[c.nome] ?? []
     let valorBruto   = 0
     let valorSubsidio = 0
-    // Agrupa pedidos por dia para aplicar subsídio apenas ao 1º por dia
+    // Agrupa pedidos por data_pedido para aplicar subsídio apenas ao 1º por dia
     const pedsByDay: Record<string, any[]> = {}
     peds.forEach((p: any) => {
-      const dia = (p.criado_em ?? '').split('T')[0]
+      const dia = p.data_pedido ?? (p.criado_em ?? '').split('T')[0]
       if (!pedsByDay[dia]) pedsByDay[dia] = []
       pedsByDay[dia].push(p)
     })
