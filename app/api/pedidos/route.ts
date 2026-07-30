@@ -154,16 +154,27 @@ export async function POST(req: NextRequest) {
       )
     }
   } else {
-    const { data: rpcId, error } = await sb.rpc('salvar_pedido', {
-      p_colaborador_id: colaboradorId,
-      p_empresa_id:     empresaId,
-      p_data_pedido:    dataIso,
-      p_itens:          itens,
-      p_obs:            obs,
-      p_produto_id:     produtoId,
-    })
-    if (error) return E.internal(error.message)
-    pedidoId = rpcId
+    // INSERT direto — permite múltiplos pedidos por dia por produto
+    const adminDb = supabaseAdmin()
+    const { data: novoPedido, error: insErr } = await adminDb
+      .from('pedidos')
+      .insert({
+        colaborador_id: colaboradorId,
+        empresa_id:     empresaId,
+        data_pedido:    dataIso,
+        obs,
+        produto_id:     produtoId,
+        origem:         'colaborador',
+      })
+      .select('id').single() as any
+    if (insErr) return E.internal(insErr.message)
+    pedidoId = novoPedido.id
+
+    if (pedidoId && itens.length > 0) {
+      await adminDb.from('pedido_itens').insert(
+        itens.map((item: string, idx: number) => ({ pedido_id: pedidoId, item, ordem: idx }))
+      )
+    }
   }
 
   await log('PEDIDO_SALVO', `${colaboradorId} — ${itens.join(', ')}`, colaboradorId)
