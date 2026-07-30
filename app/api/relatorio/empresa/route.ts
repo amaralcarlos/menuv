@@ -122,13 +122,23 @@ export async function GET(req: NextRequest) {
     const peds = pedidosPorColab[c.nome] ?? []
     let valorBruto   = 0
     let valorSubsidio = 0
-    peds.forEach((p: any, idx: number) => {
-      let info = p.produto_id ? subsidioMap[p.produto_id] : (produtoPadrao ?? null)
-      const precoProd = (info as any)?.preco ?? preco
-      // Subsídio válido apenas para o 1º pedido do colaborador no período
-      const sub = idx === 0 ? ((info as any)?.subsidio ?? 0) : 0
-      valorBruto    += precoProd
-      valorSubsidio += sub
+    // Agrupa pedidos por dia para aplicar subsídio apenas ao 1º por dia
+    const pedsByDay: Record<string, any[]> = {}
+    peds.forEach((p: any) => {
+      const dia = (p.criado_em ?? '').split('T')[0]
+      if (!pedsByDay[dia]) pedsByDay[dia] = []
+      pedsByDay[dia].push(p)
+    })
+
+    Object.values(pedsByDay).forEach((diasPeds: any[]) => {
+      diasPeds.forEach((p: any, idx: number) => {
+        let info = p.produto_id ? subsidioMap[p.produto_id] : (produtoPadrao ?? null)
+        const precoProd = (info as any)?.preco ?? preco
+        // Subsídio apenas no 1º pedido do dia
+        const sub = idx === 0 ? ((info as any)?.subsidio ?? 0) : 0
+        valorBruto    += precoProd
+        valorSubsidio += sub
+      })
     })
     return {
       id:           c.id,
