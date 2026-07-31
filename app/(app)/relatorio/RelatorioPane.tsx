@@ -25,7 +25,6 @@ function ultimos12Meses() {
   return meses
 }
 
-/* ── PDF consolidado ─────────────────────────────────────── */
 function abrirPdfMes(mesAno: string, empresas: any[], totais: { total: number; valor: number; ativas: number }) {
   const hoje = new Date().toLocaleDateString('pt-BR')
   const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/>
@@ -47,7 +46,7 @@ function abrirPdfMes(mesAno: string, empresas: any[], totais: { total: number; v
     @media print { .btn-print { display: none; } }
   </style></head><body>
   <button class="btn-print" onclick="window.print()">🖨️ Imprimir / PDF</button>
-<img src="https://app.menuv.com.br/logo-pdf.png" alt="Menuv" style="height:48px;margin-bottom:16px;display:block;" />
+  <img src="https://app.menuv.com.br/logo-pdf.png" alt="Menuv" style="height:48px;margin-bottom:16px;display:block;" />
   <h1>Relatório Mensal de Refeições</h1>
   <div class="sub">${nomeMes(mesAno)} · Gerado por Menuv</div>
   <div class="boxes">
@@ -58,7 +57,7 @@ function abrirPdfMes(mesAno: string, empresas: any[], totais: { total: number; v
   <table>
     <thead><tr><th>#</th><th>Empresa</th><th>Refeições</th><th>Total (R$)</th><th>Preço/ref</th></tr></thead>
     <tbody>
-      ${empresas.filter(e => e.totalPedidos > 0).sort((a,b) => b.totalPedidos - a.totalPedidos).map((e, i) => `
+      ${empresas.filter((e: any) => e.totalPedidos > 0).sort((a: any,b: any) => b.totalPedidos - a.totalPedidos).map((e: any, i: number) => `
         <tr><td>${i+1}</td><td>${e.empresaNome}</td><td>${e.totalPedidos}</td><td>R$ ${Number(e.valorTotal).toFixed(2)}</td><td>R$ ${Number(e.precoRefeicao).toFixed(2)}</td></tr>
       `).join('')}
     </tbody>
@@ -90,18 +89,18 @@ function abrirPdfEmpresa(empresa: any, detalhe: any, mesAno: string) {
     @media print { .btn-print { display: none; } }
   </style></head><body>
   <button class="btn-print" onclick="window.print()">🖨️ Imprimir / PDF</button>
-<img src="https://app.menuv.com.br/logo-pdf.png" alt="Menuv" style="height:48px;margin-bottom:16px;display:block;" />
+  <img src="https://app.menuv.com.br/logo-pdf.png" alt="Menuv" style="height:48px;margin-bottom:16px;display:block;" />
   <h1>${empresa.empresaNome}</h1>
   <div class="sub">Relatório de ${nomeMes(mesAno)} · Gerado por Menuv</div>
   <div class="boxes">
     <div class="box"><div class="box-val">${detalhe.totalPedidos}</div><div class="box-lbl">🍽️ Refeições</div></div>
-    <div class="box"><div class="box-val">R$ ${Number(detalhe.valorTotal).toFixed(2)}</div><div class="box-lbl">💰 Faturamento</div></div>
+    <div class="box"><div class="box-val">R$ ${Number(detalhe.valorTotal).toFixed(2)}</div><div class="box-lbl">💰 Faturamento bruto</div></div>
   </div>
   <table>
-    <thead><tr><th>#</th><th>Colaborador</th><th>Ref.</th><th>Total</th></tr></thead>
+    <thead><tr><th>#</th><th>Colaborador</th><th>Ref.</th><th>Valor Bruto</th></tr></thead>
     <tbody>
-      ${[...detalhe.colaboradores].sort((a,b) => b.total - a.total).map((c, i) => `
-        <tr><td>${i+1}</td><td>${c.nome}</td><td>${c.total > 0 ? c.total : '—'}</td><td>${c.total > 0 ? 'R$ ' + Number(c.valor).toFixed(2) : '—'}</td></tr>
+      ${[...detalhe.colaboradores].sort((a: any,b: any) => b.total - a.total).map((c: any, i: number) => `
+        <tr><td>${i+1}</td><td>${c.nome}</td><td>${c.total > 0 ? c.total : '—'}</td><td>${c.total > 0 ? 'R$ ' + Number(c.valorBruto ?? c.valor ?? 0).toFixed(2) : '—'}</td></tr>
       `).join('')}
     </tbody>
   </table>
@@ -112,12 +111,11 @@ function abrirPdfEmpresa(empresa: any, detalhe: any, mesAno: string) {
   w?.document.close()
 }
 
-/* ── Detalhe empresa ─────────────────────────────────────── */
 function DetalheEmpresa({ empresa, mesAno, onVoltar }: { empresa: any; mesAno: string; onVoltar: () => void }) {
   const { call } = useApi()
   const toast    = useToast()
-  const [detalhe,  setDetalhe]  = useState<any>(null)
-  const [loading,  setLoading]  = useState(true)
+  const [detalhe,    setDetalhe]    = useState<any>(null)
+  const [loading,    setLoading]    = useState(true)
   const [emailModal, setEmailModal] = useState(false)
   const [emailDest,  setEmailDest]  = useState('')
   const [sending,    setSending]    = useState(false)
@@ -131,8 +129,8 @@ function DetalheEmpresa({ empresa, mesAno, onVoltar }: { empresa: any; mesAno: s
     if (!emailDest) { toast('Informe o e-mail.', 'error'); return }
     setSending(true)
     const corpo = `Relatório de ${nomeMes(mesAno)}\n\n${empresa.empresaNome}\nRefeições: ${detalhe?.totalPedidos}\nTotal: R$ ${Number(detalhe?.valorTotal).toFixed(2)}\n\nPor colaborador:\n${
-      [...(detalhe?.colaboradores ?? [])].sort((a,b) => b.total - a.total)
-        .map((c: any) => `${c.nome}: ${c.total > 0 ? c.total + ' ref. — R$ ' + Number(c.valor).toFixed(2) : '—'}`)
+      [...(detalhe?.colaboradores ?? [])].sort((a: any,b: any) => b.total - a.total)
+        .map((c: any) => `${c.nome}: ${c.total > 0 ? c.total + ' ref. — R$ ' + Number(c.valorBruto ?? 0).toFixed(2) : '—'}`)
         .join('\n')
     }`
     const res = await call('/api/relatorio/email', {
@@ -141,7 +139,7 @@ function DetalheEmpresa({ empresa, mesAno, onVoltar }: { empresa: any; mesAno: s
     })
     setSending(false)
     if (res.success) { toast('E-mail enviado!'); setEmailModal(false) }
-    else toast(res.error, 'error')
+    else toast((res as any).error, 'error')
   }
 
   return (
@@ -168,25 +166,27 @@ function DetalheEmpresa({ empresa, mesAno, onVoltar }: { empresa: any; mesAno: s
                   {Number(detalhe.valorTotal).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                 </div>
                 <div className="font-[var(--mono)] text-[10px] text-[#3d5875] mt-0.5">
-                  R$ {Number(empresa.precoRefeicao).toFixed(2)}/ref
+                  Faturamento bruto
                 </div>
               </div>
             </div>
 
             <p className="font-[var(--mono)] text-[10px] text-[#3d5875] uppercase tracking-[1px] mb-2">
-              Cobrança por colaborador
+              Por colaborador
             </p>
 
             <div className="flex flex-col gap-1 mb-4">
-              {[...detalhe.colaboradores].sort((a,b) => b.total - a.total).map((c: any, i: number) => (
-                <div key={c.nome} className="flex items-center gap-2 py-1.5 border-b border-[#1c2e48] last:border-none">
+              {[...detalhe.colaboradores].sort((a: any,b: any) => b.total - a.total).map((c: any, i: number) => (
+                <div key={c.id ?? c.nome} className="flex items-center gap-2 py-1.5 border-b border-[#1c2e48] last:border-none">
                   <span className="font-[var(--mono)] text-[10px] text-[#3d5875] w-5 text-center">{i+1}</span>
                   <span className="flex-1 text-sm text-[#ddeaf8]">{c.nome}</span>
                   <span className="font-[var(--mono)] text-xs text-[#00e87a] font-bold">
                     {c.total > 0 ? `${c.total} ref.` : '—'}
                   </span>
                   <span className="font-[var(--mono)] text-xs text-[#3d5875] w-20 text-right">
-                    {c.total > 0 ? Number(c.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '—'}
+                    {c.total > 0
+                      ? Number(c.valorBruto ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+                      : '—'}
                   </span>
                 </div>
               ))}
@@ -217,7 +217,6 @@ function DetalheEmpresa({ empresa, mesAno, onVoltar }: { empresa: any; mesAno: s
   )
 }
 
-/* ── Main ────────────────────────────────────────────────── */
 export default function RelatorioPane({ restId }: { restId: string }) {
   const { call } = useApi()
   const toast    = useToast()
@@ -234,7 +233,7 @@ export default function RelatorioPane({ restId }: { restId: string }) {
     const res = await call<any>(`/api/relatorio/mensal?mesAno=${mes}&restauranteId=${restId}`)
     setLoading(false)
     if (res.success) setDados(res.data)
-    else toast(res.error, 'error')
+    else toast((res as any).error, 'error')
   }
 
   useEffect(() => { buscar(mesAno) }, [])
@@ -244,20 +243,17 @@ export default function RelatorioPane({ restId }: { restId: string }) {
     setTimeout(() => detalheRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
   }
 
-  const empresas  = dados?.resultado ?? []
-  const total     = empresas.reduce((s: number, e: any) => s + e.totalPedidos, 0)
-  const valor     = empresas.reduce((s: number, e: any) => s + e.valorTotal,   0)
-  const ativas    = empresas.filter((e: any) => e.totalPedidos > 0).length
-  const totais    = { total, valor, ativas }
+  const empresas = dados?.resultado ?? []
+  const total    = empresas.reduce((s: number, e: any) => s + e.totalPedidos, 0)
+  const valor    = empresas.reduce((s: number, e: any) => s + e.valorTotal,   0)
+  const ativas   = empresas.filter((e: any) => e.totalPedidos > 0).length
+  const totais   = { total, valor, ativas }
 
   return (
     <div className="px-4 pt-4 pb-24">
-
-      {/* Dropdown mês */}
       <div className="mb-4">
         <p className="font-[var(--mono)] text-[10px] text-[#3d5875] uppercase tracking-[1px] mb-1">Período</p>
-        <select
-          value={mesAno}
+        <select value={mesAno}
           onChange={e => { setMesAno(e.target.value); buscar(e.target.value) }}
           className="w-full bg-[#0d1525] border border-[#1c2e48] rounded-[8px] px-3 py-2 font-[var(--mono)] text-sm text-[#ddeaf8] outline-none cursor-pointer">
           {ultimos12Meses().map(m => (
@@ -270,11 +266,10 @@ export default function RelatorioPane({ restId }: { restId: string }) {
 
       {!loading && dados && (
         <>
-          {/* 3 stat cards */}
           <div className="grid grid-cols-3 gap-2 mb-4">
             {[
-              { label: '🏢 Empresas', value: ativas,  color: 'text-[#7a96b8]' },
-              { label: '🍽️ Refeições', value: total,  color: 'text-[#4da6ff]' },
+              { label: '🏢 Empresas',    value: ativas, color: 'text-[#7a96b8]' },
+              { label: '🍽️ Refeições',  value: total,  color: 'text-[#4da6ff]' },
               { label: '💰 Faturamento', value: valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), color: 'text-[#00e87a]' },
             ].map(s => (
               <div key={s.label} className="bg-[#0d1525] border border-[#1c2e48] rounded-[11px] p-2.5 text-center">
@@ -284,7 +279,6 @@ export default function RelatorioPane({ restId }: { restId: string }) {
             ))}
           </div>
 
-          {/* Botão exportar */}
           <div className="flex justify-end mb-3">
             <Btn size="sm" variant="secondary" className="w-auto"
               onClick={() => abrirPdfMes(mesAno, empresas, totais)}>
@@ -298,44 +292,33 @@ export default function RelatorioPane({ restId }: { restId: string }) {
 
           {empresas.length === 0 && (
             <Card>
-              <p className="text-center font-[var(--mono)] text-xs text-[#3d5875] py-4">
-                Sem pedidos neste período.
-              </p>
+              <p className="text-center font-[var(--mono)] text-xs text-[#3d5875] py-4">Sem pedidos neste período.</p>
             </Card>
           )}
 
           {empresas.map((e: any) => {
-            const pct      = total > 0 ? Math.round((e.totalPedidos / total) * 100) : 0
+            const pct = total > 0 ? Math.round((e.totalPedidos / total) * 100) : 0
             const temPedido = e.totalPedidos > 0
             return (
-              <button
-                key={e.empresaId}
+              <button key={e.empresaId}
                 onClick={() => temPedido && selecionarEmpresa(e)}
                 className={`w-full text-left mb-2.5 block transition-opacity ${!temPedido ? 'opacity-45 cursor-default' : 'cursor-pointer'}`}>
                 <Card highlight={selected?.empresaId === e.empresaId}>
                   <div className="flex items-start justify-between mb-2">
                     <p className="font-bold text-sm text-[#ddeaf8]">{e.empresaNome}</p>
                     <div className="text-right">
-                      <div className="font-[var(--mono)] text-base font-bold text-[#00e87a]">
-                        {e.totalPedidos} ref.
-                      </div>
+                      <div className="font-[var(--mono)] text-base font-bold text-[#00e87a]">{e.totalPedidos} ref.</div>
                       <div className="font-[var(--mono)] text-[10px] text-[#3d5875]">
                         {Number(e.valorTotal).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                       </div>
                     </div>
                   </div>
-
-                  {/* Barra de participação */}
                   <div className="flex items-center gap-2 mb-2">
                     <div className="flex-1 h-1 bg-[#1c2e48] rounded-full overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-[linear-gradient(90deg,#00e87a,#00c4a0)]"
-                        style={{ width: `${pct}%` }}
-                      />
+                      <div className="h-full rounded-full bg-[linear-gradient(90deg,#00e87a,#00c4a0)]" style={{ width: `${pct}%` }} />
                     </div>
                     <span className="font-[var(--mono)] text-[10px] text-[#3d5875] w-8 text-right">{pct}%</span>
                   </div>
-
                   <p className="font-[var(--mono)] text-[10px] text-[#3d5875]">
                     R$ {Number(e.precoRefeicao).toFixed(2)}/ref
                     {temPedido && <span className="text-[#00e87a] ml-2">· ver detalhes ›</span>}
@@ -345,14 +328,9 @@ export default function RelatorioPane({ restId }: { restId: string }) {
             )
           })}
 
-          {/* Detalhe */}
           <div ref={detalheRef}>
             {selected && (
-              <DetalheEmpresa
-                empresa={selected}
-                mesAno={mesAno}
-                onVoltar={() => setSelected(null)}
-              />
+              <DetalheEmpresa empresa={selected} mesAno={mesAno} onVoltar={() => setSelected(null)} />
             )}
           </div>
         </>
