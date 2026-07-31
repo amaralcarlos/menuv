@@ -121,7 +121,8 @@ function DetalheEmpresa({ empresa, mesAno, onVoltar }: { empresa: any; mesAno: s
   const [sending,    setSending]    = useState(false)
 
   useEffect(() => {
-    call<any>(`/api/relatorio/empresa?empresaId=${empresa.empresaId}&mesAno=${mesAno}`)
+    const extra = empresa._inicio ? `&inicio=${empresa._inicio}&fim=${empresa._fim}` : ''
+    call<any>(`/api/relatorio/empresa?empresaId=${empresa.empresaId}&mesAno=${mesAno}${extra}`)
       .then(r => { if (r.success) setDetalhe(r.data); setLoading(false) })
   }, [empresa.empresaId, mesAno])
 
@@ -239,7 +240,11 @@ export default function RelatorioPane({ restId }: { restId: string }) {
   useEffect(() => { buscar(mesAno) }, [])
 
   function selecionarEmpresa(e: any) {
-    setSelected(e)
+    // Calcula período do mês calendário para passar ao detalhe
+    const [m, a] = mesAno.split('/').map(Number)
+    const ini = `${a}-${String(m).padStart(2,'0')}-01`
+    const fim = new Date(a, m, 0).toISOString().split('T')[0]
+    setSelected({ ...e, _inicio: ini, _fim: fim })
     setTimeout(() => detalheRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
   }
 
