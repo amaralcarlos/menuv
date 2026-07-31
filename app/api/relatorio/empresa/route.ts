@@ -31,8 +31,10 @@ export async function GET(req: NextRequest) {
   const admin = supabaseAdmin()
 
   const meta      = parseJwt(session.access_token)?.app_metadata as any
-  const empresaId = req.nextUrl.searchParams.get('empresaId')
-  const mesAno    = req.nextUrl.searchParams.get('mesAno')
+  const empresaId    = req.nextUrl.searchParams.get('empresaId')
+  const mesAno       = req.nextUrl.searchParams.get('mesAno')
+  const inicioOverride = req.nextUrl.searchParams.get('inicio')
+  const fimOverride    = req.nextUrl.searchParams.get('fim')
 
   if (!empresaId) return E.badRequest('empresaId é obrigatório.')
   if (!mesAno)    return E.badRequest('mesAno é obrigatório (MM/YYYY).')
@@ -57,7 +59,12 @@ export async function GET(req: NextRequest) {
 
   let inicio: string, fim: string, periodoLabel: string
 
-  if (diaCiclo) {
+  // Restaurante pode passar datas explícitas para usar mês calendário
+  if (inicioOverride && fimOverride) {
+    inicio       = inicioOverride
+    fim          = fimOverride
+    periodoLabel = mesAno ?? ''
+  } else if (diaCiclo) {
     const periodo = calcularPeriodoCiclo(diaCiclo, mes, ano)
     inicio       = periodo.inicio
     fim          = periodo.fim
