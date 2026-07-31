@@ -59,7 +59,6 @@ export async function GET(req: NextRequest) {
     .in('empresa_id', empresaIds)
     .gte('data_pedido', inicio)
     .lte('data_pedido', fim)
-    .neq('origem', 'manual')
     .order('data_pedido', { ascending: true }) as any
 
   // Agrupa por empresa
