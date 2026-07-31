@@ -33,8 +33,8 @@ export async function GET(req: NextRequest) {
   const meta      = parseJwt(session.access_token)?.app_metadata as any
   const empresaId    = req.nextUrl.searchParams.get('empresaId')
   const mesAno       = req.nextUrl.searchParams.get('mesAno')
-  const inicioOverride = req.nextUrl.searchParams.get('inicio')
-  const fimOverride    = req.nextUrl.searchParams.get('fim')
+  const inicioOverride  = req.nextUrl.searchParams.get('inicio')
+  const fimOverride     = req.nextUrl.searchParams.get('fim')
 
   if (!empresaId) return E.badRequest('empresaId é obrigatório.')
   if (!mesAno)    return E.badRequest('mesAno é obrigatório (MM/YYYY).')
@@ -75,13 +75,15 @@ export async function GET(req: NextRequest) {
     periodoLabel = mesAno
   }
 
-  const { data: pedidos } = await admin
+  let pedQuery = admin
     .from('pedidos')
     .select('id, produto_id, data_pedido, criado_em, colaboradores(id, nome)')
     .order('criado_em', { ascending: true })
     .eq('empresa_id', empresaId)
     .gte('data_pedido', inicio)
-    .lte('data_pedido', fim) as any
+    .lte('data_pedido', fim)
+
+  const { data: pedidos } = await pedQuery as any
 
   // Busca subsídios por produto da empresa
   const { data: empProdutos } = await admin
@@ -106,8 +108,7 @@ export async function GET(req: NextRequest) {
   const { data: todosColabs } = await admin
     .from('colaboradores')
     .select('id, nome')
-    .eq('empresa_id', empresaId)
-    .eq('ativo', true) as any
+    .eq('empresa_id', empresaId) as any  // inclui inativos para não perder pedidos históricos
 
   const cnt: Record<string, number> = {}
   ;(pedidos ?? []).forEach((p: any) => {
