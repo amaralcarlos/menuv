@@ -54,17 +54,21 @@ function abrirPdf(detalhe: any, mesAno: string) {
     ? `<tr><th>#</th><th>Colaborador</th><th>Ref.</th><th>Total</th><th>Empresa paga</th><th>Colaborador paga</th></tr>`
     : `<tr><th>#</th><th>Colaborador</th><th>Ref.</th><th>Total</th></tr>`
 
+  const periodoStr = detalhe.periodoLabel ?? nomeMes(mesAno)
   const cardsHtml = temRateio ? `
     <div class="boxes">
       <div class="box"><div class="box-val">${detalhe.totalPedidos}</div><div class="box-lbl">🍽️ Refeições</div></div>
       <div class="box"><div class="box-val" style="color:#1a56db">R$ ${Number(detalhe.totalSubsidio ?? 0).toFixed(2)}</div><div class="box-lbl">🏢 Subsídio empresa</div></div>
       <div class="box"><div class="box-val" style="color:#e02424">R$ ${Number(detalhe.totalColab ?? 0).toFixed(2)}</div><div class="box-lbl">👤 A descontar colaboradores</div></div>
     </div>
+    <div class="banner" style="background:#fff8e1;border-color:#ffe082;color:#7c5c00">
+      🍽️ Total a pagar ao restaurante: <strong>R$ ${Number(detalhe.valorTotal).toFixed(2)}</strong>
+    </div>
     <div class="banner">💼 Subsídio empresa: R$ ${Number(detalhe.totalSubsidio ?? 0).toFixed(2)} · A descontar colaboradores: R$ ${Number(detalhe.totalColab ?? 0).toFixed(2)}</div>
   ` : `
     <div class="boxes">
       <div class="box"><div class="box-val">${detalhe.totalPedidos}</div><div class="box-lbl">🍽️ Refeições</div></div>
-      <div class="box"><div class="box-val" style="color:#00994d">R$ ${Number(detalhe.valorTotal).toFixed(2)}</div><div class="box-lbl">💰 Faturamento<br><small>R$ ${Number(detalhe.preco).toFixed(2)}/ref · empresa paga 100%</small></div></div>
+      <div class="box"><div class="box-val" style="color:#00994d">R$ ${Number(detalhe.valorTotal).toFixed(2)}</div><div class="box-lbl">💰 Total a pagar ao restaurante</div></div>
     </div>
   `
 
@@ -89,7 +93,7 @@ function abrirPdf(detalhe: any, mesAno: string) {
   <button class="btn-print" onclick="window.print()">🖨️ Imprimir / Salvar PDF</button>
   <img src="https://app.menuv.com.br/logo-pdf.png" alt="Menuv" style="height:48px;margin-bottom:16px;display:block;" />
   <h1>Relatório de Refeições — ${detalhe.empresaNome}</h1>
-  <div class="sub">${nomeMes(mesAno)}</div>
+  <div class="sub">${detalhe.periodoLabel ?? nomeMes(mesAno)}</div>
   ${cardsHtml}
   <p style="font-size:12px;color:#666;margin-bottom:4px">Cobrança por colaborador</p>
   <table><thead>${headerTabela}</thead><tbody>${linhasTabela}</tbody></table>
@@ -379,6 +383,19 @@ export default function RelatorioGestorPane({ empresaId }: { empresaId: string }
                 <div className="font-[var(--mono)] text-[9px] text-[#3d5875] mt-0.5">R$ {Number(detalhe.preco).toFixed(2)}/ref</div>
               </div>
             )}
+          </div>
+
+          {/* Total a pagar ao restaurante */}
+          <div className="bg-[#0d1525] border border-[rgba(255,179,64,.3)] rounded-[11px] p-3 mb-4 flex items-center justify-between">
+            <div>
+              <p className="font-[var(--mono)] text-[9px] text-[#ffb340] uppercase tracking-[1px]">🍽️ Total a pagar ao restaurante</p>
+              <p className="font-[var(--mono)] text-[9px] text-[#3d5875] mt-0.5">
+                {detalhe.totalPedidos} refeições × preço por produto
+              </p>
+            </div>
+            <div className="font-[var(--mono)] text-xl font-black text-[#ffb340]">
+              {Number(detalhe.valorTotal).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+            </div>
           </div>
 
           {/* Tabela */}
