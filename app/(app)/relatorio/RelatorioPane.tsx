@@ -1,4 +1,5 @@
 'use client'
+import { calcularCicloAtual } from '@/lib/ciclo-util'
 import { useEffect, useRef, useState } from 'react'
 import { useApi } from '@/lib/use-api'
 import { useToast } from '@/components/ui'
@@ -119,9 +120,13 @@ function DetalheEmpresa({ empresa, mesAno, onVoltar }: { empresa: any; mesAno: s
   const [emailModal, setEmailModal] = useState(false)
   const [emailDest,  setEmailDest]  = useState('')
   const [sending,    setSending]    = useState(false)
+  const [dataInicio, setDataInicio] = useState(empresa._inicio ?? '')
+  const [dataFim,    setDataFim]    = useState(empresa._fim ?? '')
 
   useEffect(() => {
-    const extra = empresa._inicio ? `&inicio=${empresa._inicio}&fim=${empresa._fim}` : ''
+    const ini = dataInicio || empresa._inicio
+    const fim = dataFim || empresa._fim
+    const extra = ini ? `&inicio=${ini}&fim=${fim}` : ''
     call<any>(`/api/relatorio/empresa?empresaId=${empresa.empresaId}&mesAno=${mesAno}${extra}`)
       .then(r => { if (r.success) setDetalhe(r.data); setLoading(false) })
   }, [empresa.empresaId, mesAno])
@@ -151,7 +156,31 @@ function DetalheEmpresa({ empresa, mesAno, onVoltar }: { empresa: any; mesAno: s
           ‹ Voltar
         </button>
 
-        <p className="font-bold text-base text-[#ddeaf8] mb-4">{empresa.empresaNome}</p>
+        <p className="font-bold text-base text-[#ddeaf8] mb-3">{empresa.empresaNome}</p>
+
+        {/* Período */}
+        <div className="flex gap-2 items-end mb-4">
+          <div className="flex flex-col gap-1 flex-1">
+            <label className="font-[var(--mono)] text-[9px] text-[#3d5875] uppercase">De</label>
+            <input type="date" value={dataInicio} onChange={e => setDataInicio(e.target.value)}
+              className="w-full bg-[#080c14] border border-[#1c2e48] rounded-[8px] px-2 py-1.5 font-[var(--mono)] text-xs text-[#ddeaf8] outline-none" />
+          </div>
+          <div className="flex flex-col gap-1 flex-1">
+            <label className="font-[var(--mono)] text-[9px] text-[#3d5875] uppercase">Até</label>
+            <input type="date" value={dataFim} onChange={e => setDataFim(e.target.value)}
+              className="w-full bg-[#080c14] border border-[#1c2e48] rounded-[8px] px-2 py-1.5 font-[var(--mono)] text-xs text-[#ddeaf8] outline-none" />
+          </div>
+          <button
+            onClick={() => {
+              setLoading(true)
+              const extra = dataInicio ? `&inicio=${dataInicio}&fim=${dataFim}` : ''
+              call<any>(`/api/relatorio/empresa?empresaId=${empresa.empresaId}&mesAno=${mesAno}${extra}`)
+                .then(r => { if (r.success) setDetalhe(r.data); setLoading(false) })
+            }}
+            className="px-3 py-1.5 rounded-[8px] bg-[rgba(0,232,122,.1)] border border-[rgba(0,232,122,.3)] font-[var(--mono)] text-[9px] text-[#00e87a] cursor-pointer">
+            Buscar
+          </button>
+        </div>
 
         {loading && <Spinner />}
 
@@ -252,11 +281,17 @@ export default function RelatorioPane({ restId }: { restId: string }) {
   useEffect(() => { buscar(mesAno) }, [])
 
   function selecionarEmpresa(e: any) {
-    // Calcula período do mês calendário para passar ao detalhe
-    const [m, a] = mesAno.split('/').map(Number)
-    const ini = `${a}-${String(m).padStart(2,'0')}-01`
-    const fim = new Date(a, m, 0).toISOString().split('T')[0]
-    setSelected({ ...e, _inicio: ini, _fim: fim })
+    // Se empresa tem dia_ciclo > 1, usa período do ciclo vigente
+    if (e.diaCiclo && e.diaCiclo > 1) {
+      const ciclo = calcularCicloAtual(e.diaCiclo)
+      setSelected({ ...e, _inicio: ciclo.inicio, _fim: ciclo.fim })
+    } else {
+      // Usa mês calendário
+      const [m, a] = mesAno.split('/').map(Number)
+      const ini = `${a}-${String(m).padStart(2,'0')}-01`
+      const fim = new Date(a, m, 0).toISOString().split('T')[0]
+      setSelected({ ...e, _inicio: ini, _fim: fim })
+    }
     setTimeout(() => detalheRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
   }
 
