@@ -1,4 +1,5 @@
 'use client'
+import { calcularCicloAtual } from '@/lib/ciclo-util'
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/lib/auth-context'
 import { useApi } from '@/lib/use-api'
@@ -54,7 +55,24 @@ export default function ResumoColabPane({ empresaId }: { empresaId: string }) {
     setLoading(false)
   }
 
-  useEffect(() => { buscar(mesAno) }, [empresaId])
+  useEffect(() => {
+    fetch(`/api/empresas/${empresaId}`)
+      .then(r => r.json())
+      .then(d => {
+        if (d.success && d.data?.dia_ciclo && d.data.dia_ciclo > 1) {
+          const ciclo = calcularCicloAtual(d.data.dia_ciclo)
+          setDataInicio(ciclo.inicio)
+          setDataFim(ciclo.fim)
+          setMesAno(ciclo.mesAno)
+          setModoCustom(true)
+          call<any>(`/api/relatorio/empresa?empresaId=${empresaId}&mesAno=${ciclo.mesAno}&inicio=${ciclo.inicio}&fim=${ciclo.fim}`)
+            .then(res => { if (res.success) setDetalhe(res.data); setLoading(false) })
+        } else {
+          buscar(mesAno)
+        }
+      })
+      .catch(() => buscar(mesAno))
+  }, [empresaId])
 
   const meuNome = meta?.nome ?? ''
   const eu = detalhe?.colaboradores?.find((c: any) => c.nome === meuNome)
