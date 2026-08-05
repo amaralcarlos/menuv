@@ -205,10 +205,25 @@ export default function RelatorioGestorPane({ empresaId }: { empresaId: string }
   const [detalhe,      setDetalhe]      = useState<any>(null)
   const [loading,      setLoading]      = useState(false)
   const [emailModal,   setEmailModal]   = useState(false)
+  const [modoCustom,   setModoCustom]   = useState(false)
+  const [dataInicio,   setDataInicio]   = useState('')
+  const [dataFim,      setDataFim]      = useState('')
   const [emailDest,    setEmailDest]    = useState('')
   const [emailAssunto, setEmailAssunto] = useState('')
   const [emailMsg,     setEmailMsg]     = useState('')
   const [sending,      setSending]      = useState(false)
+
+  async function buscarCustom() {
+    if (!dataInicio || !dataFim) return
+    setLoading(true)
+    const res = await call<any>(`/api/relatorio/empresa?empresaId=${empresaId}&mesAno=${mesAno}&inicio=${dataInicio}&fim=${dataFim}`)
+    if (res.success) {
+      setDetalhe(res.data)
+      setEmailDest(res.data.empresaEmail ?? '')
+      setEmailAssunto(`Relatório · ${res.data.empresaNome} · ${dataInicio} a ${dataFim}`)
+    } else toast(res.error, 'error')
+    setLoading(false)
+  }
 
   async function buscar(mes: string) {
     setLoading(true)
