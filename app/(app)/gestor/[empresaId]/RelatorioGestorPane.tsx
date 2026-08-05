@@ -298,19 +298,47 @@ export default function RelatorioGestorPane({ empresaId }: { empresaId: string }
 
       {/* Controles */}
       <Card>
-        <div className="mb-3">
-          <div>
-            <p className="font-[var(--mono)] text-[10px] text-[#3d5875] uppercase tracking-[1px] mb-1">Período</p>
-            <select
-              value={mesAno}
+        <div className="mb-3 flex flex-col gap-2">
+          {/* Modo */}
+          <div className="flex gap-2">
+            <button onClick={() => { setModoCustom(false); buscar(mesAno) }}
+              className={`flex-1 py-1.5 rounded-[8px] font-[var(--mono)] text-[9px] border cursor-pointer transition-all
+                ${!modoCustom ? 'bg-[rgba(0,232,122,.1)] border-[rgba(0,232,122,.3)] text-[#00e87a]' : 'bg-[#080c14] border-[#1c2e48] text-[#3d5875]'}`}>
+              Por mês
+            </button>
+            <button onClick={() => setModoCustom(true)}
+              className={`flex-1 py-1.5 rounded-[8px] font-[var(--mono)] text-[9px] border cursor-pointer transition-all
+                ${modoCustom ? 'bg-[rgba(0,232,122,.1)] border-[rgba(0,232,122,.3)] text-[#00e87a]' : 'bg-[#080c14] border-[#1c2e48] text-[#3d5875]'}`}>
+              Personalizado
+            </button>
+          </div>
+
+          {!modoCustom ? (
+            <select value={mesAno}
               onChange={e => { setMesAno(e.target.value); buscar(e.target.value) }}
               className="w-full bg-[#080c14] border border-[#1c2e48] rounded-[8px] px-2.5 py-2 font-[var(--mono)] text-xs text-[#ddeaf8] outline-none cursor-pointer">
               {ultimos12Meses().map(m => (
                 <option key={m} value={m}>{nomeMes(m)}</option>
               ))}
             </select>
-          </div>
-
+          ) : (
+            <div className="flex gap-2 items-end">
+              <div className="flex flex-col gap-1 flex-1">
+                <label className="font-[var(--mono)] text-[9px] text-[#3d5875] uppercase">De</label>
+                <input type="date" value={dataInicio} onChange={e => setDataInicio(e.target.value)}
+                  className="w-full bg-[#080c14] border border-[#1c2e48] rounded-[8px] px-2 py-1.5 font-[var(--mono)] text-xs text-[#ddeaf8] outline-none" />
+              </div>
+              <div className="flex flex-col gap-1 flex-1">
+                <label className="font-[var(--mono)] text-[9px] text-[#3d5875] uppercase">Até</label>
+                <input type="date" value={dataFim} onChange={e => setDataFim(e.target.value)}
+                  className="w-full bg-[#080c14] border border-[#1c2e48] rounded-[8px] px-2 py-1.5 font-[var(--mono)] text-xs text-[#ddeaf8] outline-none" />
+              </div>
+              <button onClick={buscarCustom}
+                className="px-3 py-1.5 rounded-[8px] bg-[rgba(0,232,122,.1)] border border-[rgba(0,232,122,.3)] font-[var(--mono)] text-[9px] text-[#00e87a] cursor-pointer hover:bg-[rgba(0,232,122,.15)]">
+                Buscar
+              </button>
+            </div>
+          )}
         </div>
       </Card>
 
