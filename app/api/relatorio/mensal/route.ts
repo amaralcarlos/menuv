@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
   // Busca empresas do restaurante
   const { data: empresas } = await admin
     .from('empresas')
-    .select('id, nome, preco_por_refeicao')
+    .select('id, nome, preco_por_refeicao, dia_ciclo')
     .eq('restaurante_id', restId)
     .eq('ativa', true) as any
 
@@ -102,6 +102,7 @@ export async function GET(req: NextRequest) {
       precoRefeicao: precoMedio,
       totalPedidos:  peds.length,
       valorTotal,
+      diaCiclo:      emp.dia_ciclo ?? 1,
       colaboradores: Object.values(colabMap),
     }
   })
