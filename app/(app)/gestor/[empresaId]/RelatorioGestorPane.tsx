@@ -1,4 +1,5 @@
 'use client'
+import { calcularCicloAtual } from '@/lib/ciclo-util'
 import { useEffect, useState } from 'react'
 import { useApi } from '@/lib/use-api'
 import { useToast } from '@/components/ui'
@@ -208,6 +209,7 @@ export default function RelatorioGestorPane({ empresaId }: { empresaId: string }
   const [modoCustom,   setModoCustom]   = useState(false)
   const [dataInicio,   setDataInicio]   = useState('')
   const [dataFim,      setDataFim]      = useState('')
+  const [cicloInited,  setCicloInited]  = useState(false)
   const [emailDest,    setEmailDest]    = useState('')
   const [emailAssunto, setEmailAssunto] = useState('')
   const [emailMsg,     setEmailMsg]     = useState('')
@@ -236,7 +238,33 @@ export default function RelatorioGestorPane({ empresaId }: { empresaId: string }
     } else toast(res.error, 'error')
   }
 
-  useEffect(() => { buscar(mesAno) }, [empresaId])
+  useEffect(() => {
+    // Busca dia_ciclo da empresa para pré-selecionar período
+    fetch(`/api/empresas/${empresaId}`)
+      .then(r => r.json())
+      .then(d => {
+        if (d.success && d.data?.dia_ciclo && d.data.dia_ciclo > 1) {
+          const ciclo = calcularCicloAtual(d.data.dia_ciclo)
+          setDataInicio(ciclo.inicio)
+          setDataFim(ciclo.fim)
+          setMesAno(ciclo.mesAno)
+          setModoCustom(true)
+          // Busca com período do ciclo
+          call<any>(`/api/relatorio/empresa?empresaId=${empresaId}&mesAno=${ciclo.mesAno}&inicio=${ciclo.inicio}&fim=${ciclo.fim}`)
+            .then(res => {
+              if (res.success) {
+                setDetalhe(res.data)
+                setEmailDest(res.data.empresaEmail ?? '')
+              }
+              setLoading(false)
+            })
+        } else {
+          buscar(mesAno)
+        }
+        setCicloInited(true)
+      })
+      .catch(() => buscar(mesAno))
+  }, [empresaId])
 
   async function enviarEmail() {
     if (!emailDest) { toast('Informe o e-mail.', 'error'); return }
