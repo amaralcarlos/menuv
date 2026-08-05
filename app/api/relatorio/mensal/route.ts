@@ -14,6 +14,9 @@ export async function GET(req: NextRequest) {
   const mesAno = req.nextUrl.searchParams.get('mesAno')
   const restId = req.nextUrl.searchParams.get('restauranteId') ?? meta?.restaurante_id
 
+  const inicioOverride = req.nextUrl.searchParams.get('inicio')
+  const fimOverride    = req.nextUrl.searchParams.get('fim')
+
   if (!mesAno) return E.badRequest('mesAno é obrigatório (MM/YYYY).')
   if (!restId) return E.badRequest('restauranteId é obrigatório.')
   if (meta?.app_role !== 'admin' && meta?.restaurante_id !== restId) return E.forbidden()
@@ -22,8 +25,8 @@ export async function GET(req: NextRequest) {
   if (parts.length !== 2) return E.badRequest('Formato inválido. Use MM/YYYY.')
   const [mes, ano] = parts.map(Number)
 
-  const inicio = `${ano}-${String(mes).padStart(2,'0')}-01`
-  const fim    = new Date(ano, mes, 0).toISOString().split('T')[0]
+  const inicio = inicioOverride ?? `${ano}-${String(mes).padStart(2,'0')}-01`
+  const fim    = fimOverride    ?? new Date(ano, mes, 0).toISOString().split('T')[0]
 
   const admin = supabaseAdmin()
 
