@@ -11,6 +11,7 @@ export interface AppMeta {
   empresa_id?: string
   colaborador_id?: string
   is_gestor?: boolean
+  is_assistente?: boolean
   perfil?: 'admin' | 'colaborador'
 }
 
