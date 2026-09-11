@@ -18,7 +18,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   if (!body) return E.badRequest()
 
   const nome     = sanitize(body.nome)
-  const isGestor = Boolean(body.isGestor)
+  const isGestor    = Boolean(body.isGestor)
+  const isAssistente = Boolean(body.isAssistente)
   const ativo    = body.ativo !== false
 
   if (!nome) return E.badRequest('Nome é obrigatório.')
@@ -33,7 +34,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   }
 
   const { error } = await sb.from('colaboradores')
-    .update({ nome, is_gestor: isGestor, ativo }).eq('id', id)
+    .update({ nome, is_gestor: isGestor, is_assistente: isAssistente, ativo }).eq('id', id)
   if (error) return E.internal(error.message)
 
   // Atualiza app_metadata no Auth para refletir mudança de is_gestor
@@ -46,10 +47,11 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   if (colab?.auth_user_id) {
     await admin.auth.admin.updateUserById(colab.auth_user_id, {
       app_metadata: {
-        app_role:       'colaborador',
-        is_gestor:      isGestor,
-        colaborador_id: id,
-        empresa_id:     colab.empresa_id,
+        app_role:        'colaborador',
+        is_gestor:       isGestor,
+        is_assistente:   isAssistente,
+        colaborador_id:  id,
+        empresa_id:      colab.empresa_id,
       }
     })
   }
