@@ -20,12 +20,13 @@ export async function GET(req: NextRequest) {
     const { data: emp } = await sb.from('empresas').select('restaurante_id').eq('id', empresaId).single() as any
     const pertenceAoRestaurante = emp?.restaurante_id === meta?.restaurante_id
     const pertenceAoGestor      = meta?.empresa_id === empresaId
-    if (!pertenceAoRestaurante && !pertenceAoGestor) return E.forbidden()
+    const isRestaurante         = meta?.app_role === 'restaurante' && pertenceAoRestaurante
+    if (!pertenceAoRestaurante && !pertenceAoGestor && !isRestaurante) return E.forbidden()
   }
 
   const { data, error } = await sb
     .from('colaboradores')
-    .select('id, nome, email, is_gestor, ativo')
+    .select('id, nome, email, is_gestor, is_assistente, ativo')
     .eq('empresa_id', empresaId).eq('ativo', true).order('nome')
   if (error) return E.internal(error.message)
   return ok(data)
