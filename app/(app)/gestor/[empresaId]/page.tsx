@@ -351,7 +351,7 @@ function ColabsPane({ empresaId }: { empresaId: string }) {
   const [colabs,  setColabs]  = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [modal,   setModal]   = useState<any>(null)
-  const [form,    setForm]    = useState({ nome: '', email: '', senha: '', isGestor: false })
+  const [form,    setForm]    = useState({ nome: '', email: '', senha: '', isGestor: false, isAssistente: false })
   const [saving,  setSaving]  = useState(false)
 
   async function load() {
@@ -371,8 +371,8 @@ function ColabsPane({ empresaId }: { empresaId: string }) {
       {
         method: isEdit ? 'PUT' : 'POST',
         body: JSON.stringify(isEdit
-          ? { nome: form.nome, isGestor: form.isGestor }
-          : { nome: form.nome, email: form.email, senha: form.senha, empresaId, isGestor: form.isGestor }
+          ? { nome: form.nome, isGestor: form.isGestor, isAssistente: form.isAssistente }
+          : { nome: form.nome, email: form.email, senha: form.senha, empresaId, isGestor: form.isGestor, isAssistente: form.isAssistente }
         ),
       }
     )
@@ -405,7 +405,7 @@ function ColabsPane({ empresaId }: { empresaId: string }) {
       <div className="flex items-center justify-between mb-2">
         <SectionLabel>Colaboradores</SectionLabel>
         <Btn size="sm" className="w-auto"
-          onClick={() => { setModal({}); setForm({ nome: '', email: '', senha: '', isGestor: false }) }}>
+          onClick={() => { setModal({}); setForm({ nome: '', email: '', senha: '', isGestor: false, isAssistente: false }) }}>
           + Novo
         </Btn>
       </div>
@@ -420,15 +420,15 @@ function ColabsPane({ empresaId }: { empresaId: string }) {
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <p className="font-bold text-sm text-[#ddeaf8] truncate">{c.nome}</p>
-          <Badge color={c.is_gestor ? 'blue' : 'gray'}>
-            {c.is_gestor ? 'Gestor' : 'Colaborador'}
+          <Badge color={c.is_gestor ? 'blue' : c.is_assistente ? 'yellow' : 'gray'}>
+            {c.is_gestor ? 'Gestor' : c.is_assistente ? 'Assistente' : 'Colaborador'}
           </Badge>
         </div>
         <p className="font-[var(--mono)] text-[10px] text-[#3d5875] mt-0.5 truncate">{c.email}</p>
       </div>
       <div className="flex gap-1.5 flex-shrink-0">
         <Btn size="sm" variant="secondary" className="w-auto"
-          onClick={() => { setModal(c); setForm({ nome: c.nome, email: c.email, senha: '', isGestor: c.is_gestor }) }}>
+          onClick={() => { setModal(c); setForm({ nome: c.nome, email: c.email, senha: '', isGestor: c.is_gestor, isAssistente: c.is_assistente ?? false }) }}>
           Editar
         </Btn>
         <Btn size="sm" variant="danger" className="w-auto" onClick={() => inativar(c.id)}>
@@ -452,12 +452,19 @@ function ColabsPane({ empresaId }: { empresaId: string }) {
               <Input label="Senha" type="password" value={form.senha} onChange={e => setForm(f => ({ ...f, senha: e.target.value }))} placeholder="Mínimo 4 caracteres" />
             </>
           )}
-          <div className="flex items-center gap-3 cursor-pointer" onClick={() => setForm(f => ({ ...f, isGestor: !f.isGestor }))}>
+          <div className="flex items-center gap-3 cursor-pointer" onClick={() => setForm(f => ({ ...f, isGestor: !f.isGestor, isAssistente: false }))}>
             <div className={`w-5 h-5 rounded-[4px] border flex items-center justify-center flex-shrink-0 transition-all
               ${form.isGestor ? 'bg-[#00e87a] border-[#00e87a]' : 'border-[#253d5e]'}`}>
               {form.isGestor && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4l3 3 5-6" stroke="#003320" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
             </div>
             <span className="font-[var(--mono)] text-xs text-[#7a96b8]">É gestor de empresa</span>
+          </div>
+          <div className="flex items-center gap-3 cursor-pointer" onClick={() => setForm(f => ({ ...f, isAssistente: !f.isAssistente, isGestor: false }))}>
+            <div className={`w-5 h-5 rounded-[4px] border flex items-center justify-center flex-shrink-0 transition-all
+              ${form.isAssistente ? 'bg-[#4da6ff] border-[#4da6ff]' : 'border-[#253d5e]'}`}>
+              {form.isAssistente && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4l3 3 5-6" stroke="#001a33" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+            </div>
+            <span className="font-[var(--mono)] text-xs text-[#7a96b8]">É assistente (só visualiza pedidos do dia)</span>
           </div>
           <Btn loading={saving} onClick={salvar}>Salvar</Btn>
         </div>
