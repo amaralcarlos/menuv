@@ -44,7 +44,7 @@ export async function middleware(req: NextRequest) {
     // Só admin e restaurante podem acessar /gestor diretamente
     if (appRole === 'admin' || appRole === 'restaurante') return res
     // Gestor acessa normalmente
-    if (appRole === 'colaborador' && user.app_metadata?.is_gestor) return res
+    if (appRole === 'colaborador' && (user.app_metadata?.is_gestor || user.app_metadata?.is_assistente)) return res
     // Outros → redireciona para seu painel
     return NextResponse.redirect(new URL('/pedidos', req.url))
   }
@@ -60,7 +60,7 @@ export async function middleware(req: NextRequest) {
 
     const dest = appRole === 'admin'                   ? '/admin'
                : appRole === 'restaurante'             ? '/dashboard'
-               : appRole === 'colaborador' && isGestor ? '/gestor'
+               : appRole === 'colaborador' && (isGestor || user.app_metadata?.is_assistente) ? '/gestor'
                : '/pedidos'
 
     return NextResponse.redirect(new URL(dest, req.url))
