@@ -472,8 +472,9 @@ export default function GestorEmpresaPage() {
   const { meta }     = useAuth()
   const { call }     = useApi()
   const empresaId    = params.empresaId as string
-  const isAdmin      = meta?.app_role === 'admin'
-  const isRestaurante = meta?.app_role === 'restaurante'
+  const isAdmin        = meta?.app_role === 'admin'
+  const isRestaurante  = meta?.app_role === 'restaurante'
+  const isAssistente   = meta?.app_role === 'colaborador' && meta?.is_assistente && !meta?.is_gestor
   const [gestorColabId, setGestorColabId] = useState<string | null>(null)
   const [empresaNome,   setEmpresaNome]   = useState('')
 
@@ -492,7 +493,9 @@ export default function GestorEmpresaPage() {
     }
   }, [empresaId])
 
-  const tabs = [
+  const tabs = isAssistente ? [
+    { id: 'inicio', label: 'Início', icon: 'home' as const, component: <InicioPane empresaId={empresaId} /> },
+  ] : [
     { id: 'inicio',        label: 'Início',        icon: 'home'      as const, component: <InicioPane empresaId={empresaId} /> },
     { id: 'pedido',        label: 'Meu Pedido',    icon: 'pedido'    as const,
       component: gestorColabId === null
