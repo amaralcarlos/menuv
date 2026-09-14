@@ -2,7 +2,7 @@ import { createServerClient } from '@supabase/ssr'
 import { NextRequest, NextResponse } from 'next/server'
 
 const PUBLIC_PATHS = ['/cadastro', '/reset-senha']
-const ADMIN_PATHS   = ['/gestor']  // admin e restaurante podem acessar
+const ADMIN_PATHS   = ['/gestor', '/assistente']  // admin e restaurante podem acessar
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
@@ -41,7 +41,7 @@ export async function middleware(req: NextRequest) {
     const { data: refreshed } = await sb.auth.refreshSession()
     const user = refreshed.session?.user ?? session.user
     if (user.app_metadata?.app_role === 'colaborador' && user.app_metadata?.is_assistente) {
-      return NextResponse.redirect(new URL(`/gestor/${user.app_metadata?.empresa_id ?? ''}`, req.url))
+      return NextResponse.redirect(new URL(`/assistente/${user.app_metadata?.empresa_id ?? ''}`, req.url))
     }
   }
 
@@ -53,7 +53,8 @@ export async function middleware(req: NextRequest) {
     // Só admin e restaurante podem acessar /gestor diretamente
     if (appRole === 'admin' || appRole === 'restaurante') return res
     // Gestor acessa normalmente
-    if (appRole === 'colaborador' && (user.app_metadata?.is_gestor || user.app_metadata?.is_assistente)) return res
+    if (appRole === 'colaborador' && user.app_metadata?.is_gestor) return res
+    if (appRole === 'colaborador' && user.app_metadata?.is_assistente && pathname.startsWith('/assistente')) return res
     // Outros → redireciona para seu painel
     return NextResponse.redirect(new URL('/pedidos', req.url))
   }
@@ -69,7 +70,8 @@ export async function middleware(req: NextRequest) {
 
     const dest = appRole === 'admin'                   ? '/admin'
                : appRole === 'restaurante'             ? '/dashboard'
-               : appRole === 'colaborador' && (isGestor || user.app_metadata?.is_assistente) ? `/gestor/${user.app_metadata?.empresa_id ?? ''}`
+               : appRole === 'colaborador' && user.app_metadata?.is_assistente ? `/assistente/${user.app_metadata?.empresa_id ?? ''}`
+               : appRole === 'colaborador' && isGestor ? `/gestor/${user.app_metadata?.empresa_id ?? ''}`
                : '/pedidos'
 
     return NextResponse.redirect(new URL(dest, req.url))
