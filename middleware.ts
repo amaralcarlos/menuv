@@ -60,7 +60,7 @@ export async function middleware(req: NextRequest) {
 
     const dest = appRole === 'admin'                   ? '/admin'
                : appRole === 'restaurante'             ? '/dashboard'
-               : appRole === 'colaborador' && (isGestor || user.app_metadata?.is_assistente) ? '/gestor'
+               : appRole === 'colaborador' && (isGestor || user.app_metadata?.is_assistente) ? `/gestor/${user.app_metadata?.empresa_id ?? ''}`
                : '/pedidos'
 
     return NextResponse.redirect(new URL(dest, req.url))
