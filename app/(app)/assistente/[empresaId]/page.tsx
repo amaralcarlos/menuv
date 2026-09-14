@@ -3,16 +3,18 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { useApi } from '@/lib/use-api'
-import { useToast } from '@/components/ui'
 import { AppShell } from '@/components/layout/AppShell'
-import { Badge, Btn, Spinner } from '@/components/ui'
+import { Badge, Spinner } from '@/components/ui'
+import PedidosContent from '@/app/(app)/pedidos/PedidosContent'
+import ResumoColabPane from '@/app/(app)/pedidos/ResumoColabPane'
 
-function InicioAssistentePane({ empresaId }: { empresaId: string }) {
+/* ── Início — visão dos pedidos da empresa ───────────────── */
+function InicioPane({ empresaId }: { empresaId: string }) {
   const { call } = useApi()
-  const [empresa,        setEmpresa]        = useState<any>(null)
-  const [pedidosSemana,  setPedidosSemana]  = useState<Record<string, any[]>>({})
-  const [loading,        setLoading]        = useState(true)
-  const [diaSel,         setDiaSel]         = useState('')
+  const [empresa,       setEmpresa]       = useState<any>(null)
+  const [pedidosSemana, setPedidosSemana] = useState<Record<string, any[]>>({})
+  const [loading,       setLoading]       = useState(true)
+  const [diaSel,        setDiaSel]        = useState('')
 
   useEffect(() => { load() }, [empresaId])
 
@@ -22,36 +24,25 @@ function InicioAssistentePane({ empresaId }: { empresaId: string }) {
     const seg = new Date(hoje); seg.setDate(hoje.getDate() - diaSemana)
     const sex = new Date(seg);  sex.setDate(seg.getDate() + 4)
     const fmt = (d: Date) => `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`
-
     setDiaSel(fmt(hoje))
-
     try {
       const [pedidosRes, empRes] = await Promise.all([
         call<any[]>(`/api/pedidos?empresaId=${empresaId}&dataInicio=${fmt(seg)}&dataFim=${fmt(sex)}`),
         call<any>(`/api/empresas/${empresaId}`),
       ])
-
       if (pedidosRes.success) {
         const map: Record<string, any[]> = {}
         pedidosRes.data.forEach((p: any) => {
-          const raw   = p.data_pedido ?? p.data ?? ''
+          const raw = p.data_pedido ?? p.data ?? ''
           const parts = raw.split('-')
-          const key   = parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : raw
+          const key = parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : raw
           if (!map[key]) map[key] = []
           map[key].push(p)
         })
         setPedidosSemana(map)
       }
-
-      if (empRes.success) {
-        const emp = empRes.data?.[0] ?? empRes.data
-        setEmpresa(emp)
-      }
-    } catch(e) {
-      console.error('Assistente load error:', e)
-    } finally {
-      setLoading(false)
-    }
+      if (empRes.success) setEmpresa(empRes.data?.[0] ?? empRes.data)
+    } catch(e) { console.error(e) } finally { setLoading(false) }
   }
 
   function gerarRelatorio(dia: string, pedidos: any[]) {
@@ -59,66 +50,17 @@ function InicioAssistentePane({ empresaId }: { empresaId: string }) {
     const [dd, mm, yyyy] = dia.split('/')
     const DIAS_PT = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb']
     const nomeDia = DIAS_PT[new Date(`${yyyy}-${mm}-${dd}`).getDay()]
-
-    const pedidosOrdenados = [...pedidos].sort((a, b) =>
-      (a.colaboradorNome ?? '').localeCompare(b.colaboradorNome ?? '', 'pt-BR'))
-
+    const pedidosOrdenados = [...pedidos].sort((a, b) => (a.colaboradorNome ?? '').localeCompare(b.colaboradorNome ?? '', 'pt-BR'))
     const linhas = pedidosOrdenados.map((p: any, i: number) => {
       const itens = (p.pedido_itens?.map((it: any) => it.item) ?? p.itens ?? []).join(', ')
-      return `
-        <tr>
-          <td class="td-num">${i+1}</td>
-          <td class="td-nome">${p.colaboradorNome ?? '—'}</td>
-          <td class="td-pedido">${itens}</td>
-          <td class="td-ass"><div class="ass-line"></div></td>
-        </tr>`
+      return `<tr><td style="width:24px;font-size:10px;color:#999;padding:4px 8px">${i+1}</td><td style="width:22%;font-size:11px;font-weight:700;padding:4px 8px;white-space:nowrap">${p.colaboradorNome ?? '—'}</td><td style="font-size:10px;color:#555;padding:4px 8px">${itens}</td><td style="width:38%;padding:4px 8px"><div style="border-bottom:1px solid #bbb;height:18px"></div></td></tr>`
     }).join('')
-
-    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
-    <title>Lista de Assinaturas — ${dd}/${mm}/${yyyy}</title>
-    <style>
-      * { box-sizing: border-box; margin: 0; padding: 0; }
-      body { font-family: 'Helvetica Neue', Arial, sans-serif; padding: 20px 28px; color: #111; }
-      .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1.5px solid #eee; }
-      .brand { font-size: 16px; font-weight: 900; color: #111; }
-      .brand span { color: #00994d; }
-      .doc-title { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
-      .doc-sub { font-size: 11px; color: #888; margin-top: 2px; }
-      .info-bar { display: flex; gap: 24px; background: #f7f8fa; border-radius: 6px; padding: 7px 14px; margin-bottom: 12px; }
-      .info-label { font-size: 8px; text-transform: uppercase; letter-spacing: 1px; color: #999; font-weight: 600; }
-      .info-value { font-size: 11px; font-weight: 700; color: #111; }
-      table { width: 100%; border-collapse: collapse; }
-      thead tr { background: #111; }
-      thead th { color: #fff; font-size: 9px; font-weight: 700; text-transform: uppercase; padding: 5px 8px; text-align: left; }
-      tbody tr:nth-child(even) { background: #fafafa; }
-      tbody tr { border-bottom: 1px solid #eee; }
-      td { padding: 4px 8px; vertical-align: middle; }
-      .td-num { width: 24px; font-size: 10px; color: #999; font-weight: 600; }
-      .td-nome { width: 22%; font-size: 11px; font-weight: 700; color: #111; white-space: nowrap; }
-      .td-pedido { font-size: 10px; color: #555; }
-      .td-ass { width: 38%; }
-      .ass-line { border-bottom: 1px solid #bbb; height: 18px; width: 100%; }
-      .footer { margin-top: 14px; display: flex; justify-content: space-between; padding-top: 12px; border-top: 1px solid #eee; font-size: 10px; color: #bbb; }
-      .btn-print { background: #111; color: white; border: none; padding: 10px 24px; border-radius: 6px; cursor: pointer; font-size: 13px; margin-bottom: 20px; }
-      @media print { .btn-print { display: none; } }
-    </style></head><body>
-    <button class="btn-print" onclick="window.print()">🖨️ Imprimir / Salvar PDF</button>
-    <div class="header">
-      <div><div class="brand">Menu<span>v</span></div><div style="font-size:10px;color:#888">Gestão de Refeições</div></div>
-      <div style="text-align:right"><div class="doc-title">Lista de Assinaturas</div><div class="doc-sub">Gerado em ${hoje}</div></div>
-    </div>
-    <div class="info-bar">
-      <div><div class="info-label">Empresa</div><div class="info-value">${empresa?.nome ?? '—'}</div></div>
-      <div><div class="info-label">Data</div><div class="info-value">${nomeDia}, ${dd}/${mm}/${yyyy}</div></div>
-      <div><div class="info-label">Total</div><div class="info-value">${pedidos.length} refeição(ões)</div></div>
-    </div>
-    <table>
-      <thead><tr><th>#</th><th style="width:22%">Colaborador</th><th>Pedido</th><th style="width:38%">Assinatura</th></tr></thead>
-      <tbody>${linhas}</tbody>
-    </table>
-    <div class="footer"><span>Menuv · app.menuv.com.br</span><span>${empresa?.nome ?? ''} · ${dd}/${mm}/${yyyy}</span></div>
+    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Assinaturas ${dd}/${mm}/${yyyy}</title><style>body{font-family:Arial,sans-serif;padding:20px 28px}table{width:100%;border-collapse:collapse}thead tr{background:#111}thead th{color:#fff;font-size:9px;font-weight:700;text-transform:uppercase;padding:5px 8px;text-align:left}tbody tr:nth-child(even){background:#fafafa}tbody tr{border-bottom:1px solid #eee}.btn{background:#111;color:#fff;border:none;padding:10px 24px;border-radius:6px;cursor:pointer;margin-bottom:20px}@media print{.btn{display:none}}</style></head><body>
+    <button class="btn" onclick="window.print()">🖨️ Imprimir</button>
+    <h2 style="margin-bottom:4px">${empresa?.nome ?? ''}</h2>
+    <p style="color:#666;font-size:12px;margin-bottom:16px">${nomeDia}, ${dd}/${mm}/${yyyy} · ${pedidos.length} refeição(ões) · Gerado em ${hoje}</p>
+    <table><thead><tr><th>#</th><th style="width:22%">Colaborador</th><th>Pedido</th><th style="width:38%">Assinatura</th></tr></thead><tbody>${linhas}</tbody></table>
     </body></html>`
-
     const w = window.open('', '_blank')
     w?.document.write(html)
     w?.document.close()
@@ -128,16 +70,13 @@ function InicioAssistentePane({ empresaId }: { empresaId: string }) {
 
   return (
     <div className="px-4 pt-4 pb-24">
-
-      {/* Seletor de dias */}
       <p className="font-[var(--mono)] text-[10px] text-[#3d5875] uppercase tracking-[1px] mb-2">Pedidos da semana</p>
       <div className="flex gap-1.5 mb-3 overflow-x-auto pb-1">
         {(() => {
           const hoje = new Date()
           const diaSemana = hoje.getDay() === 0 ? 6 : hoje.getDay() - 1
           const seg = new Date(hoje); seg.setDate(hoje.getDate() - diaSemana)
-          const DIAS = ['Seg','Ter','Qua','Qui','Sex']
-          return DIAS.map((nome, i) => {
+          return ['Seg','Ter','Qua','Qui','Sex'].map((nome, i) => {
             const d = new Date(seg); d.setDate(seg.getDate() + i)
             const key = `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`
             const count = pedidosSemana[key]?.length ?? 0
@@ -154,16 +93,12 @@ function InicioAssistentePane({ empresaId }: { empresaId: string }) {
           })
         })()}
       </div>
-
-      {/* Botão relatório */}
       {(pedidosSemana[diaSel] ?? []).length > 0 && (
         <button onClick={() => gerarRelatorio(diaSel, pedidosSemana[diaSel] ?? [])}
           className="w-full mb-3 py-2.5 rounded-[11px] border border-[rgba(77,166,255,.3)] bg-[rgba(77,166,255,.05)] font-[var(--mono)] text-[11px] text-[#4da6ff] cursor-pointer hover:bg-[rgba(77,166,255,.1)] transition-colors">
           🖨️ Gerar lista de assinaturas
         </button>
       )}
-
-      {/* Lista pedidos */}
       {(pedidosSemana[diaSel] ?? []).length > 0 ? (
         <div className="flex flex-col gap-2">
           {(pedidosSemana[diaSel] ?? []).map((p: any) => (
@@ -174,9 +109,7 @@ function InicioAssistentePane({ empresaId }: { empresaId: string }) {
                   {p.status === 'despachado' ? 'Despachado' : p.status === 'confirmado' ? 'Confirmado' : p.status === 'separado' ? 'Separado' : 'Em aberto'}
                 </Badge>
               </div>
-              {p.itens?.length > 0 && (
-                <p className="font-[var(--mono)] text-[10px] text-[#7a96b8]">{p.itens.join(', ')}</p>
-              )}
+              {p.itens?.length > 0 && <p className="font-[var(--mono)] text-[10px] text-[#7a96b8]">{p.itens.join(', ')}</p>}
             </div>
           ))}
         </div>
@@ -189,22 +122,34 @@ function InicioAssistentePane({ empresaId }: { empresaId: string }) {
   )
 }
 
+/* ── Main ────────────────────────────────────────────────── */
 export default function AssistentePage() {
   const params    = useParams()
   const { meta }  = useAuth()
   const empresaId = params.empresaId as string
+  const [empNome, setEmpNome] = useState('')
+
+  useEffect(() => {
+    if (!empresaId) return
+    fetch(`/api/empresas/${empresaId}`)
+      .then(r => r.json())
+      .then(d => { if (d.success) setEmpNome(d.data?.nome ?? '') })
+      .catch(() => {})
+  }, [empresaId])
 
   const tabs = [
-    { id: 'inicio', label: 'Início', icon: 'home' as const, component: <InicioAssistentePane empresaId={empresaId} /> },
+    { id: 'inicio', label: 'Início',  icon: 'home'      as const, component: <InicioPane empresaId={empresaId} /> },
+    { id: 'pedido', label: 'Pedido',  icon: 'pedido'    as const, component: <PedidosContent /> },
+    { id: 'resumo', label: 'Resumo',  icon: 'relatorio' as const, component: <ResumoColabPane empresaId={empresaId} /> },
   ]
 
   return (
     <AppShell
       tabs={tabs}
-      nome={meta?.nome ?? 'Menuv'}
-      badge="assistente"
+      nome={meta?.nome ?? ''}
+      badge="colaborador"
       role="Assistente"
-      subInfo={meta?.empresa_nome ?? ''}
+      subInfo={empNome}
     />
   )
 }
