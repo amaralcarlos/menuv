@@ -26,6 +26,5 @@ export default function PedidosPage() {
     { id: 'resumo', label: 'Resumo', icon: 'relatorio' as const, component: <ResumoColabPane empresaId={empId} /> },
   ]
 
-    const isAss = meta?.is_assistente === true
-  return <AppShell tabs={tabs} nome={meta?.nome ?? ''} badge={isAss ? 'assistente' : 'colaborador'} role={isAss ? 'Assistente' : 'Colaborador'} subInfo={empNome} />
+  return <AppShell tabs={tabs} nome={meta?.nome ?? ''} badge="colaborador" role={isAssistente ? 'Assistente' : 'Colaborador'} subInfo={empNome} />
 }
