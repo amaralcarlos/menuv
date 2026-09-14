@@ -60,7 +60,12 @@ if (meta?.app_role === 'colaborador') {
     // Gestor vê só os próprios pedidos; admin/restaurante vê todos
     if (colabFilter) {
       query = query.eq('colaborador_id', colabFilter)
+    } else if (meta?.app_role === 'colaborador' && meta?.is_assistente) {
+      // Assistente vê todos os pedidos da empresa (sem filtro por colaborador)
     } else if (meta?.app_role === 'colaborador' && meta?.is_gestor && meta?.colaborador_id) {
+      query = query.eq('colaborador_id', meta.colaborador_id)
+    } else if (meta?.app_role === 'colaborador' && meta?.colaborador_id) {
+      // Colaborador normal vê só os próprios pedidos
       query = query.eq('colaborador_id', meta.colaborador_id)
     }
   } else if (restId || meta?.app_role === 'restaurante' || meta?.app_role === 'rest_usuario') {
