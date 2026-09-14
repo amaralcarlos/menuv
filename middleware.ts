@@ -36,6 +36,15 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(new URL('/', req.url))
   }
 
+  // Assistente tentando acessar /pedidos → redireciona para o painel de gestor
+  if (session && pathname.startsWith('/pedidos')) {
+    const { data: refreshed } = await sb.auth.refreshSession()
+    const user = refreshed.session?.user ?? session.user
+    if (user.app_metadata?.app_role === 'colaborador' && user.app_metadata?.is_assistente) {
+      return NextResponse.redirect(new URL(`/gestor/${user.app_metadata?.empresa_id ?? ''}`, req.url))
+    }
+  }
+
   // Autenticado em rota de admin (ex: /gestor) → deixa passar
   if (session && isAdminPath) {
     const { data: refreshed } = await sb.auth.refreshSession()
