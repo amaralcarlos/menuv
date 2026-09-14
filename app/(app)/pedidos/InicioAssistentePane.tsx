@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { useApi } from '@/lib/use-api'
 import { Badge, Spinner } from '@/components/ui'
 
-function InicioAssistentePane({ empresaId }: { empresaId: string }) {
+export default function InicioAssistentePane({ empresaId }: { empresaId: string }) {
   const { call } = useApi()
   const [empresa,        setEmpresa]        = useState<any>(null)
   const [pedidosSemana,  setPedidosSemana]  = useState<Record<string, any[]>>({})
