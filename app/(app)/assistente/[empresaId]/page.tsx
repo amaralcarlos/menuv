@@ -27,7 +27,7 @@ function InicioPane({ empresaId }: { empresaId: string }) {
     setDiaSel(fmt(hoje))
     try {
       const [pedidosRes, empRes] = await Promise.all([
-        call<any[]>(`/api/pedidos?empresaId=${empresaId}&dataInicio=${fmt(seg)}&dataFim=${fmt(sex)}`),
+        call<any[]>(`/api/pedidos?empresaId=${empresaId}&dataInicio=${fmt(seg)}&dataFim=${fmt(sex)}&_assistente=1`),
         call<any>(`/api/empresas/${empresaId}`),
       ])
       if (pedidosRes.success) {
