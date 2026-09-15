@@ -42,8 +42,11 @@ export async function GET(req: NextRequest) {
 
   // Filtro por role
 if (meta?.app_role === 'colaborador') {
-  if (meta?.is_gestor && empresaId && meta?.empresa_id === empresaId) {
-    // Gestor pode ver todos os pedidos da sua empresa
+  if (meta?.is_assistente && empresaId) {
+    // Assistente vê todos os pedidos da empresa
+    query = query.eq('empresa_id', empresaId)
+  } else if (meta?.is_gestor && empresaId && meta?.empresa_id === empresaId) {
+    // Gestor vê todos os pedidos da sua empresa
     query = query.eq('empresa_id', empresaId)
   } else {
     // Colaborador normal só vê os seus
