@@ -17,7 +17,8 @@ export async function GET(req: NextRequest) {
   const dataFimParam = req.nextUrl.searchParams.get('dataFim')
   const empresaId  = req.nextUrl.searchParams.get('empresaId')
   const restId     = req.nextUrl.searchParams.get('restauranteId')
-  const colabFilter = req.nextUrl.searchParams.get('colaboradorId')
+  const colabFilter    = req.nextUrl.searchParams.get('colaboradorId')
+  const isAssistentReq = req.nextUrl.searchParams.get('_assistente') === '1'
 
   let query = sb.from('pedidos')
     .select('id, data_pedido, obs, status, criado_em, colaborador_id, produto_id, origem, justificativa, colaboradores(id,nome), empresas(id,nome), pedido_itens(item,ordem)')
@@ -41,7 +42,7 @@ export async function GET(req: NextRequest) {
   // Se não houver nenhum filtro de data, retorna sem filtrar por data
 
   // Assistente usa admin client para bypassar RLS
-  if (meta?.is_assistente && empresaId) {
+  if ((meta?.is_assistente || isAssistentReq) && empresaId) {
     const adminSb = supabaseAdmin()
     let adminQuery = adminSb.from('pedidos')
       .select('id, data_pedido, obs, status, criado_em, colaborador_id, produto_id, origem, justificativa, colaboradores(id,nome), empresas(id,nome), pedido_itens(item,ordem)')
