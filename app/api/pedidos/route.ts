@@ -40,12 +40,39 @@ export async function GET(req: NextRequest) {
   }
   // Se não houver nenhum filtro de data, retorna sem filtrar por data
 
+  // Assistente usa admin client para bypassar RLS
+  if (meta?.is_assistente && empresaId) {
+    const adminSb = supabaseAdmin()
+    let adminQuery = adminSb.from('pedidos')
+      .select('id, data_pedido, obs, status, criado_em, colaborador_id, produto_id, origem, justificativa, colaboradores(id,nome), empresas(id,nome), pedido_itens(item,ordem)')
+      .order('criado_em')
+      .eq('empresa_id', empresaId)
+
+    if (dataParam) {
+      const dataIso = toIsoDate(dataParam)
+      if (dataIso) adminQuery = adminQuery.eq('data_pedido', dataIso)
+    } else if (dataIniParam && dataFimParam) {
+      const ini = toIsoDate(dataIniParam)
+      const fim = toIsoDate(dataFimParam)
+      if (ini && fim) adminQuery = adminQuery.gte('data_pedido', ini).lte('data_pedido', fim)
+    }
+
+    const { data: adminData, error: adminErr } = await adminQuery as any
+    if (adminErr) return E.internal(adminErr.message)
+    const pedidos = (adminData ?? []).map((p: any) => ({
+      id: p.id, data: p.data_pedido, obs: p.obs, status: p.status ?? 'aberto',
+      colaboradorId: p.colaborador_id, origem: p.origem ?? 'colaborador',
+      justificativa: p.justificativa ?? null,
+      colaboradorNome: p.colaboradores?.nome ?? '', empresaNome: p.empresas?.nome ?? '',
+      itens: (p.pedido_itens ?? []).sort((a: any, b: any) => a.ordem - b.ordem).map((i: any) => i.item),
+      timestamp: p.criado_em,
+    }))
+    return ok(pedidos)
+  }
+
   // Filtro por role
 if (meta?.app_role === 'colaborador') {
-  if (meta?.is_assistente && empresaId) {
-    // Assistente vê todos os pedidos da empresa
-    query = query.eq('empresa_id', empresaId)
-  } else if (meta?.is_gestor && empresaId && meta?.empresa_id === empresaId) {
+  if (meta?.is_gestor && empresaId && meta?.empresa_id === empresaId) {
     // Gestor vê todos os pedidos da sua empresa
     query = query.eq('empresa_id', empresaId)
   } else {
