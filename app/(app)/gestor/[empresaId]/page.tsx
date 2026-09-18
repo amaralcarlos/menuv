@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { useApi } from '@/lib/use-api'
@@ -481,7 +481,7 @@ function ColabsPane({ empresaId }: { empresaId: string }) {
       <div className="flex items-center justify-between mb-2">
         <SectionLabel>Colaboradores</SectionLabel>
         <Btn size="sm" className="w-auto"
-          onClick={() => { setModal({}); setForm({ nome: '', email: '', senha: '', isGestor: false, isAssistente: false }); window.scrollTo({ top: 0, behavior: 'smooth' }) }}>
+          onClick={() => { window.scrollTo({ top: 0 }); setTimeout(() => { setModal({}); setForm({ nome: '', email: '', senha: '', isGestor: false, isAssistente: false }) }, 100) }}>
           + Novo
         </Btn>
       </div>
@@ -504,7 +504,7 @@ function ColabsPane({ empresaId }: { empresaId: string }) {
       </div>
       <div className="flex gap-1.5 flex-shrink-0">
         <Btn size="sm" variant="secondary" className="w-auto"
-          onClick={() => { setModal(c); setForm({ nome: c.nome, email: c.email, senha: '', isGestor: c.is_gestor, isAssistente: c.is_assistente ?? false }); window.scrollTo({ top: 0, behavior: 'smooth' }) }}>
+          onClick={() => { window.scrollTo({ top: 0 }); setTimeout(() => { setModal(c); setForm({ nome: c.nome, email: c.email, senha: '', isGestor: c.is_gestor, isAssistente: c.is_assistente ?? false }) }, 100) }}>
           Editar
         </Btn>
 
