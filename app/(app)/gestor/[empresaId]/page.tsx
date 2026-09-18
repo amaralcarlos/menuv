@@ -481,7 +481,7 @@ function ColabsPane({ empresaId }: { empresaId: string }) {
       <div className="flex items-center justify-between mb-2">
         <SectionLabel>Colaboradores</SectionLabel>
         <Btn size="sm" className="w-auto"
-          onClick={() => { setModal({}); setForm({ nome: '', email: '', senha: '', isGestor: false, isAssistente: false }) }}>
+          onClick={() => { setModal({}); setForm({ nome: '', email: '', senha: '', isGestor: false, isAssistente: false }); window.scrollTo({ top: 0, behavior: 'smooth' }) }}>
           + Novo
         </Btn>
       </div>
@@ -504,13 +504,10 @@ function ColabsPane({ empresaId }: { empresaId: string }) {
       </div>
       <div className="flex gap-1.5 flex-shrink-0">
         <Btn size="sm" variant="secondary" className="w-auto"
-          onClick={() => { setModal(c); setForm({ nome: c.nome, email: c.email, senha: '', isGestor: c.is_gestor, isAssistente: c.is_assistente ?? false }) }}>
+          onClick={() => { setModal(c); setForm({ nome: c.nome, email: c.email, senha: '', isGestor: c.is_gestor, isAssistente: c.is_assistente ?? false }); window.scrollTo({ top: 0, behavior: 'smooth' }) }}>
           Editar
         </Btn>
-        <Btn size="sm" variant="secondary" className="w-auto"
-          onClick={() => { setRelModal(c); setRelInicio(''); setRelFim('') }}>
-          📄
-        </Btn>
+
         <Btn size="sm" variant="danger" className="w-auto" onClick={() => inativar(c.id)}>
           Inativar
         </Btn>
