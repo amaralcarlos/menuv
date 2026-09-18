@@ -329,7 +329,7 @@ export default function RelatorioGestorPane({ empresaId }: { empresaId: string }
     else toast(res.error, 'error')
   }
 
-  const colabs    = detalhe ? [...detalhe.colaboradores].sort((a: any, b: any) => b.total - a.total) : []
+  const colabs    = detalhe ? [...detalhe.colaboradores].sort((a: any, b: any) => a.nome.localeCompare(b.nome, 'pt-BR')) : []
   const temRateio = (detalhe?.totalSubsidio ?? 0) > 0
 
   return (
