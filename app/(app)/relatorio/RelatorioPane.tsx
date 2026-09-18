@@ -100,7 +100,7 @@ function abrirPdfEmpresa(empresa: any, detalhe: any, mesAno: string) {
   <table>
     <thead><tr><th>#</th><th>Colaborador</th><th>Ref.</th><th>Valor Bruto</th></tr></thead>
     <tbody>
-      ${[...detalhe.colaboradores].sort((a: any,b: any) => b.total - a.total).map((c: any, i: number) => `
+      ${[...detalhe.colaboradores].sort((a: any,b: any) => a.nome.localeCompare(b.nome, 'pt-BR')).map((c: any, i: number) => `
         <tr><td>${i+1}</td><td>${c.nome}</td><td>${c.total > 0 ? c.total : '—'}</td><td>${c.total > 0 ? 'R$ ' + Number(c.valorBruto ?? c.valor ?? 0).toFixed(2) : '—'}</td></tr>
       `).join('')}
     </tbody>
@@ -135,7 +135,7 @@ function DetalheEmpresa({ empresa, mesAno, onVoltar }: { empresa: any; mesAno: s
     if (!emailDest) { toast('Informe o e-mail.', 'error'); return }
     setSending(true)
     const corpo = `Relatório de ${nomeMes(mesAno)}\n\n${empresa.empresaNome}\nRefeições: ${detalhe?.totalPedidos}\nTotal: R$ ${Number(detalhe?.valorTotal).toFixed(2)}\n\nPor colaborador:\n${
-      [...(detalhe?.colaboradores ?? [])].sort((a: any,b: any) => b.total - a.total)
+      [...(detalhe?.colaboradores ?? [])].sort((a: any,b: any) => a.nome.localeCompare(b.nome, 'pt-BR'))
         .map((c: any) => `${c.nome}: ${c.total > 0 ? c.total + ' ref. — R$ ' + Number(c.valorBruto ?? 0).toFixed(2) : '—'}`)
         .join('\n')
     }`
@@ -206,7 +206,7 @@ function DetalheEmpresa({ empresa, mesAno, onVoltar }: { empresa: any; mesAno: s
             </p>
 
             <div className="flex flex-col gap-1 mb-4">
-              {[...detalhe.colaboradores].sort((a: any,b: any) => b.total - a.total).map((c: any, i: number) => (
+              {[...detalhe.colaboradores].sort((a: any,b: any) => a.nome.localeCompare(b.nome, 'pt-BR')).map((c: any, i: number) => (
                 <div key={c.id ?? c.nome} className="flex items-center gap-2 py-1.5 border-b border-[#1c2e48] last:border-none">
                   <span className="font-[var(--mono)] text-[10px] text-[#3d5875] w-5 text-center">{i+1}</span>
                   <span className="flex-1 text-sm text-[#ddeaf8]">{c.nome}</span>
