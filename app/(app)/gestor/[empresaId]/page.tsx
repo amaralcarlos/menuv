@@ -350,17 +350,93 @@ function ColabsPane({ empresaId }: { empresaId: string }) {
   const toast    = useToast()
   const [colabs,  setColabs]  = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [modal,   setModal]   = useState<any>(null)
-  const [form,    setForm]    = useState({ nome: '', email: '', senha: '', isGestor: false, isAssistente: false })
-  const [saving,  setSaving]  = useState(false)
+  const [modal,        setModal]        = useState<any>(null)
+  const [form,         setForm]         = useState({ nome: '', email: '', senha: '', isGestor: false, isAssistente: false })
+  const [saving,       setSaving]       = useState(false)
+  const [relModal,     setRelModal]     = useState<any>(null)
+  const [relInicio,    setRelInicio]    = useState('')
+  const [relFim,       setRelFim]       = useState('')
+  const [relLoading,   setRelLoading]   = useState(false)
 
   async function load() {
-    const r = await call<any[]>(`/api/colaboradores?empresaId=${empresaId}`)
+    const r = await call<any[]>(`/api/colaboradores?empresaId=${empresaId}&incluirInativos=true`)
     if (r.success) setColabs(r.data)
     setLoading(false)
   }
 
   useEffect(() => { load() }, [empresaId])
+
+  async function gerarRelatorioColab() {
+    if (!relInicio || !relFim) { toast('Selecione o período.', 'error'); return }
+    setRelLoading(true)
+    const ini = relInicio.split('-').reverse().join('/')
+    const fim = relFim.split('-').reverse().join('/')
+    const res = await call<any[]>(`/api/pedidos?empresaId=${empresaId}&colaboradorId=${relModal.id}&dataInicio=${ini}&dataFim=${fim}`)
+    setRelLoading(false)
+    if (!res.success) { toast('Erro ao buscar pedidos.', 'error'); return }
+
+    const pedidos = res.data
+    if (pedidos.length === 0) { toast('Nenhum pedido neste período.', 'error'); return }
+
+    // Busca subsídio
+    const empRes = await call<any[]>(`/api/empresas/${empresaId}/produtos`)
+    const subsidioMap: Record<string, number> = {}
+    const precoMap: Record<string, number> = {}
+    if (empRes.success) {
+      empRes.data.forEach((ep: any) => {
+        subsidioMap[ep.produto?.id ?? ''] = Number(ep.subsidio ?? 0)
+        precoMap[ep.produto?.id ?? ''] = Number(ep.preco ?? 0)
+      })
+    }
+
+    // Calcula por dia — subsídio só no 1º pedido do dia
+    const pedsByDay: Record<string, any[]> = {}
+    pedidos.forEach((p: any) => {
+      if (!pedsByDay[p.data]) pedsByDay[p.data] = []
+      pedsByDay[p.data].push(p)
+    })
+
+    let totalBruto = 0, totalSub = 0
+    const linhas = pedidos.sort((a: any, b: any) => a.data.localeCompare(b.data)).map((p: any) => {
+      const dayPeds = pedsByDay[p.data] ?? []
+      const idx     = dayPeds.indexOf(p)
+      const preco   = precoMap[p.produto_id ?? ''] ?? 0
+      const sub     = idx === 0 ? (subsidioMap[p.produto_id ?? ''] ?? 0) : 0
+      const colab   = Math.max(0, preco - sub)
+      totalBruto += preco; totalSub += sub
+      const [y,m,d] = p.data.split('-')
+      return `<tr><td style="padding:5px 8px;font-size:11px;color:#555">${d}/${m}/${y}</td><td style="padding:5px 8px;font-size:11px">${(p.itens ?? []).join(', ')}</td><td style="padding:5px 8px;font-size:11px;text-align:right">R$ ${preco.toFixed(2)}</td><td style="padding:5px 8px;font-size:11px;text-align:right;color:#00994d">R$ ${sub.toFixed(2)}</td><td style="padding:5px 8px;font-size:11px;text-align:right;color:#e02424;font-weight:700">R$ ${colab.toFixed(2)}</td></tr>`
+    }).join('')
+
+    const totalColab = Math.max(0, totalBruto - totalSub)
+    const hoje = new Date().toLocaleDateString('pt-BR')
+    const [iy,im,id2] = relInicio.split('-'); const [fy,fm,fd] = relFim.split('-')
+    const periodoStr = `${id2}/${im}/${iy} a ${fd}/${fm}/${fy}`
+
+    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Débitos — ${relModal.nome}</title>
+    <style>body{font-family:Arial,sans-serif;padding:28px;color:#111}h2{font-size:18px;margin-bottom:4px}.sub{font-size:12px;color:#666;margin-bottom:20px}.boxes{display:flex;gap:12px;margin-bottom:20px}.box{flex:1;border:1px solid #ddd;border-radius:8px;padding:12px;text-align:center}.box-val{font-size:20px;font-weight:bold;color:#00994d}.box-lbl{font-size:10px;color:#666;text-transform:uppercase;margin-top:3px}table{width:100%;border-collapse:collapse}thead tr{background:#111}thead th{color:#fff;font-size:9px;text-transform:uppercase;padding:6px 8px;text-align:left}.footer{margin-top:24px;font-size:10px;color:#bbb;text-align:center}.btn{background:#111;color:#fff;border:none;padding:10px 24px;border-radius:6px;cursor:pointer;margin-bottom:20px}@media print{.btn{display:none}}</style>
+    </head><body>
+    <button class="btn" onclick="window.print()">🖨️ Imprimir / PDF</button>
+    <img src="https://app.menuv.com.br/logo-pdf.png" style="height:40px;margin-bottom:12px;display:block" />
+    <h2>Relatório de Débitos — ${relModal.nome}</h2>
+    <div class="sub">${periodoStr} · Gerado em ${hoje}</div>
+    <div class="boxes">
+      <div class="box"><div class="box-val">${pedidos.length}</div><div class="box-lbl">🍽️ Refeições</div></div>
+      <div class="box"><div class="box-val" style="color:#1a56db">R$ ${totalSub.toFixed(2)}</div><div class="box-lbl">🏢 Subsídio empresa</div></div>
+      <div class="box"><div class="box-val" style="color:#e02424">R$ ${totalColab.toFixed(2)}</div><div class="box-lbl">💳 A descontar</div></div>
+    </div>
+    <table><thead><tr><th>Data</th><th>Pedido</th><th style="text-align:right">Valor</th><th style="text-align:right">Subsídio</th><th style="text-align:right">Desconto</th></tr></thead>
+    <tbody>${linhas}</tbody></table>
+    <div style="margin-top:16px;background:#fff8e1;border:1px solid #ffe082;border-radius:8px;padding:10px 16px;font-size:12px;color:#7c5c00">
+      💳 Total a descontar do colaborador: <strong>R$ ${totalColab.toFixed(2)}</strong>
+    </div>
+    <div class="footer">Menuv · app.menuv.com.br</div>
+    </body></html>`
+    const w = window.open('', '_blank')
+    w?.document.write(html)
+    w?.document.close()
+    setRelModal(null)
+  }
 
   async function salvar() {
     if (!form.nome || !form.email) { toast('Preencha nome e e-mail.', 'error'); return }
@@ -431,6 +507,10 @@ function ColabsPane({ empresaId }: { empresaId: string }) {
           onClick={() => { setModal(c); setForm({ nome: c.nome, email: c.email, senha: '', isGestor: c.is_gestor, isAssistente: c.is_assistente ?? false }) }}>
           Editar
         </Btn>
+        <Btn size="sm" variant="secondary" className="w-auto"
+          onClick={() => { setRelModal(c); setRelInicio(''); setRelFim('') }}>
+          📄
+        </Btn>
         <Btn size="sm" variant="danger" className="w-auto" onClick={() => inativar(c.id)}>
           Inativar
         </Btn>
@@ -441,6 +521,27 @@ function ColabsPane({ empresaId }: { empresaId: string }) {
     </div>
   </Card>
 ))}
+
+      <Modal open={!!relModal} onClose={() => setRelModal(null)}
+        title={`Relatório de débitos — ${relModal?.nome ?? ''}`}>
+        <div className="flex flex-col gap-4">
+          <div className="flex gap-3">
+            <div className="flex flex-col gap-1 flex-1">
+              <label className="font-[var(--mono)] text-[9px] text-[#3d5875] uppercase">De</label>
+              <input type="date" value={relInicio} onChange={e => setRelInicio(e.target.value)}
+                className="w-full bg-[#080c14] border border-[#1c2e48] rounded-[8px] px-3 py-2 font-[var(--mono)] text-sm text-[#ddeaf8] outline-none" />
+            </div>
+            <div className="flex flex-col gap-1 flex-1">
+              <label className="font-[var(--mono)] text-[9px] text-[#3d5875] uppercase">Até</label>
+              <input type="date" value={relFim} onChange={e => setRelFim(e.target.value)}
+                className="w-full bg-[#080c14] border border-[#1c2e48] rounded-[8px] px-3 py-2 font-[var(--mono)] text-sm text-[#ddeaf8] outline-none" />
+            </div>
+          </div>
+          <Btn loading={relLoading} onClick={gerarRelatorioColab}>
+            📄 Gerar relatório
+          </Btn>
+        </div>
+      </Modal>
 
       <Modal open={!!modal} onClose={() => setModal(null)}
         title={modal?.id ? `Editar: ${modal.nome}` : 'Novo colaborador'}>
