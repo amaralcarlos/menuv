@@ -13,7 +13,8 @@ export async function GET(req: NextRequest) {
   const jwt  = parseJwt(session.access_token)
   const meta = jwt?.app_metadata as any
 
-  const empresaId = req.nextUrl.searchParams.get('empresaId')
+  const empresaId       = req.nextUrl.searchParams.get('empresaId')
+  const incluirInativos = req.nextUrl.searchParams.get('incluirInativos') === 'true'
   if (!empresaId) return E.badRequest('empresaId é obrigatório.')
 
   if (meta?.app_role !== 'admin') {
@@ -24,10 +25,12 @@ export async function GET(req: NextRequest) {
     if (!pertenceAoRestaurante && !pertenceAoGestor && !isRestaurante) return E.forbidden()
   }
 
-  const { data, error } = await sb
-    .from('colaboradores')
+  let colabQuery = sb.from('colaboradores')
     .select('id, nome, email, is_gestor, is_assistente, ativo')
-    .eq('empresa_id', empresaId).eq('ativo', true).order('nome')
+    .eq('empresa_id', empresaId)
+    .order('nome')
+  if (!incluirInativos) colabQuery = colabQuery.eq('ativo', true)
+  const { data, error } = await colabQuery
   if (error) return E.internal(error.message)
   return ok(data)
 }
