@@ -106,13 +106,46 @@ function abrirPdf(detalhe: any, mesAno: string) {
 }
 
 /* ── Linha de colaborador expansível ─────────────────────── */
-function ColabRow({ c, i, empresaId, mesAno, temRateio }: {
-  c: any; i: number; empresaId: string; mesAno: string; temRateio: boolean
+function ColabRow({ c, i, empresaId, mesAno, temRateio, periodoLabel, dataInicio, dataFim }: {
+  c: any; i: number; empresaId: string; mesAno: string; temRateio: boolean; periodoLabel?: string; dataInicio?: string; dataFim?: string
 }) {
   const { call }   = useApi()
   const [expanded, setExpanded] = useState(false)
   const [pedidos,  setPedidos]  = useState<any[]>([])
   const [loading,  setLoading]  = useState(false)
+
+  function gerarPdfColab() {
+    const hoje = new Date().toLocaleDateString('pt-BR')
+    const periodo = periodoLabel ?? mesAno
+
+    // Se não tem pedidos expandidos ainda, usa os totais do relatório
+    const linhasPed = pedidos.length > 0
+      ? pedidos.sort((a: any, b: any) => a.data.localeCompare(b.data)).map((p: any) => {
+          const [y,m,d] = p.data.split('-')
+          return `<tr><td style="padding:4px 8px;font-size:11px;color:#555">${d}/${m}/${y}</td><td style="padding:4px 8px;font-size:11px">${(p.itens??[]).join(', ')}</td></tr>`
+        }).join('')
+      : ''
+
+    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Débitos — ${c.nome}</title>
+    <style>body{font-family:Arial,sans-serif;padding:28px;color:#111}h2{font-size:18px;margin-bottom:4px}.sub{font-size:12px;color:#666;margin-bottom:16px}.boxes{display:flex;gap:12px;margin-bottom:16px}.box{flex:1;border:1px solid #ddd;border-radius:8px;padding:12px;text-align:center}.box-val{font-size:20px;font-weight:bold;color:#00994d}.box-lbl{font-size:10px;color:#666;text-transform:uppercase;margin-top:3px}table{width:100%;border-collapse:collapse}thead tr{background:#111}thead th{color:#fff;font-size:9px;text-transform:uppercase;padding:5px 8px;text-align:left}tbody tr{border-bottom:1px solid #eee}td{padding:4px 8px}.destaque{margin-top:14px;background:#fff8e1;border:1px solid #ffe082;border-radius:8px;padding:10px 16px;font-size:12px;color:#7c5c00}.footer{margin-top:20px;font-size:10px;color:#bbb;text-align:center}.btn{background:#111;color:#fff;border:none;padding:10px 24px;border-radius:6px;cursor:pointer;margin-bottom:16px}@media print{.btn{display:none}}</style>
+    </head><body>
+    <button class="btn" onclick="window.print()">🖨️ Imprimir / PDF</button>
+    <img src="https://app.menuv.com.br/logo-pdf.png" style="height:36px;margin-bottom:10px;display:block"/>
+    <h2>Relatório de Débitos — ${c.nome}</h2>
+    <div class="sub">Período: ${periodo} · Gerado em ${hoje}</div>
+    <div class="boxes">
+      <div class="box"><div class="box-val">${c.total}</div><div class="box-lbl">🍽️ Refeições</div></div>
+      ${temRateio ? `<div class="box"><div class="box-val" style="color:#1a56db">R$ ${Number(c.valorSubsidio??0).toFixed(2)}</div><div class="box-lbl">🏢 Subsídio empresa</div></div>` : ''}
+      <div class="box"><div class="box-val" style="color:#e02424">R$ ${Number(temRateio ? c.valorColab : c.valorBruto??0).toFixed(2)}</div><div class="box-lbl">💳 ${temRateio ? 'A descontar' : 'Faturamento'}</div></div>
+    </div>
+    ${linhasPed ? `<table><thead><tr><th>Data</th><th>Pedido</th></tr></thead><tbody>${linhasPed}</tbody></table>` : ''}
+    <div class="destaque">💳 Total a descontar: <strong>R$ ${Number(temRateio ? c.valorColab : c.valorBruto??0).toFixed(2)}</strong></div>
+    <div class="footer">Menuv · app.menuv.com.br</div>
+    </body></html>`
+    const w = window.open('', '_blank')
+    w?.document.write(html)
+    w?.document.close()
+  }
 
   async function expandir() {
     if (expanded) { setExpanded(false); return }
@@ -120,13 +153,10 @@ function ColabRow({ c, i, empresaId, mesAno, temRateio }: {
     setLoading(true)
     setExpanded(true)
 
-    const parts     = mesAno.split('/')
-    const mes       = parts[0]
-    const ano       = parts[1]
-    const inicio    = `${ano}-${mes}-01`
-    const fim       = new Date(parseInt(ano), parseInt(mes), 0).toISOString().split('T')[0]
-    const fmtInicio = `${inicio.split('-')[2]}/${inicio.split('-')[1]}/${inicio.split('-')[0]}`
-    const fmtFim    = `${fim.split('-')[2]}/${fim.split('-')[1]}/${fim.split('-')[0]}`
+    const ini = dataInicio ?? (() => { const p = mesAno.split('/'); return `${p[1]}-${p[0]}-01` })()
+    const fim2 = dataFim ?? (() => { const p = mesAno.split('/'); return new Date(parseInt(p[1]), parseInt(p[0]), 0).toISOString().split('T')[0] })()
+    const fmtInicio = `${ini.split('-')[2]}/${ini.split('-')[1]}/${ini.split('-')[0]}`
+    const fmtFim    = `${fim2.split('-')[2]}/${fim2.split('-')[1]}/${fim2.split('-')[0]}`
 
     const res = await call<any[]>(`/api/pedidos?empresaId=${empresaId}&dataInicio=${fmtInicio}&dataFim=${fmtFim}`)
     if (res.success) {
@@ -155,6 +185,11 @@ function ColabRow({ c, i, empresaId, mesAno, temRateio }: {
             {c.total > 0 && (
               <span className={`font-[var(--mono)] text-[9px] text-[#3d5875] inline-block transition-transform ${expanded ? 'rotate-90' : ''}`}>▶</span>
             )}
+            <button
+              onClick={e => { e.stopPropagation(); gerarPdfColab() }}
+              className="font-[var(--mono)] text-[8px] text-[#4da6ff] border border-[rgba(77,166,255,.3)] rounded-[4px] px-1.5 py-0.5 cursor-pointer bg-transparent hover:bg-[rgba(77,166,255,.08)] flex-shrink-0">
+              PDF
+            </button>
           </div>
         </td>
         <td className="py-2 pr-2 text-right font-[var(--mono)] text-xs text-[#00e87a] font-bold">
@@ -421,13 +456,15 @@ export default function RelatorioGestorPane({ empresaId }: { empresaId: string }
               <tbody>
                 {colabs.map((c: any, i: number) => (
                   <ColabRow
-                    key={c.nome}
+                    key={c.id ?? c.nome}
                     c={c}
                     i={i}
                     empresaId={empresaId}
                     mesAno={mesAno}
-                   
                     temRateio={temRateio}
+                    periodoLabel={detalhe?.periodoLabel}
+                    dataInicio={modoCustom ? dataInicio : undefined}
+                    dataFim={modoCustom ? dataFim : undefined}
                   />
                 ))}
               </tbody>
