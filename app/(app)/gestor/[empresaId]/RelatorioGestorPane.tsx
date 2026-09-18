@@ -40,7 +40,7 @@ function abrirPdf(detalhe: any, mesAno: string) {
 
   const linhasTabela = [...detalhe.colaboradores]
     .filter((c: any) => c.total > 0)
-    .sort((a: any, b: any) => b.total - a.total)
+    .sort((a: any, b: any) => a.nome.localeCompare(b.nome, 'pt-BR'))
     .map((c: any, i: number) => {
       const total   = Number(c.valorBruto ?? 0).toFixed(2)
       const empPaga = Number(c.valorSubsidio ?? 0).toFixed(2)
