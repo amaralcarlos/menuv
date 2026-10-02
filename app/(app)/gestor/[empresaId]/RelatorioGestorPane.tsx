@@ -106,8 +106,8 @@ function abrirPdf(detalhe: any, mesAno: string) {
 }
 
 /* ── Linha de colaborador expansível ─────────────────────── */
-function ColabRow({ c, i, empresaId, mesAno, temRateio, periodoLabel, dataInicio, dataFim }: {
-  c: any; i: number; empresaId: string; mesAno: string; temRateio: boolean; periodoLabel?: string; dataInicio?: string; dataFim?: string
+function ColabRow({ c, i, empresaId, mesAno, temRateio, periodoLabel, dataInicio, dataFim, precoRefeicao }: {
+  c: any; i: number; empresaId: string; mesAno: string; temRateio: boolean; periodoLabel?: string; dataInicio?: string; dataFim?: string; precoRefeicao?: number
 }) {
   const { call }   = useApi()
   const [expanded, setExpanded] = useState(false)
@@ -225,7 +225,7 @@ function ColabRow({ c, i, empresaId, mesAno, temRateio, periodoLabel, dataInicio
                         {p.itens.join(', ')}
                       </span>
                       <span className="font-[var(--mono)] text-[10px] text-[#ddeaf8] flex-shrink-0">
-                        R$ {Number(detalhe?.preco ?? 0).toFixed(2)}
+                        R$ {Number(precoRefeicao ?? 0).toFixed(2)}
                       </span>
                     </div>
                   ))
@@ -468,6 +468,7 @@ export default function RelatorioGestorPane({ empresaId }: { empresaId: string }
                     periodoLabel={detalhe?.periodoLabel}
                     dataInicio={modoCustom ? dataInicio : undefined}
                     dataFim={modoCustom ? dataFim : undefined}
+                    precoRefeicao={detalhe?.preco}
                   />
                 ))}
               </tbody>
