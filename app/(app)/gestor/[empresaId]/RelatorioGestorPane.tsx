@@ -221,8 +221,11 @@ function ColabRow({ c, i, empresaId, mesAno, temRateio, periodoLabel, dataInicio
                       <span className="font-[var(--mono)] text-[10px] text-[#3d5875] w-20 flex-shrink-0">
                         {fmtData(p.data)}
                       </span>
-                      <span className="font-[var(--mono)] text-[10px] text-[#7a96b8]">
+                      <span className="font-[var(--mono)] text-[10px] text-[#7a96b8] flex-1">
                         {p.itens.join(', ')}
+                      </span>
+                      <span className="font-[var(--mono)] text-[10px] text-[#ddeaf8] flex-shrink-0">
+                        R$ {Number(detalhe?.preco ?? 0).toFixed(2)}
                       </span>
                     </div>
                   ))
