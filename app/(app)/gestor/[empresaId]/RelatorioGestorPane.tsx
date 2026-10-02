@@ -32,6 +32,71 @@ function fmtData(dataIso: string) {
   return dataIso
 }
 
+function abrirPdfColaboradores(detalhe: any, mesAno: string) {
+  const hoje        = new Date().toLocaleDateString('pt-BR')
+  const periodo     = detalhe.periodoLabel ?? nomeMes(mesAno)
+
+  const linhas = [...detalhe.colaboradores]
+    .filter((c: any) => c.total > 0)
+    .sort((a: any, b: any) => a.nome.localeCompare(b.nome, 'pt-BR'))
+    .map((c: any, i: number) => `
+      <tr>
+        <td style="padding:5px 10px;font-size:12px">${i+1}</td>
+        <td style="padding:5px 10px;font-size:12px;font-weight:600">${c.nome}</td>
+        <td style="padding:5px 10px;font-size:12px;text-align:center">${c.total}</td>
+        <td style="padding:5px 10px;font-size:12px;text-align:right;color:#e02424;font-weight:700">R$ ${Number(c.valorColab ?? 0).toFixed(2)}</td>
+      </tr>`
+    ).join('')
+
+  const totalColab = detalhe.colaboradores.reduce((s: number, c: any) => s + Number(c.valorColab ?? 0), 0)
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <title>Relatório Colaboradores — ${detalhe.empresaNome}</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 28px; color: #111; }
+    h2 { font-size: 18px; margin-bottom: 4px; }
+    .sub { font-size: 12px; color: #666; margin-bottom: 20px; }
+    table { width: 100%; border-collapse: collapse; }
+    thead tr { background: #111; }
+    thead th { color: #fff; font-size: 10px; text-transform: uppercase; padding: 7px 10px; text-align: left; letter-spacing: 0.5px; }
+    tbody tr:nth-child(even) { background: #fafafa; }
+    tbody tr { border-bottom: 1px solid #eee; }
+    .total-row { background: #fff8e1 !important; border-top: 2px solid #fde68a; }
+    .total-row td { font-weight: 700; padding: 8px 10px; font-size: 13px; }
+    .footer { margin-top: 24px; font-size: 10px; color: #bbb; text-align: center; }
+    .btn { background: #111; color: #fff; border: none; padding: 10px 24px; border-radius: 6px; cursor: pointer; font-size: 13px; margin-bottom: 20px; }
+    @media print { .btn { display: none; } }
+  </style></head><body>
+  <button class="btn" onclick="window.print()">🖨️ Imprimir / Salvar PDF</button>
+  <img src="https://app.menuv.com.br/logo-pdf.png" alt="Menuv" style="height:40px;margin-bottom:12px;display:block" />
+  <h2>Relatório de Colaboradores — ${detalhe.empresaNome}</h2>
+  <div class="sub">Período: ${periodo} · Gerado em ${hoje}</div>
+  <table>
+    <thead>
+      <tr>
+        <th style="width:32px">#</th>
+        <th>Colaborador</th>
+        <th style="width:80px;text-align:center">Refeições</th>
+        <th style="width:120px;text-align:right">A descontar</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${linhas}
+      <tr class="total-row">
+        <td colspan="2">Total</td>
+        <td style="text-align:center">${detalhe.totalPedidos}</td>
+        <td style="text-align:right;color:#e02424">R$ ${totalColab.toFixed(2)}</td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="footer">Menuv · app.menuv.com.br</div>
+  </body></html>`
+
+  const w = window.open('', '_blank')
+  w?.document.write(html)
+  w?.document.close()
+}
+
 function abrirPdf(detalhe: any, mesAno: string) {
   const hoje        = new Date().toLocaleDateString('pt-BR')
   const temRateio = (detalhe?.totalSubsidio ?? 0) > 0
@@ -478,10 +543,10 @@ export default function RelatorioGestorPane({ empresaId }: { empresaId: string }
           {/* Botões */}
           <div className="flex gap-2">
             <Btn variant="secondary" className="flex-1" onClick={() => abrirPdf(detalhe, mesAno)}>
-              📄 PDF
+              📄 Relatório empresa
             </Btn>
-            <Btn variant="secondary" className="flex-1" onClick={() => setEmailModal(true)}>
-              📧 E-mail
+            <Btn variant="secondary" className="flex-1" onClick={() => abrirPdfColaboradores(detalhe, mesAno)}>
+              👤 Relatório colaboradores
             </Btn>
           </div>
         </>
