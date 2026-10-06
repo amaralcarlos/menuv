@@ -509,26 +509,23 @@ function ColabsPane({ empresaId }: { empresaId: string }) {
 
       {colabsFiltrados.map(c => (
   <Card key={c.id}>
-    <div className="flex flex-wrap items-center gap-2">
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <p className="font-bold text-sm text-[#ddeaf8] truncate">{c.nome}</p>
-          <Badge color={c.is_gestor ? 'blue' : c.is_assistente ? 'yellow' : 'gray'}>
-            {c.is_gestor ? 'Gestor' : c.is_assistente ? 'Assistente' : 'Colaborador'}
-          </Badge>
-        </div>
-        <p className="font-[var(--mono)] text-[10px] text-[#3d5875] mt-0.5 truncate">{c.email}</p>
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center gap-2">
+        <p className="font-bold text-sm text-[#ddeaf8] flex-1 truncate">{c.nome}</p>
+        <Badge color={c.is_gestor ? 'blue' : c.is_assistente ? 'yellow' : 'gray'}>
+          {c.is_gestor ? 'Gestor' : c.is_assistente ? 'Assistente' : 'Colaborador'}
+        </Badge>
       </div>
-      <div className="flex gap-1.5 flex-shrink-0">
-        <Btn size="sm" variant="secondary" className="w-auto"
+      <p className="font-[var(--mono)] text-[10px] text-[#3d5875] truncate">{c.email}</p>
+      <div className="grid grid-cols-3 gap-1.5 pt-1 border-t border-[#1c2e48]">
+        <Btn size="sm" variant="secondary"
           onClick={() => { window.scrollTo({ top: 0 }); setTimeout(() => { setModal(c); setForm({ nome: c.nome, email: c.email, senha: '', isGestor: c.is_gestor, isAssistente: c.is_assistente ?? false }) }, 100) }}>
           Editar
         </Btn>
-
-        <Btn size="sm" variant="danger" className="w-auto" onClick={() => inativar(c.id)}>
+        <Btn size="sm" variant="danger" onClick={() => inativar(c.id)}>
           Inativar
         </Btn>
-        <Btn size="sm" variant="danger" className="w-auto" onClick={() => excluir(c.id, c.nome)}>
+        <Btn size="sm" variant="danger" onClick={() => excluir(c.id, c.nome)}>
           Excluir
         </Btn>
       </div>
