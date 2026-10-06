@@ -354,6 +354,7 @@ function ColabsPane({ empresaId }: { empresaId: string }) {
   const [form,         setForm]         = useState({ nome: '', email: '', senha: '', isGestor: false, isAssistente: false })
   const [saving,       setSaving]       = useState(false)
   const [relModal,     setRelModal]     = useState<any>(null)
+  const [busca,        setBusca]        = useState('')
   const [relInicio,    setRelInicio]    = useState('')
   const [relFim,       setRelFim]       = useState('')
   const [relLoading,   setRelLoading]   = useState(false)
@@ -474,6 +475,12 @@ function ColabsPane({ empresaId }: { empresaId: string }) {
     else toast(res.error ?? 'Erro ao excluir.', 'error')
   }
 
+  const colabsFiltrados = colabs.filter(c =>
+    !busca ||
+    c.nome.toLowerCase().includes(busca.toLowerCase()) ||
+    c.email.toLowerCase().includes(busca.toLowerCase())
+  )
+
   if (loading) return <Spinner />
 
   return (
@@ -486,11 +493,21 @@ function ColabsPane({ empresaId }: { empresaId: string }) {
         </Btn>
       </div>
 
-      {colabs.length === 0 && (
+      <div className="flex items-center gap-2 mb-3">
+        <input type="text" placeholder="Buscar por nome ou e-mail..."
+          value={busca} onChange={e => setBusca(e.target.value)}
+          className="flex-1 bg-[#0d1525] border border-[#1c2e48] rounded-[8px] px-3 py-2 font-[var(--mono)] text-xs text-[#ddeaf8] outline-none focus:border-[rgba(0,232,122,.3)] placeholder:text-[#3d5875]" />
+        {busca && (
+          <button onClick={() => setBusca('')}
+            className="font-[var(--mono)] text-[10px] text-[#3d5875] hover:text-[#ddeaf8] bg-transparent border-none cursor-pointer">✕</button>
+        )}
+      </div>
+
+      {colabsFiltrados.length === 0 && (
         <Card><p className="text-center font-[var(--mono)] text-xs text-[#3d5875] py-4">Nenhum colaborador ainda.</p></Card>
       )}
 
-      {colabs.map(c => (
+      {colabsFiltrados.map(c => (
   <Card key={c.id}>
     <div className="flex flex-wrap items-center gap-2">
       <div className="flex-1 min-w-0">
@@ -519,8 +536,7 @@ function ColabsPane({ empresaId }: { empresaId: string }) {
   </Card>
 ))}
 
-      <Modal open={!!relModal} onClose={() => setRelModal(null)}
-        title={`Relatório de débitos — ${relModal?.nome ?? ''}`}>
+      {relModal && <div className="fixed inset-0 z-50 flex items-start justify-center pt-8 px-4" onClick={() => setRelModal(null)}><div className="w-full max-w-sm bg-[#0d1525] border border-[#1c2e48] rounded-[16px] p-5 shadow-xl" onClick={e => e.stopPropagation()}><div className="flex items-center justify-between mb-4"><p className="font-bold text-[#ddeaf8]">Relatório — {relModal?.nome}</p><button onClick={() => setRelModal(null)} className="text-[#3d5875] hover:text-[#ddeaf8] bg-transparent border-none cursor-pointer text-xl">×</button></div>
         <div className="flex flex-col gap-4">
           <div className="flex gap-3">
             <div className="flex flex-col gap-1 flex-1">
@@ -537,11 +553,9 @@ function ColabsPane({ empresaId }: { empresaId: string }) {
           <Btn loading={relLoading} onClick={gerarRelatorioColab}>
             📄 Gerar relatório
           </Btn>
-        </div>
-      </Modal>
+        </div></div></div>}
 
-      <Modal open={!!modal} onClose={() => setModal(null)}
-        title={modal?.id ? `Editar: ${modal.nome}` : 'Novo colaborador'}>
+      {modal && <div className="fixed inset-0 z-50 flex items-start justify-center pt-8 px-4" onClick={() => setModal(null)}><div className="w-full max-w-sm bg-[#0d1525] border border-[#1c2e48] rounded-[16px] p-5 shadow-xl" onClick={e => e.stopPropagation()}><div className="flex items-center justify-between mb-4"><p className="font-bold text-[#ddeaf8]">{modal?.id ? `Editar: ${modal.nome}` : 'Novo colaborador'}</p><button onClick={() => setModal(null)} className="text-[#3d5875] hover:text-[#ddeaf8] bg-transparent border-none cursor-pointer text-xl">×</button></div>
         <div className="flex flex-col gap-4">
           <Input label="Nome" value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} placeholder="João Silva" />
           {!modal?.id && (
@@ -565,8 +579,7 @@ function ColabsPane({ empresaId }: { empresaId: string }) {
             <span className="font-[var(--mono)] text-xs text-[#7a96b8]">É assistente (só visualiza pedidos do dia)</span>
           </div>
           <Btn loading={saving} onClick={salvar}>Salvar</Btn>
-        </div>
-      </Modal>
+        </div></div></div>}
     </div>
   )
 }
