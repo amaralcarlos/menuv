@@ -523,6 +523,16 @@ export default function RelatorioGestorPane({ empresaId }: { empresaId: string }
           <p className="font-[var(--mono)] text-[9px] text-[#3d5875] mb-2">
             Toque num colaborador para ver os pedidos do mês
           </p>
+
+          {/* Botões de relatório */}
+          <div className="flex gap-2 mb-3">
+            <Btn variant="secondary" className="flex-1" onClick={() => abrirPdf(detalhe, mesAno)}>
+              📄 Relatório empresa
+            </Btn>
+            <Btn variant="secondary" className="flex-1" onClick={() => abrirPdfColaboradores(detalhe, mesAno)}>
+              👤 Relatório colaboradores
+            </Btn>
+          </div>
           <div className="overflow-x-auto mb-4">
             <table className="w-full" style={{ minWidth: temRateio ? 380 : 280 }}>
               <thead>
