@@ -517,17 +517,20 @@ function ColabsPane({ empresaId }: { empresaId: string }) {
         </Badge>
       </div>
       <p className="font-[var(--mono)] text-[10px] text-[#3d5875] truncate">{c.email}</p>
-      <div className="grid grid-cols-3 gap-1.5 pt-1 border-t border-[#1c2e48]">
-        <Btn size="sm" variant="secondary"
-          onClick={() => { window.scrollTo({ top: 0 }); setTimeout(() => { setModal(c); setForm({ nome: c.nome, email: c.email, senha: '', isGestor: c.is_gestor, isAssistente: c.is_assistente ?? false }) }, 100) }}>
-          Editar
-        </Btn>
-        <Btn size="sm" variant="danger" onClick={() => inativar(c.id)}>
-          Inativar
-        </Btn>
-        <Btn size="sm" variant="danger" onClick={() => excluir(c.id, c.nome)}>
-          Excluir
-        </Btn>
+      <div className="grid grid-cols-3 gap-1.5 pt-1.5 border-t border-[#1c2e48]">
+        <button
+          onClick={() => { window.scrollTo({ top: 0 }); setTimeout(() => { setModal(c); setForm({ nome: c.nome, email: c.email, senha: '', isGestor: c.is_gestor, isAssistente: c.is_assistente ?? false }) }, 100) }}
+          className="py-1.5 rounded-[7px] bg-[rgba(0,232,122,.08)] border border-[rgba(0,232,122,.2)] font-[var(--mono)] text-[10px] text-[#00e87a] cursor-pointer hover:bg-[rgba(0,232,122,.15)] transition-colors">
+          ✏️ Editar
+        </button>
+        <button onClick={() => inativar(c.id)}
+          className="py-1.5 rounded-[7px] bg-[rgba(255,179,64,.06)] border border-[rgba(255,179,64,.2)] font-[var(--mono)] text-[10px] text-[#ffb340] cursor-pointer hover:bg-[rgba(255,179,64,.12)] transition-colors">
+          ⏸ Inativar
+        </button>
+        <button onClick={() => excluir(c.id, c.nome)}
+          className="py-1.5 rounded-[7px] bg-[rgba(255,77,106,.06)] border border-[rgba(255,77,106,.2)] font-[var(--mono)] text-[10px] text-[#ff4d6a] cursor-pointer hover:bg-[rgba(255,77,106,.12)] transition-colors">
+          🗑 Excluir
+        </button>
       </div>
     </div>
   </Card>
