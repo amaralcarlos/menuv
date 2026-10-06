@@ -108,7 +108,7 @@ export async function GET(req: NextRequest) {
   const { data: todosColabs } = await admin
     .from('colaboradores')
     .select('id, nome')
-    .eq('empresa_id', empresaId) as any  // inclui inativos para não perder pedidos históricos
+    .eq('empresa_id', empresaId) as any  // inclui inativos para histórico
 
   const cnt: Record<string, number> = {}
   ;(pedidos ?? []).forEach((p: any) => {
@@ -158,9 +158,11 @@ export async function GET(req: NextRequest) {
     }
   })
 
-  const totalBruto    = colaboradores.reduce((a: number, c: any) => a + c.valorBruto, 0)
-  const totalSubsidio = colaboradores.reduce((a: number, c: any) => a + c.valorSubsidio, 0)
-  const totalColab    = colaboradores.reduce((a: number, c: any) => a + c.valorColab, 0)
+  // Remove inativos sem pedidos no período (evita duplicatas de mesmo nome)
+  const colaboradoresFiltrados = colaboradores.filter((c: any) => c.total > 0 || (todosColabs ?? []).find((t: any) => t.id === c.id)?.ativo)
+  const totalBruto    = colaboradoresFiltrados.reduce((a: number, c: any) => a + c.valorBruto, 0)
+  const totalSubsidio = colaboradoresFiltrados.reduce((a: number, c: any) => a + c.valorSubsidio, 0)
+  const totalColab    = colaboradoresFiltrados.reduce((a: number, c: any) => a + c.valorColab, 0)
 
   return ok({
     empresaNome:   emp.nome,
@@ -169,7 +171,7 @@ export async function GET(req: NextRequest) {
     valorTotal:    totalBruto,
     totalSubsidio,
     totalColab,
-    colaboradores,
+    colaboradores: colaboradoresFiltrados,
     mesAno,
     periodoLabel,
     diaCiclo,
