@@ -555,15 +555,7 @@ export default function RelatorioGestorPane({ empresaId }: { empresaId: string }
             </table>
           </div>
 
-          {/* Botões */}
-          <div className="flex gap-2">
-            <Btn variant="secondary" className="flex-1" onClick={() => abrirPdf(detalhe, mesAno)}>
-              📄 Relatório empresa
-            </Btn>
-            <Btn variant="secondary" className="flex-1" onClick={() => abrirPdfColaboradores(detalhe, mesAno)}>
-              👤 Relatório colaboradores
-            </Btn>
-          </div>
+
         </>
       )}
 
