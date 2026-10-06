@@ -318,6 +318,7 @@ export default function RelatorioGestorPane({ empresaId }: { empresaId: string }
   const [dataFim,      setDataFim]      = useState('')
   const [cicloInited,  setCicloInited]  = useState(false)
   const [emailDest,    setEmailDest]    = useState('')
+  const [busca,        setBusca]        = useState('')
   const [emailAssunto, setEmailAssunto] = useState('')
   const [emailMsg,     setEmailMsg]     = useState('')
   const [sending,      setSending]      = useState(false)
@@ -397,7 +398,9 @@ export default function RelatorioGestorPane({ empresaId }: { empresaId: string }
     else toast(res.error, 'error')
   }
 
-  const colabs    = detalhe ? [...detalhe.colaboradores].sort((a: any, b: any) => a.nome.localeCompare(b.nome, 'pt-BR')) : []
+  const colabs    = detalhe ? [...detalhe.colaboradores]
+    .filter((c: any) => !busca || c.nome.toLowerCase().includes(busca.toLowerCase()))
+    .sort((a: any, b: any) => a.nome.localeCompare(b.nome, 'pt-BR')) : []
   const temRateio = (detalhe?.totalSubsidio ?? 0) > 0
 
   return (
@@ -502,9 +505,21 @@ export default function RelatorioGestorPane({ empresaId }: { empresaId: string }
           </div>
 
           {/* Tabela */}
-          <p className="font-[var(--mono)] text-[10px] text-[#3d5875] uppercase tracking-[1px] mb-1">
-            Cobrança por colaborador
-          </p>
+          <div className="flex items-center gap-2 mb-3">
+            <input
+              type="text"
+              placeholder="Buscar colaborador..."
+              value={busca}
+              onChange={e => setBusca(e.target.value)}
+              className="flex-1 bg-[#080c14] border border-[#1c2e48] rounded-[8px] px-3 py-2 font-[var(--mono)] text-xs text-[#ddeaf8] outline-none focus:border-[rgba(0,232,122,.3)] placeholder:text-[#3d5875]"
+            />
+            {busca && (
+              <button onClick={() => setBusca('')}
+                className="font-[var(--mono)] text-[10px] text-[#3d5875] hover:text-[#ddeaf8] bg-transparent border-none cursor-pointer">
+                ✕
+              </button>
+            )}
+          </div>
           <p className="font-[var(--mono)] text-[9px] text-[#3d5875] mb-2">
             Toque num colaborador para ver os pedidos do mês
           </p>
