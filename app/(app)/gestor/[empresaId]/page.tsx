@@ -536,7 +536,7 @@ function ColabsPane({ empresaId }: { empresaId: string }) {
   </Card>
 ))}
 
-      {relModal && <div className="fixed inset-0 z-50 flex items-start justify-center pt-8 px-4" onClick={() => setRelModal(null)}><div className="w-full max-w-sm bg-[#0d1525] border border-[#1c2e48] rounded-[16px] p-5 shadow-xl" onClick={e => e.stopPropagation()}><div className="flex items-center justify-between mb-4"><p className="font-bold text-[#ddeaf8]">Relatório — {relModal?.nome}</p><button onClick={() => setRelModal(null)} className="text-[#3d5875] hover:text-[#ddeaf8] bg-transparent border-none cursor-pointer text-xl">×</button></div>
+      {relModal && <div className="fixed inset-0 z-50 flex items-start justify-center pt-8 px-4 backdrop-blur-sm bg-black/50" onClick={() => setRelModal(null)}><div className="w-full max-w-sm bg-[#0d1525] border border-[#1c2e48] rounded-[16px] p-5 shadow-xl" onClick={e => e.stopPropagation()}><div className="flex items-center justify-between mb-4"><p className="font-bold text-[#ddeaf8]">Relatório — {relModal?.nome}</p><button onClick={() => setRelModal(null)} className="text-[#3d5875] hover:text-[#ddeaf8] bg-transparent border-none cursor-pointer text-xl">×</button></div>
         <div className="flex flex-col gap-4">
           <div className="flex gap-3">
             <div className="flex flex-col gap-1 flex-1">
@@ -555,7 +555,7 @@ function ColabsPane({ empresaId }: { empresaId: string }) {
           </Btn>
         </div></div></div>}
 
-      {modal && <div className="fixed inset-0 z-50 flex items-start justify-center pt-8 px-4" onClick={() => setModal(null)}><div className="w-full max-w-sm bg-[#0d1525] border border-[#1c2e48] rounded-[16px] p-5 shadow-xl" onClick={e => e.stopPropagation()}><div className="flex items-center justify-between mb-4"><p className="font-bold text-[#ddeaf8]">{modal?.id ? `Editar: ${modal.nome}` : 'Novo colaborador'}</p><button onClick={() => setModal(null)} className="text-[#3d5875] hover:text-[#ddeaf8] bg-transparent border-none cursor-pointer text-xl">×</button></div>
+      {modal && <div className="fixed inset-0 z-50 flex items-start justify-center pt-8 px-4 backdrop-blur-sm bg-black/50" onClick={() => setModal(null)}><div className="w-full max-w-sm bg-[#0d1525] border border-[#1c2e48] rounded-[16px] p-5 shadow-xl" onClick={e => e.stopPropagation()}><div className="flex items-center justify-between mb-4"><p className="font-bold text-[#ddeaf8]">{modal?.id ? `Editar: ${modal.nome}` : 'Novo colaborador'}</p><button onClick={() => setModal(null)} className="text-[#3d5875] hover:text-[#ddeaf8] bg-transparent border-none cursor-pointer text-xl">×</button></div>
         <div className="flex flex-col gap-4">
           <Input label="Nome" value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} placeholder="João Silva" />
           {!modal?.id && (
